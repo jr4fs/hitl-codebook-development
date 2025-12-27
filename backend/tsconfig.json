@@ -1,29 +1,21 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    "rootDir": "..",
-    "outDir": "./dist",
-    "baseUrl": ".", 
+    "baseUrl": "../",
     "paths": {
-      "@common/*": ["../common/src/*"]
+      "@common/types/*": ["common/src/types/*"],
+      "@common/*": ["common/src/*"]
     },
-
-    // Environment Settings
+    "target": "ES2020",
     "module": "commonjs",
-    "target": "esnext",
-    
-    // For nodejs:
-    "lib": ["esnext"],
-    "types": ["node"],
-    // and npm install -D @types/node
-
-    // Recommended Options
+    "moduleResolution": "node",
+    "moduleDetection": "force",
+        "rootDir": "../",
+    "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
-    "verbatimModuleSyntax": false,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "../common/src" ]
+  "include": ["src", "../common/src"]
 }
+

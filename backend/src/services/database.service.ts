@@ -13,7 +13,7 @@ export async function connectToMongo() {
   client = new MongoClient(DB_CONN);
   await client.connect();
   db = client.db(DB_NAME);
-  console.log("Connected to PocketLLM MongoDB");
+  console.log("Connected to Annotation Tool MongoDB");
 
   await setupIndexes();
 
@@ -34,7 +34,7 @@ export async function closeMongo() {
     await client.close();
     client = null;
     db = null;
-    console.log("PocketLLM MongoDB connection closed");
+    console.log("Annotation Tool MongoDB connection closed");
   }
 }
 

@@ -208,7 +208,7 @@ export async function loginUser(req: Request, res:Response){
                 message: "Email or Password is incorrect"
             });
         }
-        const correctPassword = verifyPassword(validationPayload.password, existingUser.password);
+        const correctPassword = await verifyPassword(validationPayload.password, existingUser.password);
         
         if (!correctPassword){
             return res.status(400).json({
