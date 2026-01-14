@@ -3,6 +3,7 @@ import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import { AppLayout } from "./components/layout/AppLayout";
 import LandingPage from "./pages/LandingPage";
+import SubsamplingPage from "./pages/SubsamplingPage";
 
 export const router = createBrowserRouter([
   {
@@ -14,6 +15,10 @@ export const router = createBrowserRouter([
         element: <LandingPage />,
       },
       // Add more protected routes here
+      {
+        path: "/new-task",
+        element: <SubsamplingPage />,
+      }
     ],
   },
   {

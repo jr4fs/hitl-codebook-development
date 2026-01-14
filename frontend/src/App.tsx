@@ -1,4 +1,5 @@
 import '@mantine/core/styles.css';
+import '@mantine/dropzone/styles.css';
 import { MantineProvider } from '@mantine/core';
 import { RouterProvider } from "react-router";
 import { router } from './router';

@@ -10,11 +10,12 @@ export const AppLayout = () => {
         <AppShell
             navbar={{
                 width: sidebarCollapsed ? 70 : 280,
-                breakpoint: 'sm',
+                breakpoint: 'xs',
             }}
             padding={0}
             transitionDuration={700} // Adjust this value (in ms)
             transitionTimingFunction="ease" // Adjust easing
+            bg="#000000"
         >
             {/* NAVBAR (collapsible sidebar) */}
             <AppShell.Navbar>
@@ -23,7 +24,9 @@ export const AppLayout = () => {
                     toggleCollapsed={() => setSidebarCollapsed((c) => !c)}
                 />
             </AppShell.Navbar>
-            <AppShell.Main>
+            <AppShell.Main 
+            style={{ height: "100dvh" }}
+            >
                 <Outlet/>
             </AppShell.Main>
         </AppShell>

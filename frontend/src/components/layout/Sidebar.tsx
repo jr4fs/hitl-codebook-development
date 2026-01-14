@@ -99,6 +99,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
               size="lg"
               c="dimmed"
               onClick={toggleCollapsed}
+              bd="0"
             >
               <IconLayoutSidebar />
             </ActionIcon>
@@ -122,7 +123,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
         </Stack>
         <ScrollArea h="auto" type="auto">
           <Stack pl="md" pr="md" pt="md" pb="0px">
-            {[1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5].map((num) => (
+            {[1, 2, 3, 4, 5].map((num) => ( //, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5
               <Button
                 key={num}
                 fullWidth
