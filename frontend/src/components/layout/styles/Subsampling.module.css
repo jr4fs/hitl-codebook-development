@@ -1,0 +1,33 @@
+.input {
+  background-color: #2C2C2C;
+  color: #FFFFFF;
+  border: 1px solid #2C2C2C;
+}
+
+.input:focus-within {
+  border-color: #4A4A4A;
+}
+
+.control {
+  background-color: #2C2C2C;
+  border: none;
+  color: #FFFFFF;
+}
+
+.control:hover {
+  background-color: #4A4A4A;
+}
+
+.dropdown {
+  background-color: #2C2C2C;
+  border: 0;
+}
+
+.option {
+  color: #FFFFFF;
+  border: 0;
+}
+
+.option:hover {
+  background-color: #4A4A4A;
+}

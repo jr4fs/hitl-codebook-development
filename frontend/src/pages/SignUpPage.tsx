@@ -15,14 +15,14 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconExclamationMark } from "@tabler/icons-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, /*useNavigate*/ } from "react-router-dom";
 import { useState } from "react";
 import { CreateUserRequest } from "@common/types/accounts";
 import { createUser } from "../services/account.service";
 import { AxiosError } from "axios";
 
 export default function SignUpPage() {
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 

@@ -1,0 +1,41 @@
+export interface LabelItem {
+  name: string;
+  keywords: string[];
+}
+
+export interface Task {
+  _id?: string; // MongoDB ObjectId as string
+  name: string;
+  description: string;
+  type: "Multiclass" | "Single-class";
+  labels: LabelItem[];
+  userID: string;
+  file: string; // filename stored in /backend/uploads
+  createdAt: string; // ISO 8601 timestamp
+  updatedAt?: string; // ISO 8601 timestamp
+}
+
+export interface CreateTaskRequest {
+  name: string;
+  description: string;
+  type: "Multiclass" | "Single-class";
+  labels: LabelItem[];
+  file: string; // filename from upload endpoint
+  userID: string;
+}
+
+export interface CreateTaskResponse {
+  success: boolean;
+  message?: string;
+  taskId?: string;
+  task?: Task;
+  errors?: Record<string, string[]>;
+}
+
+export interface TaskQueryResponse {
+  success: boolean;
+  message?: string;
+  tasks?: Task[];
+  count?: number;
+  error?: string;
+}

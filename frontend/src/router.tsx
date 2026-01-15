@@ -1,12 +1,25 @@
 import { createBrowserRouter } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
-//import LandingPage from "./pages/LandingPage";
+import { AppLayout } from "./components/layout/AppLayout";
+import LandingPage from "./pages/LandingPage";
+import SubsamplingPage from "./pages/SubsamplingPage";
 
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <LoginPage />,
+    element: <AppLayout />,
+    children: [
+      {
+        path: "",
+        element: <LandingPage />,
+      },
+      // Add more protected routes here
+      {
+        path: "/new-task",
+        element: <SubsamplingPage />,
+      }
+    ],
   },
   {
     path: "/login",
@@ -16,8 +29,4 @@ export const router = createBrowserRouter([
     path: "/signup",
     element: <SignUpPage />,
   },
-  /*{
-    path: "/landing",
-    element: <LandingPage />,
-  },*/
 ]);
