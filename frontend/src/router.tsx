@@ -4,29 +4,42 @@ import SignUpPage from "./pages/SignUpPage";
 import { AppLayout } from "./components/layout/AppLayout";
 import LandingPage from "./pages/LandingPage";
 import SubsamplingPage from "./pages/SubsamplingPage";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { PublicRoute } from "./components/auth/PublicRoute";
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <AppLayout />,
+    element: <PublicRoute />,
     children: [
+      //redirect to landing page if user is logged in
       {
-        path: "",
-        element: <LandingPage />,
+        path: "/login",
+        element: <LoginPage />,
       },
-      // Add more protected routes here
       {
-        path: "/new-task",
-        element: <SubsamplingPage />,
-      }
+        path: "/signup",
+        element: <SignUpPage />,
+      },
     ],
   },
   {
-    path: "/login",
-    element: <LoginPage />,
-  },
-  {
-    path: "/signup",
-    element: <SignUpPage />,
+    element: <ProtectedRoute />,
+    children: [
+      // Protected routes
+      {
+        path: "/",
+        element: <AppLayout />,
+        children: [
+          {
+            path: "",
+            element: <LandingPage />,
+          },
+          {
+            path: "/new-task",
+            element: <SubsamplingPage />,
+          },
+        ],
+      },
+    ],
   },
 ]);

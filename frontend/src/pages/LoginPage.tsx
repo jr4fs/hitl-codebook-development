@@ -52,7 +52,12 @@ export default function LoginPage() {
       const res = await loginUser(values);
       console.log("Login success:", res);
       // TODO: store auth token (JWT) / redirect user to landing page
-      dispatch(setUser(res.user));
+      dispatch(setUser({
+      user: res.user,
+      accessToken: res.jwtToken,
+      refreshToken: res.jwtRefreshToken
+    }
+      ));
       setLoading(false);
       navigate("/")
     } catch (error) {

@@ -53,7 +53,11 @@ export default function SignUpPage() {
       const res = await createUser(values);
       console.log("Created user successfully:", res);
       // TODO: store auth token (JWT) / redirect user to landing page
-      dispatch(setUser(res.user));
+      dispatch(setUser({
+        user: res.user,
+      accessToken: res.jwtToken,
+      refreshToken: res.jwtRefreshToken
+      }));
       setLoading(false);
     } catch (error) {
         console.error("Error creating user: ", error);

@@ -8,6 +8,14 @@ interface TaskValidation {
   errors: string[];
 }
 
+export interface AuthRequest extends Request {
+  user?: {
+    userId: string;
+    email: string;
+    username: string;
+  };
+}
+
 //Validates task creation request payload
 function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
   const errors: string[] = [];
@@ -20,7 +28,6 @@ function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
     errors.push("Task description is required");
   }
 
-  //TODO: Possibly remove since it is a dropdown
   if (!payload.type || !["Multiclass", "Single-class"].includes(payload.type)) {
     errors.push("Task type must be either 'Multiclass' or 'Single-class'");
   }
@@ -44,10 +51,6 @@ function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
     errors.push("File does not exist or has been deleted");
   }
 
-  if (!payload.userID || payload.userID.trim().length === 0) {
-    errors.push("User ID is required");
-  }
-
   return {
     valid: errors.length === 0,
     errors
@@ -55,7 +58,17 @@ function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
 }
 
 //Creates a new task and stores it in the TaskDetails collection
-export async function createTask(req: Request, res: Response) {
+export async function createTask(req: AuthRequest, res: Response) {
+  
+  const userID = req.user?.userId;
+  
+   if (!userID) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - user not authenticated"
+      });
+    }
+
   try {
     const payload: CreateTaskRequest = {
       name: req.body.name,
@@ -63,7 +76,7 @@ export async function createTask(req: Request, res: Response) {
       type: req.body.type,
       labels: req.body.labels,
       file: req.body.file,
-      userID: req.body.userID
+      userID: userID
     };
 
     // Validate payload
@@ -87,7 +100,7 @@ export async function createTask(req: Request, res: Response) {
       type: payload.type,
       labels: payload.labels,
       file: payload.file,
-      userID: payload.userID,
+      userID: userID,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -113,14 +126,14 @@ export async function createTask(req: Request, res: Response) {
 }
 
 //Retrieves all tasks for a specific user
-export async function getUserTasks(req: Request, res: Response) {
+export async function getUserTasks(req: AuthRequest, res: Response) {
   try {
-    const userID = req.params.userID;
+    const userID = req.user?.userId;
 
-    if (!userID || userID.trim().length === 0) {
-      return res.status(400).json({
+    if (!userID) {
+      return res.status(401).json({
         success: false,
-        message: "User ID is required"
+        message: "Unauthorized - user not authenticated"
       });
     }
 
@@ -147,8 +160,17 @@ export async function getUserTasks(req: Request, res: Response) {
  * Handles CSV file upload using multer
  * Returns the stored filename to be used in task creation
  */
-export async function uploadTaskFile(req: Request, res: Response) {
+export async function uploadTaskFile(req: AuthRequest, res: Response) {
   try {
+    const userID = req.user?.userId;
+
+    if (!userID) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - user not authenticated"
+      });
+    }
+
     if (!req.file) {
       return res.status(400).json({
         success: false,

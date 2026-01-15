@@ -1,4 +1,4 @@
-import { CreateUserRequest, CreateUserResponse, LoginUserRequest, LoginUserResponse } from "@common/types/accounts";
+import { User, CreateUserRequest, CreateUserResponse, LoginUserRequest, LoginUserResponse } from "@common/types/accounts";
 import { apiClient } from "../lib/apiClient";
 
 export async function createUser(
@@ -20,4 +20,3 @@ export async function loginUser(
   );
   return data;
 }
-

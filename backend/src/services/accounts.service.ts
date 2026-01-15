@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { CreateUserRequest, LoginUserRequest, } from "@common/types/accounts";
 import { getCollection } from "./database.service";
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/jwt";
 import argon2 from 'argon2';
 
 interface InputFieldValidation {
@@ -164,6 +165,16 @@ export async function createUser(req: Request, res: Response) {
 
         const result = await userDetailsCollection.insertOne(newUser);
 
+        const auth_payload = {
+            userId: result.toString(),
+            email: newUser.email,
+            username: newUser.username,
+        }
+
+        const accessToken = generateAccessToken(auth_payload);
+        const refreshToken = generateRefreshToken(auth_payload);
+
+
         res.status(201).json({
             success: true,
             message: "User created successfully",
@@ -188,8 +199,8 @@ export async function createUser(req: Request, res: Response) {
     }
 }
 
-export async function loginUser(req: Request, res:Response){
-    try{
+export async function loginUser(req: Request, res: Response) {
+    try {
         const validationPayload: LoginUserRequest = {
             email: req.body.email,
             password: req.body.password
@@ -209,16 +220,27 @@ export async function loginUser(req: Request, res:Response){
             });
         }
         const correctPassword = await verifyPassword(validationPayload.password, existingUser.password);
-        
-        if (!correctPassword){
+
+        if (!correctPassword) {
             return res.status(400).json({
                 success: false,
                 message: "Email or Password is incorrect"
             });
         }
 
+        const auth_payload = {
+            userId: existingUser._id.toString(),
+            email: existingUser.email,
+            username: existingUser.username,
+        }
+
+        const accessToken = generateAccessToken(auth_payload);
+        const refreshToken = generateRefreshToken(auth_payload);
+
         res.status(200).json({
             success: true,
+            jwtToken: accessToken,
+            jwtRefreshToken: refreshToken,
             message: "User Login was successful",
             user: {
                 id: existingUser._id.toString(),
@@ -226,10 +248,45 @@ export async function loginUser(req: Request, res:Response){
                 username: existingUser.username,
             }
         });
-    }catch(error: any){
-         res.status(500).json({
+    } catch (error: any) {
+        res.status(500).json({
             success: false,
             message: error.message || "Failed to login, Internal Server Error"
+        });
+    }
+}
+
+export async function refreshAccessToken(req: Request, res: Response) {
+    try {
+        const { refreshToken } = req.body.token;
+
+        if (!refreshToken) {
+            console.log("Refresh token not present");
+            return res.status(401).json({
+                success: false,
+                message: "Refresh token is required"
+            });
+        }
+
+        // Verify the refresh token
+        const decoded = verifyRefreshToken(refreshToken);
+
+        // Generate new access token
+        const newAccessToken = generateAccessToken({
+            userId: decoded.userId,
+            email: decoded.email,
+            username: decoded.username,
+        });
+
+        res.status(200).json({
+            success: true,
+            accessToken: newAccessToken
+        });
+    } catch (error: any) {
+        console.log("Invalid or expired refresh token");
+        res.status(401).json({
+            success: false,
+            message: "Invalid or expired refresh token"
         });
     }
 }

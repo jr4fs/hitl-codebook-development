@@ -13,7 +13,8 @@ export interface LoginUserRequest{
 
 export interface LoginUserResponse {
     success: boolean;
-    //token: string;
+    jwtToken: string;
+    jwtRefreshToken: string;
     user: User;
     message?: string;
 }
@@ -28,8 +29,8 @@ export interface CreateUserRequest {
 export interface CreateUserResponse {
     userId: string;
     success: boolean;
-    //token: string;
+    jwtToken: string;
+    jwtRefreshToken: string;
     user: User;
     message?: string;
 }
-
