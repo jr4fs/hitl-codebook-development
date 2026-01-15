@@ -15,16 +15,19 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconExclamationMark } from "@tabler/icons-react";
-import { Link, /*useNavigate*/ } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { LoginUserRequest } from "@common/types/accounts";
 import { loginUser } from "../services/account.service";
 import { AxiosError } from "axios";
+import { useDispatch } from 'react-redux';
+import { setUser } from '../store/userSlice';
 
 export default function LoginPage() {
-  //const navigate = useNavigate();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const dispatch = useDispatch();
 
   const form = useForm({
     mode: "uncontrolled",
@@ -49,7 +52,9 @@ export default function LoginPage() {
       const res = await loginUser(values);
       console.log("Login success:", res);
       // TODO: store auth token (JWT) / redirect user to landing page
+      dispatch(setUser(res.user));
       setLoading(false);
+      navigate("/")
     } catch (error) {
       console.error("Login Error: ", error);
       if (error instanceof AxiosError){

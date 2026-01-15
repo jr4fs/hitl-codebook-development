@@ -15,6 +15,8 @@ import {
 } from "@tabler/icons-react";
 import { useHover } from "@mantine/hooks";
 import "./styles/Sidebar.css";
+import { useSelector } from 'react-redux';
+import { IRootState } from "../../store/store";
 
 //Props to handle navbar collapsed/expanded state
 interface SideBarProps {
@@ -25,6 +27,7 @@ interface SideBarProps {
 
 export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   const { hovered, ref } = useHover();
+  const userState = useSelector((state: IRootState) => state.user.user);
   if (collapsed) {
     //Collapsed sidebar
     return (
@@ -151,7 +154,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           fz="md"
           classNames={{ root: "sidebar-button" }}
         >
-          UserName
+          {userState?.username}
         </Button>
       </Stack>
     );
