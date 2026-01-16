@@ -20,11 +20,14 @@ import { useState } from "react";
 import { CreateUserRequest } from "@common/types/accounts";
 import { createUser } from "../services/account.service";
 import { AxiosError } from "axios";
+import { useDispatch } from 'react-redux';
+import { setUser } from '../store/userSlice';
 
 export default function SignUpPage() {
   //const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const dispatch = useDispatch();
 
   const form = useForm({
     mode: "uncontrolled",
@@ -50,6 +53,11 @@ export default function SignUpPage() {
       const res = await createUser(values);
       console.log("Created user successfully:", res);
       // TODO: store auth token (JWT) / redirect user to landing page
+      dispatch(setUser({
+        user: res.user,
+      accessToken: res.jwtToken,
+      refreshToken: res.jwtRefreshToken
+      }));
       setLoading(false);
     } catch (error) {
         console.error("Error creating user: ", error);

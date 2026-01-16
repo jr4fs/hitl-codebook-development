@@ -5,16 +5,15 @@ export async function createTask(
     payload: CreateTaskRequest
 ): Promise<CreateTaskResponse> {
     const { data } = await apiClient.post<CreateTaskResponse>(
-        "/api/tasks/",
+        "/api/tasks/createTask",
         payload
     );
     return data;
 }
 
 export async function getUserTasks(
-    userId: string
 ): Promise<TaskQueryResponse> {
-    const { data } = await apiClient.get<TaskQueryResponse>(`/api/tasks/user/${userId}`);
+    const { data } = await apiClient.get<TaskQueryResponse>(`/api/tasks/getTasks`);
     return data;
 }
 
