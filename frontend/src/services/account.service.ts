@@ -1,4 +1,4 @@
-import { User, CreateUserRequest, CreateUserResponse, LoginUserRequest, LoginUserResponse } from "@common/types/accounts";
+import { CreateUserRequest, CreateUserResponse, LoginUserRequest, LoginUserResponse } from "@common/types/accounts";
 import { apiClient } from "../lib/apiClient";
 
 export async function createUser(
