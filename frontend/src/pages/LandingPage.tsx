@@ -44,9 +44,9 @@ export default function LandingPage() {
     const inputFile = files[0];
     if (inputFile) {
       console.log("Selected file:", inputFile);
-      setFileName(inputFile.name);
       const response = await uploadFile(inputFile);
       if(response.success){
+        setFileName(response.filePath ?? "");
         Papa.parse(inputFile, {
         header: true,
         complete: (results) => {

@@ -192,7 +192,8 @@ export async function uploadTaskFile(req: AuthRequest, res: Response) {
     console.error("Error uploading file:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to upload file"
+      message: error.message || "Failed to upload file",
+      error: error
     });
   }
 }

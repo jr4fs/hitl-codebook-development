@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt';
-import { AuthRequest } from '@common/types/auth';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -13,7 +12,6 @@ export interface AuthRequest extends Request {
 export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.get("authorization");
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
   if (!token) {
     return res.status(401).json({
       success: false,
@@ -26,6 +24,7 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
     req.user = decoded;
     next();
   } catch (error) {
+    console.log(error); //Debug log
     return res.status(403).json({
       success: false,
       message: "Invalid or expired token"

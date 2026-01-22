@@ -39,3 +39,10 @@ export interface TaskQueryResponse {
   count?: number;
   error?: string;
 }
+
+export interface UploadFileResponse {
+  success: boolean;
+  message?: string;
+  filePath?: string; // The saved filename with timestamp
+  errors?: Record<string, string[]>;
+}

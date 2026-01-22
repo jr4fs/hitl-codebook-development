@@ -4,12 +4,23 @@ from models.embedding_schemas import EmbedDatasetRequest
 from services.dbembed_service import DatasetEmbeddingService
 from services.faiss_service import FAISSService
 from services.label_service import LabelService
+import os
+from pathlib import Path
 
 class EmbeddingService:
     def __init__(self, request: EmbedDatasetRequest) -> None:
         self.request: EmbedDatasetRequest = request
-        self.df = pd.read_csv(request.file_path).head(1000)
+        project_root = Path(__file__).parent.parent.parent  # Go up from pybackend/services to project root
+        if os.path.isabs(request.file_path):
+            # If absolute path, use as-is
+            file_path = request.file_path
+        else:
+            # If relative (just filename), resolve from shared_uploads
+            file_path = project_root / 'shared_uploads' / request.file_path
+        self.df = pd.read_csv(str(file_path)).head(1000)
         self.df["example_id"] = range(1, len(self.df) + 1)
+        self.val_file_path = project_root / 'val_datasets' /  request.file_path
+        self.rest_file_path = project_root / 'rest_datasets' /  request.file_path
         
     def run(self):
         dbembed_service_obj = DatasetEmbeddingService(
@@ -55,8 +66,11 @@ class EmbeddingService:
 
         print("df_val: ", len(df_val))
         print("df_rest: ", len(df_rest))
-        df_val.to_csv('df_val.csv')
-        df_rest.to_csv('df_rest.csv')
+
+        df_val.to_csv(self.val_file_path)
+        df_rest.to_csv(self.rest_file_path)
+
+        return df_val
         
         
 
