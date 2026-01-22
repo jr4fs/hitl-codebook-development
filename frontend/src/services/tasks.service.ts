@@ -1,4 +1,4 @@
-import { CreateTaskRequest, CreateTaskResponse, TaskQueryResponse } from "@common/types/tasks";
+import { CreateTaskRequest, CreateTaskResponse, TaskQueryResponse, UploadFileResponse } from "@common/types/tasks";
 import { apiClient } from "../lib/apiClient";
 
 export async function createTask(
@@ -17,14 +17,15 @@ export async function getUserTasks(
     return data;
 }
 
-export async function uploadFile(file: File): Promise<CreateTaskResponse> {
+export async function uploadFile(file: File): Promise<UploadFileResponse> {
     const formData = new FormData();
     formData.append("file", file);
-    const { data } = await apiClient.post<CreateTaskResponse>("/api/tasks/upload", formData, {
+    const { data } = await apiClient.post<UploadFileResponse>("/api/tasks/upload", formData, {
         headers: {
             "Content-Type": "multipart/form-data",
         },
     });
+    console.log(data);
     return data;
 }
 

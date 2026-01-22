@@ -3,7 +3,8 @@ import path from "path";
 import { Request } from "express";
 import fs from "fs";
 
-const UPLOADS_DIR = path.join(process.cwd(), "uploads");
+const PROJECT_ROOT = path.resolve(__dirname, '../../../');
+const UPLOADS_DIR = path.join(PROJECT_ROOT, 'shared_uploads');
 
 /**
  * Ensures uploads directory exists

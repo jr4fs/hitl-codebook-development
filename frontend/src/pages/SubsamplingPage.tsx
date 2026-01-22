@@ -22,8 +22,11 @@ import { IconTrash, IconPlus } from "@tabler/icons-react";
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createTask } from "../services/tasks.service";
+import { embedDataset } from "../services/embedding.service";
+import { EmbedDatasetRequest } from "@common/types/embedding";
 import { Task } from "@common/types/tasks";
-//import Papa from "papaparse";
+import { useSelector } from 'react-redux';
+import { IRootState } from '../store/store';
 import styles from "../components/layout/styles/Subsampling.module.css";
 
 const MAX_ROWS_PER_PAGE = 10;
@@ -47,10 +50,11 @@ interface NavProps {
 
 interface LabelItem {
   name: string;
+  definition: string;
   keywords: Array<string>;
 }
 
-export default function LandingPage() {
+export default function SubsamplingPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const navProps = location.state as NavProps;
@@ -58,11 +62,14 @@ export default function LandingPage() {
   const [taskDesc, setTaskDesc] = useState("");
   const [taskType, setTaskType] = useState<"Multiclass" | "Single-class">("Multiclass");
   const [taskLabels, setTaskLabels] = useState<LabelItem[]>([
-    { name: "", keywords: [] },
+    { name: "", definition: "", keywords: [] },
   ]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [chosenCol, setChosenCol] = useState<string[]>([]);
   const [filteredData, setFilteredData] = useState<CsvRow[]>([]);
+  const [subsampledCsv, setSubsampledCsv] = useState<CsvRow[]>([]);
+  const user = useSelector((state: IRootState) => state.user.user);
+
 
   // Redirect back if no data
   useEffect(() => {
@@ -91,7 +98,15 @@ export default function LandingPage() {
     }
   }, [chosenCol, csvData]);
 
-  const displayData = filteredData.length > 0 ? filteredData : csvData;
+  // Determine which data to display - subsampled takes priority
+  const displayData = subsampledCsv.length > 0
+    ? subsampledCsv
+    : (filteredData.length > 0 ? filteredData : csvData);
+
+  // Get headers from the appropriate source
+  const displayHeaders = subsampledCsv.length > 0
+    ? (subsampledCsv[0] ? Object.keys(subsampledCsv[0]) : headers)
+    : headers;
   //calculations for pagination
   const totalPages = Math.ceil(displayData.length / MAX_ROWS_PER_PAGE);
   const startIndex = (currentPage - 1) * MAX_ROWS_PER_PAGE;
@@ -99,7 +114,7 @@ export default function LandingPage() {
   const paginatedData = displayData.slice(startIndex, endIndex);
 
   const addLabelItem = () => {
-    setTaskLabels((prev) => [...prev, { name: "", keywords: [] }]);
+    setTaskLabels((prev) => [...prev, { name: "", definition: "", keywords: [] }]);
   };
 
   const removeLabelItem = (index: number) => {
@@ -112,42 +127,98 @@ export default function LandingPage() {
     );
   };
 
+  const updateLabelDefinition = (index: number, definition: string) => {
+    setTaskLabels((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, definition } : item))
+    );
+  };
+
   const updateLabelKeywords = (index: number, keywords: string[]) => {
     setTaskLabels((prev) =>
       prev.map((item, i) => (i === index ? { ...item, keywords } : item))
     );
   };
 
-  const handleSaveTaskState = async() =>{
+  const handleSaveTaskState = async () => {
     const payload: Task = {
-        name: taskName,
-        description: taskDesc,
-        type: taskType,
-        labels: taskLabels,
-        userID: "TestUser12345",
-        file:"MFP_4_anonymized-USC Version - MFP_4_anonymized (3)_2026-01-13_011755.csv",
-        createdAt: new Date().toISOString()
-      };
-    
-      const response = await createTask(payload)
-      if(response.success){
-        console.log("Saved Task state successfully");
-      }
-      else{
-        console.log("Error saving task state: ",response.errors);
-      }
+      name: taskName,
+      description: taskDesc,
+      type: taskType,
+      labels: taskLabels,
+      userID: user?.id || "00000",
+      file: fileName,
+      createdAt: new Date().toISOString()
+    };
+
+    const response = await createTask(payload)
+    if (response.success) {
+      console.log("Saved Task state successfully");
+
+    }
+    else {
+      console.log("Error saving task state: ", response.errors);
+    }
   }
 
-  const handleSubsampling = () => {
-    if (taskName && taskDesc && taskType && taskLabels.length > 0) {
-      // const task: Task = {
-      //   name: taskName,
-      //   description: taskDesc,
-      //   type: taskType,
-      //   labels: taskLabels,
-      // };
+  const handleSubsampling = async () => {
+    // Validate required fields
+    if (!taskName || !taskDesc || !taskType || taskLabels.length === 0) {
+      console.error("Please fill in all required task fields");
+      return;
+    }
 
-      console.log("Current Task Obj: ");
+    // Validate that a column is selected
+    if (!chosenCol || chosenCol.length === 0 || !chosenCol[0]) {
+      console.error("Please select at least one column for annotation");
+      return;
+    }
+
+    // Validate that all labels have required fields
+    const invalidLabels = taskLabels.filter(
+      (label) =>
+        !label.name?.trim() ||
+        !label.definition?.trim() ||
+        !label.keywords ||
+        label.keywords.length === 0
+    );
+
+    if (invalidLabels.length > 0) {
+      console.error(
+        "All labels must have a name, definition, and at least one keyword"
+      );
+      return;
+    }
+
+    try {
+      //save task in DB
+      handleSaveTaskState()
+      const payload: EmbedDatasetRequest = {
+        file_path: fileName,
+        text_col: chosenCol[0],
+        labels: taskLabels.filter(
+          (label) =>
+            label.name?.trim() &&
+            label.definition?.trim() &&
+            label.keywords &&
+            label.keywords.length > 0
+        ),
+      };
+
+      console.log("Sending payload to backend:", payload);
+      const response = await embedDataset(payload);
+      if (response.success) {
+        console.log("Subsampling completed successfully");
+        if (response.val_data && response.val_data.length > 0) {
+          setSubsampledCsv(response.val_data);
+        }
+      } else {
+        console.error("Subsampling failed:", response);
+      }
+    } catch (error: any) {
+      console.error("Error performing subsampling:", error);
+      if (error?.response?.data) {
+        console.error("Backend error details:", error.response.data);
+      }
     }
   };
 
@@ -278,6 +349,17 @@ export default function LandingPage() {
                       classNames={{ input: styles.input }}
                     />
 
+                    <TextInput
+                      variant="filled"
+                      label="Label Description"
+                      placeholder={`Enter description for label ${idx + 1}`}
+                      value={label.definition}
+                      onChange={(e) =>
+                        updateLabelDefinition(idx, e.currentTarget.value)
+                      }
+                      classNames={{ input: styles.input }}
+                    />
+
                     <TagsInput
                       variant="filled"
                       label="Keywords"
@@ -337,51 +419,51 @@ export default function LandingPage() {
 
       <Box w="65%" h="100%">
         <Stack c="#D8D8D8" h="100%" gap="md">
-        <Paper  bg="#1C1A1A" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Title order={4}> {fileName}</Title>
-          <Text c="dimmed" fz="md">
-            {displayData.length} rows
-          </Text>
-          <Table.ScrollContainer minWidth={500} style={{ flex: 1, overflow: 'auto' }}>
-            <Table withColumnBorders withTableBorder borderColor="#D8D8D8">
-              <Table.Thead>
-                <Table.Tr>
-                  {headers.map((header, index) => (
-                    <Table.Th key={index}>{header}</Table.Th>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {paginatedData.map((row, rowIndex) => (
-                  <Table.Tr key={rowIndex}>
-                    {headers.map((header, cellIndex) => (
-                      <Table.Td key={cellIndex}>{row[header]}</Table.Td>
+          <Paper bg="#1C1A1A" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Title order={4}> {fileName}</Title>
+            <Text c="dimmed" fz="md">
+              {displayData.length} rows
+            </Text>
+            <Table.ScrollContainer minWidth={500} style={{ flex: 1, overflow: 'auto' }}>
+              <Table withColumnBorders withTableBorder borderColor="#D8D8D8">
+                <Table.Thead>
+                  <Table.Tr>
+                    {displayHeaders.map((header, index) => (
+                      <Table.Th key={index}>{header}</Table.Th>
                     ))}
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        </Paper>
-        <Group justify="center" p="md">
-          <Pagination
-            total={totalPages}
-            value={currentPage}
-            onChange={setCurrentPage}
-            color="gray"
-            withEdges
-            styles={{
-              control: {
-                backgroundColor: "#2C2C2C",
-                border: "none",
-                color: "#FFFFFF",
-              },
-              dots: {
-                color: "#FFFFFF",
-              },
-            }}
-          />
-        </Group>
+                </Table.Thead>
+                <Table.Tbody>
+                  {paginatedData.map((row, rowIndex) => (
+                    <Table.Tr key={rowIndex}>
+                      {displayHeaders.map((header, cellIndex) => (
+                        <Table.Td key={cellIndex}>{row[header]}</Table.Td>
+                      ))}
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Paper>
+          <Group justify="center" p="md">
+            <Pagination
+              total={totalPages}
+              value={currentPage}
+              onChange={setCurrentPage}
+              color="gray"
+              withEdges
+              styles={{
+                control: {
+                  backgroundColor: "#2C2C2C",
+                  border: "none",
+                  color: "#FFFFFF",
+                },
+                dots: {
+                  color: "#FFFFFF",
+                },
+              }}
+            />
+          </Group>
         </Stack>
       </Box>
     </Flex>

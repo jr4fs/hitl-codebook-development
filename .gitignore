@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 backend/uploads
 __pycache__/
+shared_uploads/
+val_datasets/
+rest_datasets

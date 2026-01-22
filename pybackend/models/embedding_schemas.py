@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import pandas as pd
 
 class Label(BaseModel):
@@ -19,4 +19,8 @@ class EmbedDatasetRequest(BaseModel):
 
 class EmbedDatasetResponse(BaseModel):
     success: bool
+    val_created: bool
+    rest_created: bool
+    file_name: str = Field(..., min_length=1)
+    val_data: Optional[List[Dict[str, Any]]] = None 
     
