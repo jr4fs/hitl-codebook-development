@@ -1,7 +1,13 @@
 import { Request, Response } from "express";
 import { CreateTaskRequest, Task } from "@common/types/tasks";
 import { getCollection } from "./database.service";
-import { fileExists } from "../utils/fileUpload";
+import { fileExists, restFileExists, valFileExists } from "../utils/fileUpload";
+import { ObjectId } from "mongodb";
+import Papa from 'papaparse';
+import fs from 'fs/promises';
+import dotenv from "dotenv";
+dotenv.config();
+
 
 interface TaskValidation {
   valid: boolean;
@@ -15,6 +21,9 @@ export interface AuthRequest extends Request {
     username: string;
   };
 }
+
+const TASKS_COLLECTION = process.env.TASKS_COLLECTION_NAME || "TaskDetails";
+//const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
 
 //Validates task creation request payload
 function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
@@ -59,15 +68,15 @@ function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
 
 //Creates a new task and stores it in the TaskDetails collection
 export async function createTask(req: AuthRequest, res: Response) {
-  
+
   const userID = req.user?.userId;
-  
-   if (!userID) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized - user not authenticated"
-      });
-    }
+
+  if (!userID) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized - user not authenticated"
+    });
+  }
 
   try {
     const payload: CreateTaskRequest = {
@@ -76,6 +85,7 @@ export async function createTask(req: AuthRequest, res: Response) {
       type: req.body.type,
       labels: req.body.labels,
       file: req.body.file,
+      columns: req.body.columns,
       userID: userID
     };
 
@@ -91,7 +101,7 @@ export async function createTask(req: AuthRequest, res: Response) {
       });
     }
 
-    const taskDetailsCollection = getCollection<Task>("TaskDetails");
+    const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
 
     // Create task document
     const newTask: Omit<Task, "_id"> = {
@@ -100,6 +110,7 @@ export async function createTask(req: AuthRequest, res: Response) {
       type: payload.type,
       labels: payload.labels,
       file: payload.file,
+      columns: payload.columns,
       userID: userID,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -156,6 +167,52 @@ export async function getUserTasks(req: AuthRequest, res: Response) {
   }
 }
 
+//Retrieves all tasks for a specific user
+export async function getTaskByID(req: AuthRequest, res: Response) {
+  try {
+    const userID = req.user?.userId;
+    const { taskId } = req.params;
+
+    if (!userID) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - user not authenticated"
+      });
+    }
+
+    if (!taskId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid - No task ID found"
+      });
+    }
+    const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
+    const task = await taskDetailsCollection
+      .findOne({
+        _id: new ObjectId(taskId) as any,
+        userID: userID
+      })
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      task
+    });
+  } catch (error: any) {
+    console.error("Error retrieving task:", error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || "Failed to retrieve task"
+    });
+  }
+}
+
 /**
  * Handles CSV file upload using multer
  * Returns the stored filename to be used in task creation
@@ -193,6 +250,107 @@ export async function uploadTaskFile(req: AuthRequest, res: Response) {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to upload file",
+      error: error
+    });
+  }
+}
+
+// Helper function to read and parse CSV
+async function readCsvFile(filePath: string): Promise<any[]> {
+  try {
+    const fileContent = await fs.readFile(filePath, 'utf-8');
+
+    const parseResult = Papa.parse(fileContent, {
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: false,   // Keep all values as strings
+    });
+
+    if (parseResult.errors.length > 0) {
+      console.warn('CSV parsing warnings:', parseResult.errors);
+    }
+
+    return parseResult.data;
+  } catch (error) {
+    console.error('Error reading CSV file:', error);
+    return [];
+  }
+}
+
+export async function getCsvData(req: AuthRequest, res: Response) {
+  try {
+    const userID = req.user?.userId;
+
+    if (!userID) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - user not authenticated"
+      });
+    }
+
+    const { fileName } = req.params;
+
+    if (!fileName) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid - file name required"
+      });
+    }
+
+    const response = {
+      file: [] as any[],
+      val_file: [] as any[],
+      rest_file: [] as any[],
+      headers: [] as string[]
+    };
+
+    // Read all files using PapaParse
+    const mainFile = await fileExists(fileName);
+    const valFile = await valFileExists(fileName);
+    const restFile = await restFileExists(fileName);
+    if (mainFile.exists) {
+      response.file = await readCsvFile(mainFile.path);
+      if (response.file.length > 0) {
+        response.headers = Object.keys(response.file[0]);
+      }
+    }
+
+    if (valFile.exists) {
+      response.file = await readCsvFile(valFile.path);
+      if (response.file.length > 0) {
+        response.headers = Object.keys(response.file[0]);
+      }
+    }
+
+    if (valFile.exists) {
+      response.file = await readCsvFile(valFile.path);
+      if (response.file.length > 0) {
+        response.headers = Object.keys(response.file[0]);
+      }
+    }
+
+    if (response.file.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No files found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: response.file,
+      val_data: response.val_file,
+      rest_data: response.rest_file,
+      headers: response.headers,
+      fileName: fileName
+    });
+
+
+  } catch (error: any) {
+    console.error("Error retrieving file:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to retrieve file",
       error: error
     });
   }

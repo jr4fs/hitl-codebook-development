@@ -1,22 +1,22 @@
-  import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { User } from  "@common/types/accounts";
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { User } from "@common/types/accounts";
 
-interface UserState{
-    user: User | null;
-    accessToken: string | null;
-    refreshToken: string | null;
+interface UserState {
+  user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
 }
 
-interface SetUserPayload{
-    user: User;
-    accessToken: string;
-    refreshToken: string;
+interface SetUserPayload {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
 }
 
 const initialState: UserState = {
-    user: null,
-    accessToken: localStorage.getItem('accessToken'),
-    refreshToken: localStorage.getItem('refreshToken')
+  user: null,
+  accessToken: localStorage.getItem('accessToken'),
+  refreshToken: localStorage.getItem('refreshToken')
 };
 
 export const userSlice = createSlice({

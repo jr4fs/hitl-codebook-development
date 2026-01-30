@@ -5,7 +5,7 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || "";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "";
-const JWT_EXPIRES_IN = '15m'; // Access token expires in 15 minutes
+const JWT_EXPIRES_IN = '1500m'; // Access token expires in 1500 minutes
 const JWT_REFRESH_EXPIRES_IN = '7d'; // Refresh token expires in 7 days
 
 export function generateAccessToken(payload: JWTPayload): string {

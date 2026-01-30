@@ -29,5 +29,13 @@ export async function uploadFile(file: File): Promise<UploadFileResponse> {
     return data;
 }
 
+export async function getTaskById(taskId: string) {
+    const { data } = await apiClient.get(`/api/tasks/getTask/${taskId}`);
+    return data;
+}
 
+export async function getCsvData(fileName: string) {
+    const { data } = await apiClient.get(`/api/tasks/csv/${encodeURIComponent(fileName)}`);
+    return data;
+}
 

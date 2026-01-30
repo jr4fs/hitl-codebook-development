@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createTask, getUserTasks, uploadTaskFile } from "../services/tasks.service";
+import { createTask, getUserTasks, getTaskByID, uploadTaskFile, getCsvData } from "../services/tasks.service";
 import { uploadCSV } from "../utils/fileUpload";
 import { authenticateToken } from '../middleware/auth.middleware';
 
@@ -17,5 +17,11 @@ router.post("/createTask", createTask);
 
 // Get all tasks for a user
 router.get("/getTasks", getUserTasks);
+
+// Get a single task's details
+router.get('/getTask/:taskId', getTaskByID);
+
+// Get CSV file when reloading a task
+router.get('/csv/:fileName', getCsvData);
 
 export default router;
