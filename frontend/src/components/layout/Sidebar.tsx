@@ -15,8 +15,12 @@ import {
 } from "@tabler/icons-react";
 import { useHover } from "@mantine/hooks";
 import "./styles/Sidebar.css";
+import { useState, useEffect } from "react";
 import { useSelector } from 'react-redux';
+import { useNavigate } from "react-router";
+import { getUserTasks } from "../../services/tasks.service";
 import { IRootState } from "../../store/store";
+import { Task } from "@common/types/tasks";
 
 //Props to handle navbar collapsed/expanded state
 interface SideBarProps {
@@ -27,7 +31,35 @@ interface SideBarProps {
 
 export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   const { hovered, ref } = useHover();
-  const userState = useSelector((state: IRootState) => state.user.user);
+  const user = useSelector((state: IRootState) => state.user.user);
+  const accessToken = useSelector((state: IRootState) => state.user.accessToken);
+  const navigate = useNavigate();
+
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (!accessToken) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const userTasks = await getUserTasks();
+        setTasks(userTasks.tasks || []);
+      } catch (err) {
+        console.error('Failed to fetch tasks:', err);
+        setError('Failed to load tasks');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [accessToken]);
+
   if (collapsed) {
     //Collapsed sidebar
     return (
@@ -54,6 +86,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           )}
         </Button>
         <ActionIcon
+        onClick={() => {
+          navigate('/');
+        }}
           w="100%"
           size="xl"
           radius="md"
@@ -94,7 +129,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
       <Stack h="100%" bg="#1E1E1E" w="280px">
         <Stack h="auto" pl="md" pr="md" pt="md" pb="0px">
           <Flex justify="space-between" direction="row">
-            <Text c="white" fz="36px" pb="64px">
+            <Text c="white" fz="36px" pb="64px" onClick={() => {navigate('/');}}>
               AT
             </Text>
             <ActionIcon
@@ -109,6 +144,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           </Flex>
 
           <Button
+          onClick={() => {
+            navigate('/');
+          }}
             fullWidth
             radius="md"
             c="white"
@@ -126,9 +164,12 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
         </Stack>
         <ScrollArea h="auto" type="auto">
           <Stack pl="md" pr="md" pt="md" pb="0px">
-            {[1, 2, 3, 4, 5].map((num) => ( //, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5
+            {tasks.map((task) => (
               <Button
-                key={num}
+              onClick={() => {
+                navigate(`/new-task/${task._id}`);
+              }}
+                key={task._id}
                 fullWidth
                 radius="md"
                 c="white"
@@ -139,7 +180,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
                 fz="md"
                 classNames={{ root: "sidebar-button" }}
               >
-                Task {num} Title
+                {task.name}
               </Button>
             ))}
           </Stack>
@@ -154,7 +195,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           fz="md"
           classNames={{ root: "sidebar-button" }}
         >
-          {userState?.username}
+          {user?.username}
         </Button>
       </Stack>
     );

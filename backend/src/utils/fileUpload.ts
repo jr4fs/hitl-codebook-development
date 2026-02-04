@@ -5,6 +5,8 @@ import fs from "fs";
 
 const PROJECT_ROOT = path.resolve(__dirname, '../../../');
 const UPLOADS_DIR = path.join(PROJECT_ROOT, 'shared_uploads');
+const VAL_DATASETS_DIR = path.join(PROJECT_ROOT, 'val_datasets');
+const REST_DATASETS_DIR = path.join(PROJECT_ROOT, 'rest_datasets');
 
 /**
  * Ensures uploads directory exists
@@ -66,7 +68,26 @@ export const uploadCSV = multer({
 /**
  * Checks if an uploaded file exists
  */
-export function fileExists(filename: string): boolean {
+export function fileExists(filename: string) {
     const filepath = path.join(UPLOADS_DIR, filename);
-  return fs.existsSync(filepath);
+    return {
+      exists: fs.existsSync(filepath),
+      path: filepath
+    };
+}
+
+export function valFileExists(filename: string){
+  const filepath = path.join(VAL_DATASETS_DIR, filename);
+  return {
+    exists: fs.existsSync(filepath),
+    path: filepath
+  };
+}
+
+export function restFileExists(filename: string) {
+  const filepath = path.join(REST_DATASETS_DIR, filename);
+return {
+  exists: fs.existsSync(filepath),
+  path: filepath
+};
 }

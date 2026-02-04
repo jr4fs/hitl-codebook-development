@@ -1,5 +1,6 @@
 export interface LabelItem {
   name: string;
+  definition: string;
   keywords: string[];
 }
 
@@ -10,6 +11,7 @@ export interface Task {
   type: "Multiclass" | "Single-class";
   labels: LabelItem[];
   userID: string;
+  columns: string[];
   file: string; // filename stored in /backend/uploads
   createdAt: string; // ISO 8601 timestamp
   updatedAt?: string; // ISO 8601 timestamp
@@ -20,6 +22,7 @@ export interface CreateTaskRequest {
   description: string;
   type: "Multiclass" | "Single-class";
   labels: LabelItem[];
+  columns: string[];
   file: string; // filename from upload endpoint
   userID: string;
 }

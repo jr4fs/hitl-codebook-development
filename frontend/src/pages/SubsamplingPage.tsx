@@ -28,6 +28,8 @@ import { Task } from "@common/types/tasks";
 import { useSelector } from 'react-redux';
 import { IRootState } from '../store/store';
 import styles from "../components/layout/styles/Subsampling.module.css";
+import { useTaskData } from "../hooks/useTaskData";
+import { LabelItem } from "@common/types/tasks";
 
 const MAX_ROWS_PER_PAGE = 10;
 
@@ -48,16 +50,10 @@ interface NavProps {
   fileName: string;
 }
 
-interface LabelItem {
-  name: string;
-  definition: string;
-  keywords: Array<string>;
-}
-
 export default function SubsamplingPage() {
-  const location = useLocation();
   const navigate = useNavigate();
-  const navProps = location.state as NavProps;
+  const { loading, csvData, headers, fileName, task } = useTaskData();
+  //const navProps = location.state as NavProps;
   const [taskName, setTaskName] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
   const [taskType, setTaskType] = useState<"Multiclass" | "Single-class">("Multiclass");
@@ -70,15 +66,16 @@ export default function SubsamplingPage() {
   const [subsampledCsv, setSubsampledCsv] = useState<CsvRow[]>([]);
   const user = useSelector((state: IRootState) => state.user.user);
 
-
   // Redirect back if no data
   useEffect(() => {
-    if (!navProps?.csvData || !navProps?.headers) {
-      navigate("/");
+    if (task) {
+      setTaskName(task.name);
+      setTaskDesc(task.description);
+      setTaskType(task.type);
+      setTaskLabels(task.labels || [{ name: "", definition: "", keywords: [] }]);
     }
-  });
+  }, [task]);
 
-  const { csvData, headers, fileName } = navProps;
 
   // Filter CSV data based on chosen columns
   useEffect(() => {
@@ -145,6 +142,7 @@ export default function SubsamplingPage() {
       description: taskDesc,
       type: taskType,
       labels: taskLabels,
+      columns: chosenCol,
       userID: user?.id || "00000",
       file: fileName,
       createdAt: new Date().toISOString()
@@ -221,6 +219,27 @@ export default function SubsamplingPage() {
       }
     }
   };
+
+  if (loading) {
+    return (
+      <Center h="100vh" bg="#1C1A1A">
+        <Text c="white" size="lg">Loading task data...</Text>
+      </Center>
+    );
+  }
+
+  // Handle empty data
+  if (!csvData || csvData.length === 0 || !headers || headers.length === 0) {
+    return (
+      <Center h="100vh" bg="#1C1A1A">
+        <Stack align="center" gap="md">
+          <Text c="white" size="lg">No data available</Text>
+          <Text c="dimmed">Please upload a CSV file to get started</Text>
+          <Button onClick={() => navigate("/")}>Upload CSV File</Button>
+        </Stack>
+      </Center>
+    );
+  }
 
   return (
     <Flex

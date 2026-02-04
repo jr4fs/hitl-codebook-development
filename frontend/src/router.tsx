@@ -35,7 +35,7 @@ export const router = createBrowserRouter([
             element: <LandingPage />,
           },
           {
-            path: "/new-task",
+            path: "/new-task/:taskId?",
             element: <SubsamplingPage />,
           },
         ],
