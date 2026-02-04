@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pymongo
+python-dotenv
+sentence-transformers
+torch
+pandas
+numpy
+faiss-cpu
+ollama
