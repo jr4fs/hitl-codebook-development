@@ -131,7 +131,7 @@ export async function createUser(req: Request, res: Response) {
         }
         const payloadValidation = validatePayload(validationPayload);
         if (!payloadValidation.valid) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 errors: {
                     username: payloadValidation.usernameErrors,
@@ -192,7 +192,7 @@ export async function createUser(req: Request, res: Response) {
                 message: "Email already exists"
             });
         }
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: error.message || "Failed to create user"
         });

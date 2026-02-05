@@ -6,3 +6,5 @@ __pycache__/
 shared_uploads/
 val_datasets/
 rest_datasets
+venv
+.github
