@@ -19,36 +19,19 @@ import {
   Button,
 } from "@mantine/core";
 import { IconTrash, IconPlus } from "@tabler/icons-react";
-import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { createTask } from "../services/tasks.service";
 import { embedDataset } from "../services/embedding.service";
 import { EmbedDatasetRequest } from "@common/types/embedding";
 import { Task } from "@common/types/tasks";
-import { useSelector } from 'react-redux';
-import { IRootState } from '../store/store';
+import { useSelector } from "react-redux";
+import { IRootState } from "../store/store";
 import styles from "../components/layout/styles/Subsampling.module.css";
 import { useTaskData } from "../hooks/useTaskData";
 import { LabelItem } from "@common/types/tasks";
 
 const MAX_ROWS_PER_PAGE = 10;
-
-// interface Task {
-//   name: string;
-//   description: string;
-//   type: string;
-//   labels: Array<LabelItem> | null;
-// }
-
-interface CsvRow {
-  [key: string]: string;
-}
-
-interface NavProps {
-  csvData: CsvRow[];
-  headers: string[];
-  fileName: string;
-}
 
 export default function SubsamplingPage() {
   const navigate = useNavigate();
@@ -56,54 +39,60 @@ export default function SubsamplingPage() {
   //const navProps = location.state as NavProps;
   const [taskName, setTaskName] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
-  const [taskType, setTaskType] = useState<"Multiclass" | "Single-class">("Multiclass");
+  const [taskType, setTaskType] = useState<"Multiclass" | "Single-class">(
+    "Multiclass",
+  );
   const [taskLabels, setTaskLabels] = useState<LabelItem[]>([
     { name: "", definition: "", keywords: [] },
   ]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [chosenCol, setChosenCol] = useState<string[]>([]);
-  const [filteredData, setFilteredData] = useState<CsvRow[]>([]);
-  const [subsampledCsv, setSubsampledCsv] = useState<CsvRow[]>([]);
+  //const [filteredData, setFilteredData] = useState<CsvRow[]>([]);
+  const [subsampledCsv, setSubsampledCsv] = useState<Record<string, unknown>[]>(
+    [],
+  );
+
   const user = useSelector((state: IRootState) => state.user.user);
 
-  // Redirect back if no data
   useEffect(() => {
     if (task) {
       setTaskName(task.name);
       setTaskDesc(task.description);
+      setChosenCol(task.columns);
       setTaskType(task.type);
-      setTaskLabels(task.labels || [{ name: "", definition: "", keywords: [] }]);
+      setTaskLabels(
+        task.labels || [{ name: "", definition: "", keywords: [] }],
+      );
     }
   }, [task]);
 
-
   // Filter CSV data based on chosen columns
-  useEffect(() => {
-    if (chosenCol.length > 0) {
-      const filtered = csvData.filter((row) => {
-        return chosenCol.every((col) => {
-          const value = row[col];
-          return value !== null && value !== undefined && value.trim() !== "";
-        });
-      });
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFilteredData(filtered);
-      setCurrentPage(1); // Reset pagination when filtering
-    } else {
-      setFilteredData(csvData);
-      setCurrentPage(1);
-    }
-  }, [chosenCol, csvData]);
+  // useEffect(() => {
+  //   if (chosenCol.length > 0) {
+  //     const filtered = csvData.filter((row) => {
+  //       return chosenCol.every((col) => {
+  //         const value = row[col];
+  //         return value !== null && value !== undefined && value.trim() !== "";
+  //       });
+  //     });
+  //     setFilteredData(filtered);
+  //     setCurrentPage(1); // Reset pagination when filtering
+  //   } else {
+  //     setFilteredData(csvData);
+  //     setCurrentPage(1);
+  //   }
+  // }, [chosenCol, csvData]);
 
   // Determine which data to display - subsampled takes priority
-  const displayData = subsampledCsv.length > 0
-    ? subsampledCsv
-    : (filteredData.length > 0 ? filteredData : csvData);
+  const displayData = subsampledCsv.length > 0 ? subsampledCsv : csvData;
 
   // Get headers from the appropriate source
-  const displayHeaders = subsampledCsv.length > 0
-    ? (subsampledCsv[0] ? Object.keys(subsampledCsv[0]) : headers)
-    : headers;
+  const displayHeaders = useMemo(() => {
+    if (displayData.length > 0) {
+      return Object.keys(displayData[0]);
+    }
+    return [];
+  }, [displayData]);
   //calculations for pagination
   const totalPages = Math.ceil(displayData.length / MAX_ROWS_PER_PAGE);
   const startIndex = (currentPage - 1) * MAX_ROWS_PER_PAGE;
@@ -111,7 +100,10 @@ export default function SubsamplingPage() {
   const paginatedData = displayData.slice(startIndex, endIndex);
 
   const addLabelItem = () => {
-    setTaskLabels((prev) => [...prev, { name: "", definition: "", keywords: [] }]);
+    setTaskLabels((prev) => [
+      ...prev,
+      { name: "", definition: "", keywords: [] },
+    ]);
   };
 
   const removeLabelItem = (index: number) => {
@@ -120,19 +112,19 @@ export default function SubsamplingPage() {
 
   const updateLabelName = (index: number, name: string) => {
     setTaskLabels((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, name } : item))
+      prev.map((item, i) => (i === index ? { ...item, name } : item)),
     );
   };
 
   const updateLabelDefinition = (index: number, definition: string) => {
     setTaskLabels((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, definition } : item))
+      prev.map((item, i) => (i === index ? { ...item, definition } : item)),
     );
   };
 
   const updateLabelKeywords = (index: number, keywords: string[]) => {
     setTaskLabels((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, keywords } : item))
+      prev.map((item, i) => (i === index ? { ...item, keywords } : item)),
     );
   };
 
@@ -145,18 +137,16 @@ export default function SubsamplingPage() {
       columns: chosenCol,
       userID: user?.id || "00000",
       file: fileName,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
-    const response = await createTask(payload)
+    const response = await createTask(payload);
     if (response.success) {
       console.log("Saved Task state successfully");
-
-    }
-    else {
+    } else {
       console.log("Error saving task state: ", response.errors);
     }
-  }
+  };
 
   const handleSubsampling = async () => {
     // Validate required fields
@@ -177,19 +167,19 @@ export default function SubsamplingPage() {
         !label.name?.trim() ||
         !label.definition?.trim() ||
         !label.keywords ||
-        label.keywords.length === 0
+        label.keywords.length === 0,
     );
 
     if (invalidLabels.length > 0) {
       console.error(
-        "All labels must have a name, definition, and at least one keyword"
+        "All labels must have a name, definition, and at least one keyword",
       );
       return;
     }
 
     try {
       //save task in DB
-      handleSaveTaskState()
+      handleSaveTaskState();
       const payload: EmbedDatasetRequest = {
         file_path: fileName,
         text_col: chosenCol[0],
@@ -198,7 +188,7 @@ export default function SubsamplingPage() {
             label.name?.trim() &&
             label.definition?.trim() &&
             label.keywords &&
-            label.keywords.length > 0
+            label.keywords.length > 0,
         ),
       };
 
@@ -223,7 +213,9 @@ export default function SubsamplingPage() {
   if (loading) {
     return (
       <Center h="100vh" bg="#1C1A1A">
-        <Text c="white" size="lg">Loading task data...</Text>
+        <Text c="white" size="lg">
+          Loading task data...
+        </Text>
       </Center>
     );
   }
@@ -233,7 +225,9 @@ export default function SubsamplingPage() {
     return (
       <Center h="100vh" bg="#1C1A1A">
         <Stack align="center" gap="md">
-          <Text c="white" size="lg">No data available</Text>
+          <Text c="white" size="lg">
+            No data available
+          </Text>
           <Text c="dimmed">Please upload a CSV file to get started</Text>
           <Button onClick={() => navigate("/")}>Upload CSV File</Button>
         </Stack>
@@ -311,7 +305,9 @@ export default function SubsamplingPage() {
             placeholder="Pick value"
             data={["Multiclass", "Single-class"]}
             value={taskType}
-            onChange={(_value) => setTaskType(_value as "Multiclass" | "Single-class")}
+            onChange={(_value) =>
+              setTaskType(_value as "Multiclass" | "Single-class")
+            }
             classNames={{
               input: styles.input,
               dropdown: styles.dropdown,
@@ -432,18 +428,50 @@ export default function SubsamplingPage() {
             >
               Perform Subsampling
             </Button>
+            <Button
+              variant="filled"
+              color="#2C2C2C"
+              w="200"
+              p="sm"
+              m="md"
+              h="auto"
+              mb="lg"
+              radius={50}
+              disabled={subsampledCsv.length === 0 ? true : false}
+              onClick={() => {
+                navigate("/annotate", {
+                  state: {
+                    subsampledCsv,
+                    task,
+                  },
+                });
+              }}
+            >
+              Annotate Data
+            </Button>
           </Center>
         </Stack>
       </Box>
 
       <Box w="65%" h="100%">
         <Stack c="#D8D8D8" h="100%" gap="md">
-          <Paper bg="#1C1A1A" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Paper
+            bg="#1C1A1A"
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
             <Title order={4}> {fileName}</Title>
             <Text c="dimmed" fz="md">
               {displayData.length} rows
             </Text>
-            <Table.ScrollContainer minWidth={500} style={{ flex: 1, overflow: 'auto' }}>
+            <Table.ScrollContainer
+              minWidth={500}
+              style={{ flex: 1, overflow: "auto" }}
+            >
               <Table withColumnBorders withTableBorder borderColor="#D8D8D8">
                 <Table.Thead>
                   <Table.Tr>
@@ -456,7 +484,7 @@ export default function SubsamplingPage() {
                   {paginatedData.map((row, rowIndex) => (
                     <Table.Tr key={rowIndex}>
                       {displayHeaders.map((header, cellIndex) => (
-                        <Table.Td key={cellIndex}>{row[header]}</Table.Td>
+                        <Table.Td key={cellIndex}>{String(row[header])}</Table.Td>
                       ))}
                     </Table.Tr>
                   ))}

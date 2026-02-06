@@ -6,6 +6,7 @@ import LandingPage from "./pages/LandingPage";
 import SubsamplingPage from "./pages/SubsamplingPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
+import AnnotationPage from "./pages/AnnotationPage";
 
 export const router = createBrowserRouter([
   {
@@ -37,6 +38,10 @@ export const router = createBrowserRouter([
           {
             path: "/new-task/:taskId?",
             element: <SubsamplingPage />,
+          },
+          {
+            path: "/annotate",
+            element: <AnnotationPage />,
           },
         ],
       },

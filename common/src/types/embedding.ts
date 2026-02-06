@@ -14,14 +14,14 @@ export interface EmbedDatasetRequest{
     labels: Label[]
 }
 
-interface CsvRow {
-    [key: string]: string;
-  }
+// interface CsvRow {
+//     [key: string]: string;
+//   }
 
 export interface EmbedDatasetResponse{
     success: boolean;
     val_created: boolean;
     rest_created: boolean;
     file_name: string;
-    val_data?: CsvRow[]; 
+    val_data: Record<string, any>[]; 
 }

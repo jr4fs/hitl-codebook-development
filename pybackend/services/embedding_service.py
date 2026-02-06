@@ -70,7 +70,9 @@ class EmbeddingService:
         df_val.to_csv(self.val_file_path)
         df_rest.to_csv(self.rest_file_path)
 
-        return df_val
+        df_val_json = df_val.to_dict(orient='records')
+        
+        return df_val_json
         
         
 

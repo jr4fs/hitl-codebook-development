@@ -131,7 +131,7 @@ export async function createUser(req: Request, res: Response) {
         }
         const payloadValidation = validatePayload(validationPayload);
         if (!payloadValidation.valid) {
-            res.status(400).json({
+            return res.status(400).json({
                 success: false,
                 errors: {
                     username: payloadValidation.usernameErrors,
