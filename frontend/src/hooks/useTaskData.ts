@@ -20,7 +20,7 @@ export const useTaskData = () => {
   const location = useLocation();
   const navProps = location.state as NavProps | undefined;
   
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); //TODO: remove?
   const [csvData, setCsvData] = useState<CsvRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");

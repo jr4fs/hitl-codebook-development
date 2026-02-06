@@ -6,6 +6,7 @@ import {
   ActionIcon,
   ScrollArea,
   LoadingOverlay,
+  Center,
 } from "@mantine/core";
 import {
   IconSquarePlus,
@@ -38,8 +39,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>();
 
+  // Fetch user tasks, updates with every access token refresh
   useEffect(() => {
     const fetchTasks = async () => {
       if (!accessToken) return;
@@ -166,25 +168,27 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
         <ScrollArea h="auto" type="auto">
           <LoadingOverlay visible={loading} zIndex={1000} overlayProps={{ radius: "sm", blur: 2, color: "#1E1E1E" }} loaderProps={{ color: '#D8D8D8', type: 'bars' }} />
           <Stack pl="md" pr="md" pt="md" pb="0px">
-            {tasks.map((task) => (
-              <Button
-                onClick={() => {
-                  navigate(`/new-task/${task._id}`);
-                }}
-                key={task._id}
-                fullWidth
-                radius="md"
-                c="white"
-                p="md"
-                h="auto"
-                justify="space-between"
-                rightSection={<IconFile size={28} stroke={1.5} />}
-                fz="md"
-                classNames={{ root: "sidebar-button" }}
-              >
-                {task.name}
-              </Button>
-            ))}
+            {error
+              ? <Center><Text c="#D8D8D8"> {error} </Text></Center>
+              : tasks.map((task) => (
+                <Button
+                  onClick={() => {
+                    navigate(`/new-task/${task._id}`);
+                  }}
+                  key={task._id}
+                  fullWidth
+                  radius="md"
+                  c="white"
+                  p="md"
+                  h="auto"
+                  justify="space-between"
+                  rightSection={<IconFile size={28} stroke={1.5} />}
+                  fz="md"
+                  classNames={{ root: "sidebar-button" }}
+                >
+                  {task.name}
+                </Button>
+              ))}
           </Stack>
         </ScrollArea>
         <Button

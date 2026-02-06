@@ -23,7 +23,6 @@ export interface AuthRequest extends Request {
 }
 
 const TASKS_COLLECTION = process.env.TASKS_COLLECTION_NAME || "TaskDetails";
-//const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
 
 //Validates task creation request payload
 function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {

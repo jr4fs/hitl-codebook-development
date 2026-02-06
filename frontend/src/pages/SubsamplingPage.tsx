@@ -17,6 +17,7 @@ import {
   ActionIcon,
   TagsInput,
   Button,
+  LoadingOverlay,
 } from "@mantine/core";
 import { IconTrash, IconPlus } from "@tabler/icons-react";
 import { useState, useEffect } from "react";
@@ -53,7 +54,9 @@ interface NavProps {
 export default function SubsamplingPage() {
   const navigate = useNavigate();
   const { loading, csvData, headers, fileName, task } = useTaskData();
-  //const navProps = location.state as NavProps;
+  //const navProps = location.state as NavProps
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [taskId, setTaskId] = useState<string | null>(null);
   const [taskName, setTaskName] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
   const [taskType, setTaskType] = useState<"Multiclass" | "Single-class">("Multiclass");
@@ -66,16 +69,16 @@ export default function SubsamplingPage() {
   const [subsampledCsv, setSubsampledCsv] = useState<CsvRow[]>([]);
   const user = useSelector((state: IRootState) => state.user.user);
 
-  // Redirect back if no data
+  // Setting existing task data
   useEffect(() => {
     if (task) {
+      task._id ? setTaskId(task._id) : null;
       setTaskName(task.name);
       setTaskDesc(task.description);
       setTaskType(task.type);
       setTaskLabels(task.labels || [{ name: "", definition: "", keywords: [] }]);
     }
   }, [task]);
-
 
   // Filter CSV data based on chosen columns
   useEffect(() => {
@@ -86,24 +89,24 @@ export default function SubsamplingPage() {
           return value !== null && value !== undefined && value.trim() !== "";
         });
       });
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFilteredData(filtered);
       setCurrentPage(1); // Reset pagination when filtering
     } else {
       setFilteredData(csvData);
       setCurrentPage(1);
     }
-  }, [chosenCol, csvData]);
+  }, [chosenCol]);
 
   // Determine which data to display - subsampled takes priority
   const displayData = subsampledCsv.length > 0
     ? subsampledCsv
     : (filteredData.length > 0 ? filteredData : csvData);
 
-  // Get headers from the appropriate source
+  // Get table headers from the appropriate source
   const displayHeaders = subsampledCsv.length > 0
     ? (subsampledCsv[0] ? Object.keys(subsampledCsv[0]) : headers)
     : headers;
+
   //calculations for pagination
   const totalPages = Math.ceil(displayData.length / MAX_ROWS_PER_PAGE);
   const startIndex = (currentPage - 1) * MAX_ROWS_PER_PAGE;
@@ -137,6 +140,18 @@ export default function SubsamplingPage() {
   };
 
   const handleSaveTaskState = async () => {
+    // If this is an existing task, do not save this information again
+    if (task) {
+      const hasChanges =
+        task.columns !== chosenCol ||
+        task.description !== taskDesc ||
+        task.labels !== taskLabels ||
+        task.type !== taskType;
+
+      if (!hasChanges) {
+        return;
+      }
+    }
     const payload: Task = {
       name: taskName,
       description: taskDesc,
@@ -201,7 +216,7 @@ export default function SubsamplingPage() {
             label.keywords.length > 0
         ),
       };
-
+      setIsLoading(true);
       console.log("Sending payload to backend:", payload);
       const response = await embedDataset(payload);
       if (response.success) {
@@ -217,6 +232,8 @@ export default function SubsamplingPage() {
       if (error?.response?.data) {
         console.error("Backend error details:", error.response.data);
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -250,6 +267,7 @@ export default function SubsamplingPage() {
       wrap="nowrap"
       bg="#1C1A1A"
     >
+      {/* Left-side task information display */}
       <Box w="30%" h="100%" c="white">
         <Stack w="100%" h="100%" gap="md" justify="flex-start">
           <MultiSelect
@@ -436,7 +454,9 @@ export default function SubsamplingPage() {
         </Stack>
       </Box>
 
+      {/* Right-side dataset display */}
       <Box w="65%" h="100%">
+        <LoadingOverlay visible={isLoading} zIndex={1000} overlayProps={{ radius: "sm", blur: 2, color: "#1C1A1A" }} loaderProps={{ color: '#D8D8D8', type: 'bars' }} />
         <Stack c="#D8D8D8" h="100%" gap="md">
           <Paper bg="#1C1A1A" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <Title order={4}> {fileName}</Title>
