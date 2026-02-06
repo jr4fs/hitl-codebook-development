@@ -5,6 +5,7 @@ import {
   Button,
   ActionIcon,
   ScrollArea,
+  LoadingOverlay,
 } from "@mantine/core";
 import {
   IconSquarePlus,
@@ -86,9 +87,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           )}
         </Button>
         <ActionIcon
-        onClick={() => {
-          navigate('/');
-        }}
+          onClick={() => {
+            navigate('/');
+          }}
           w="100%"
           size="xl"
           radius="md"
@@ -129,7 +130,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
       <Stack h="100%" bg="#1E1E1E" w="280px">
         <Stack h="auto" pl="md" pr="md" pt="md" pb="0px">
           <Flex justify="space-between" direction="row">
-            <Text c="white" fz="36px" pb="64px" onClick={() => {navigate('/');}}>
+            <Text c="white" fz="36px" pb="64px" onClick={() => { navigate('/'); }}>
               AT
             </Text>
             <ActionIcon
@@ -144,9 +145,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           </Flex>
 
           <Button
-          onClick={() => {
-            navigate('/');
-          }}
+            onClick={() => {
+              navigate('/');
+            }}
             fullWidth
             radius="md"
             c="white"
@@ -163,12 +164,13 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           <Text c="dimmed">Your Tasks</Text>
         </Stack>
         <ScrollArea h="auto" type="auto">
+          <LoadingOverlay visible={loading} zIndex={1000} overlayProps={{ radius: "sm", blur: 2, color: "#1E1E1E" }} loaderProps={{ color: '#D8D8D8', type: 'bars' }} />
           <Stack pl="md" pr="md" pt="md" pb="0px">
             {tasks.map((task) => (
               <Button
-              onClick={() => {
-                navigate(`/new-task/${task._id}`);
-              }}
+                onClick={() => {
+                  navigate(`/new-task/${task._id}`);
+                }}
                 key={task._id}
                 fullWidth
                 radius="md"
