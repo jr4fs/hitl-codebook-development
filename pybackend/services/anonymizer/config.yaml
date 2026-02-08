@@ -1,0 +1,131 @@
+
+options:
+  case_preserve_replacements: true
+  placeholder_brackets: true
+
+resources:
+  # names_list_path: shared_uploads/anonymize/names.csv  # simple list: one column "name"
+  names_structured_path: shared_uploads/anonymize/names.csv  # First/Middle/Last/Other Name i
+
+rules:
+  # Protect key phrases and map directly
+  - type: phrase_protect
+    phrases:
+      - text: "los angeles"
+        replacement: LOCATION
+      - text: "santa monica"
+        replacement: LOCATION
+      - text: "san francisco"
+        replacement: LOCATION
+      - text: "mercy medical"
+        replacement: ORG
+      - text: "michaels village"
+        replacement: ORG
+      - text: "the center"
+        replacement: ORG
+      - text: "wesley medical center"
+        replacement: "ORG"
+      - text: "NH"
+        replacement: "PERSON"
+      - text: "GU"
+        replacement: "PERSON"
+      - text: "Kendell Lorez"
+        replacement: "PERSON"
+      - text: "DPSS"
+        replacement: "AGENCY"
+      - text: "AS"
+        replacement: "PERSON"
+      - text: "HACLA"
+        replacement: "ORG"
+      - text: "SUOS"
+        replacement: "ORG"
+
+  - type: keep_possessive_guard
+    keep_words: ["MFP","SHC","LSHC","DOD","YP","HCM","HCM/CSW","ICCM","HWCM"]
+    # add any other acronyms you never want to be affected when followed by 's
+
+  # Emails, phones, etc.
+  - type: regex
+    patterns:
+      - pattern: "(?i)\\b[\\w.\\-]+@[\\w\\-]+\\.[\\w.\\-]+\\b"
+        replacement: EMAIL
+        enable: true
+      - pattern: "(?i)\\b(?:\\+?1[\\s\\-\\.]*)?(?:\\(\\d{3}\\)|\\d{3})[\\s\\-\\.]?\\d{3}[\\s\\-\\.]?\\d{4}\\b"
+        replacement: PHONE
+        enable: true
+  
+  # Age-specific redaction. Must run before presidio_filtered.
+  - type: age
+    enable: true
+    placeholder: AGE
+
+  # Mixed alphanumeric IDs like D9C8DB1BC
+  - type: id_alnum
+    min_len: 6
+    placeholder: CASEID
+    exclude_terms:
+      - covid
+      - covid19
+      - covid-19
+      - covid19.
+      - covid-19.
+      - covid19,
+      - covid-19,
+
+  # Structured names (full parity with build_row_name_patterns)
+  - type: structured_names
+    first_col: "First Name"
+    middle_col: "Middle Name"
+    last_col: "Last Name"
+    other_prefix: "Other Name"
+    skip_tokens: ["at","as","side"]
+    placeholder: PERSON
+    catch_first_middle_initial_no_last: true
+    first_any_middle_initial_no_last: false         # set true only if you lack the middle in CSV and still want "First X." caught
+    redact_standalone_middle_initial: true          # catches standalone "S" / "S."
+
+  # Names from a simple list (optional but handy)
+  - type: name_list
+    placeholder: PERSON
+
+  # Optional pronoun redaction toggle
+  - type: pronoun
+    enable: false
+    pronouns: ["she","her","hers","he","him","his","they","them","theirs","ze","zir","xe","xem","xyr"]
+    placeholder: PRONOUN
+
+  # Optional Presidio analyzer with forced orgs + filtering
+  - type: presidio_filtered
+    enable: true
+    date_exempt_terms: [
+      "morning", "afternoon", "evening", "night", "midnight", "noon", "tonight",
+      "today", "yesterday", "tomorrow", "day", "days", "daily",
+      "week", "weeks", "weekend", "weekends",
+      "month", "months", "monthly", "year", "years", "yearly",
+      "hour", "hours", "minute", "minutes", "second", "seconds",
+      "quarter", "semester", "trimester", "season", "seasons",
+      "spring", "summer", "fall", "autumn", "winter",
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December",
+      "Mon", "Monday", "Tue", "Tues", "Tuesday", "Wed", "Wednesday",
+      "Thu", "Thurs", "Thursday", "Fri", "Friday", "Sat", "Saturday", "Sun", "Sunday",
+      "holiday", "holidays",
+      "Christmas", "Easter", "Thanksgiving", "Halloween", "Hanukkah", "Kwanzaa", "New Year",
+      "morningtime", "eveningtime", "lunchtime", "dinnertime", "bedtime",
+      "today’s", "tomorrow’s", "yesterday’s", "this week"
+    ]
+    skip_words: [
+      "at","side", "an", "weeks", "angeles", "YP", "BBQ", "DOD", "LSHC", "MFP", "ADOP EK", 
+      "HCM", "DOP", "ADOP", "DIM", "LDIA", "SBC", "HWM", "CSW", "HCM/CSW", "TCM", "SHM", "SHCO", 
+      "SHC", "TEM", "TEC", "EECM", "MSWI", "ED", "ICCM", "HWCM", "COVID", "COVID-19", "COVID19"
+    ]
+    placeholder_map:
+      PERSON: PERSON
+      LOCATION: LOCATION
+      ORGANIZATION: ORG
+      EMAIL_ADDRESS: EMAIL
+      PHONE_NUMBER: PHONE
+      CREDIT_CARD: CREDIT_CARD
+      DATE: DATE
+      DATE_TIME: DATE
+      NUMBER: NUMBER

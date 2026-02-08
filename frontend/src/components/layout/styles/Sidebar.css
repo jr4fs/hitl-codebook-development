@@ -20,3 +20,16 @@
   border-color: #373636;
 }
 
+.sidebar-menu-dropdown {
+  background-color: #1c1a1a;
+  border: 1px solid #2b2a2a;
+}
+
+.sidebar-menu-item {
+  color: #ffffff;
+}
+
+.sidebar-menu-item[data-hovered] {
+  background-color: #373636;
+}
+

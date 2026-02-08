@@ -5,6 +5,7 @@ import {
   Button,
   ActionIcon,
   ScrollArea,
+  Menu,
 } from "@mantine/core";
 import {
   IconSquarePlus,
@@ -16,11 +17,12 @@ import {
 import { useHover } from "@mantine/hooks";
 import "./styles/Sidebar.css";
 import { useState, useEffect } from "react";
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router";
 import { getUserTasks } from "../../services/tasks.service";
 import { IRootState } from "../../store/store";
 import { Task } from "@common/types/tasks";
+import { clearUser } from "../../store/userSlice";
 
 //Props to handle navbar collapsed/expanded state
 interface SideBarProps {
@@ -33,7 +35,13 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   const { hovered, ref } = useHover();
   const user = useSelector((state: IRootState) => state.user.user);
   const accessToken = useSelector((state: IRootState) => state.user.accessToken);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    dispatch(clearUser());
+    navigate('/login');
+  };
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,9 +94,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           )}
         </Button>
         <ActionIcon
-        onClick={() => {
-          navigate('/');
-        }}
+          onClick={() => {
+            navigate('/');
+          }}
           w="100%"
           size="xl"
           radius="md"
@@ -121,6 +129,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
         >
           <IconUserCircle size={28} stroke={1.5} />
         </ActionIcon>
+        
       </Stack>
     );
   } else {
@@ -185,18 +194,34 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             ))}
           </Stack>
         </ScrollArea>
-        <Button
-          leftSection={<IconUserCircle size={28} stroke={1.5} />}
-          style={{ marginTop: "auto" }}
-          bg="#1C1A1A"
-          radius="0px"
-          p="lg"
-          h="auto"
-          fz="md"
-          classNames={{ root: "sidebar-button" }}
+        <Menu
+          shadow="md"
+          width={200}
+          position="right-end"
+          offset={8}
+          classNames={{ dropdown: "sidebar-menu-dropdown", item: "sidebar-menu-item" }}
         >
-          {user?.username}
-        </Button>
+          <Menu.Target>
+            <Button
+              style={{ marginTop: "auto" }}
+              radius="md"
+              p="md"
+              h="auto"
+              fz="md"
+              fullWidth
+              justify="center"
+              classNames={{ root: "sidebar-button" }}
+            >
+              <Flex align="center" justify="center" gap="xs">
+                <IconUserCircle size={28} stroke={1.5} />
+                <Text>{user?.username}</Text>
+              </Flex>
+            </Button>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item color="red" onClick={handleLogout}>Logout</Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Stack>
     );
   }

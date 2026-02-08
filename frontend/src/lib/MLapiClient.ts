@@ -1,4 +1,6 @@
 import axios from "axios";
+import { store } from "../store/store";
+import { clearUser } from "../store/userSlice";
 
 export const MLapiClient = axios.create({
   baseURL: "http://localhost:8000",
@@ -16,6 +18,19 @@ MLapiClient.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+MLapiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      store.dispatch(clearUser());
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
     return Promise.reject(error);
   }
 );
