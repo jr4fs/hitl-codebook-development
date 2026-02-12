@@ -6,13 +6,13 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Optional, Tuple
 
 class DatasetEmbeddingService:
-    def __init__(self, df:pd.DataFrame, text_col: str, id_col: str, split_sent: bool, model_name:Optional[str], device: Optional[str]):
+    def __init__(self, df:pd.DataFrame, text_cols: List[str], id_col: str, split_sent: bool, model_name:Optional[str], device: Optional[str]):
         """ 
         Parameters
         ----------
         df : DataFrame
             Input dataframe.
-        text_col : str
+        text_cols : str
             Column in df containing the text to embed.
         id_col : str, optional
             Optional column in df that gives a unique id per row
@@ -25,12 +25,15 @@ class DatasetEmbeddingService:
         device : str, optional
             'cuda' or 'cpu'. If None, auto-detect.
         """
-        self.df = df
-        self.text_col = text_col
+        self.df = df.copy()
+        self.text_cols = text_cols
         self.id_col = id_col
         self.split_to_sentences = split_sent 
         self.model_name: str = "sentence-transformers/all-mpnet-base-v2" if model_name is None else model_name
         self.device = "mps" if torch.mps.is_available() else "cpu" if device is None else device
+
+        # Create combined text column
+        self.df["text_combined"] = self.df[self.text_cols].fillna("").astype(str).agg(" ".join, axis=1).str.strip()
 
     def split_sentences(self, text: str) -> List[str]:
         """
@@ -61,7 +64,7 @@ class DatasetEmbeddingService:
         records = []
         for i, row in df.iterrows():
             orig_id = row[self.id_col] if self.id_col is not None else i
-            text = row[self.text_col]
+            text = row["text_combined"]
 
             if self.split_to_sentences:
                 sentences = self.split_sentences(text)

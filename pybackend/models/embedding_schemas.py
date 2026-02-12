@@ -9,7 +9,7 @@ class Label(BaseModel):
 
 class EmbedDatasetRequest(BaseModel):
     file_path: str = Field(..., min_length=1)
-    text_col: str = Field(..., min_length=1)
+    text_col: List[str] = Field(..., min_length=1)
     id_col: Optional[str] = None
     split_to_sentences: Optional[bool] = True
     model_name: Optional[str] = None

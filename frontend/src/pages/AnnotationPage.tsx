@@ -1,4 +1,3 @@
-import { Task } from "@common/types/tasks";
 import {
   Text,
   Paper,
@@ -8,15 +7,19 @@ import {
   Textarea,
   Stack,
   ScrollArea,
-  LoadingOverlay
+  LoadingOverlay,
+  Center
 } from "@mantine/core";
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { inference } from "../services/inference.service";
 import { InferenceRequest, InferenceResponse } from "@common/types/inference";
+import { useTaskData } from "../hooks/useTaskData";
 
 export default function AnnotationPage() {
-  const location = useLocation();
+  const navigate = useNavigate();
+  const { loading, subsampledData, task } = useTaskData();
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCorrect, setIsCorrect] = useState<boolean>(false); //remove?
   const [isIncorrect, setIsIncorrect] = useState<boolean>(false);
@@ -24,37 +27,64 @@ export default function AnnotationPage() {
   const [totalIncorrect, setTotalIncorrect] = useState<number>(0);
   const [userInput, setUserInput] = useState<string>("");
   const [currentUserInput, setCurrentUserInput] = useState<string>("");
-  const { subsampledCsv, task } = location.state as {
-    subsampledCsv: Record<string, string>[];
-    task: Task;
-  };
+
   const [generatedLabel, setGeneratedLabel] = useState<string>("Click next to generate this content");
   const [generatedSpanText, setGeneratedSpanText] = useState<string>("Click next to generate this content");
   const [generatedReasoning, setGeneratedReasoning] = useState<string>("Click next to generate this content");
+
   const datasetShuffler = (
     dataset: Record<string, string>[],
     ratio: number,
   ) => {
     const n = dataset.length;
+    const shuffled = [...dataset];
     for (let i = n - 1; i > 0; i--) {
       const randIndex = Math.floor(Math.random() * (i + 1));
-      [dataset[i], dataset[randIndex]] = [dataset[randIndex], dataset[i]];
+      [shuffled[i], shuffled[randIndex]] = [shuffled[randIndex], shuffled[i]];
     }
     const splitIndex = Math.floor(n * ratio);
     return {
-      tenPercent: dataset.slice(0, splitIndex),
-      ninetyPercent: dataset.slice(splitIndex),
+      tenPercent: shuffled.slice(0, splitIndex),
+      ninetyPercent: shuffled.slice(splitIndex),
     };
   };
 
-  const [workingSamples, setWorkingSamples] = useState(() => {
-    return subsampledCsv && subsampledCsv.length
-      ? datasetShuffler([...subsampledCsv], 0.2) // setting budget at 20% of the input dataset
-      : null;
-  });
+  const [workingSamples, setWorkingSamples] = useState<{
+    tenPercent: Record<string, string>[];
+    ninetyPercent: Record<string, string>[];
+  } | null>(null);
+
+  useEffect(() => {
+    if (subsampledData && subsampledData.length > 0 && !workingSamples) {
+      setWorkingSamples(datasetShuffler(subsampledData as any, 0.2));
+    }
+  }, [subsampledData]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentSample = workingSamples?.tenPercent[currentIndex];
   const totalSamples = workingSamples?.tenPercent.length || 0;
+
+  if (loading) {
+    return (
+      <Center h="100vh" bg="black">
+        <Stack align="center" gap="md">
+          <LoadingOverlay visible={true} overlayProps={{ blur: 2 }} />
+          <Text c="white">Loading annotation data...</Text>
+        </Stack>
+      </Center>
+    );
+  }
+
+  if (!task || !subsampledData || subsampledData.length === 0) {
+    return (
+      <Center h="100vh" bg="black">
+        <Stack align="center" gap="md">
+          <Text c="white">No data available for annotation</Text>
+          <Button onClick={() => navigate("/")}>Go Home</Button>
+        </Stack>
+      </Center>
+    );
+  }
 
   const handleClickAnnotation = async () => {
     if (!currentSample) return;
@@ -62,10 +92,10 @@ export default function AnnotationPage() {
     const payload: InferenceRequest = {
       labels: task.labels,
       task_definition: task.description,
-      case_notes: currentSample[task.columns[0]],
+      case_notes: currentSample["text_combined"],
       model_name: "mistral:7b",
       task_type: "annotation",
-      user_input: userInput // cumulative user feedback
+      user_input: userInput // Cumulative user feedback
     };
     const response: InferenceResponse = await inference(payload);
     if (response) {
@@ -85,7 +115,7 @@ export default function AnnotationPage() {
   return (
     <Paper h="100%" bg="black" c="#D8D8D8" p="lg">
       <Stack gap="lg">
-        {/* count of how many samples have been processed/chosen */}
+        {/* Count of how many samples have been processed/chosen */}
         <Title order={4}>
           Sample {currentIndex + 1}/{totalSamples}
         </Title>
@@ -93,13 +123,13 @@ export default function AnnotationPage() {
         {/* Case notes text */}
         <ScrollArea h="250">
           <Text>
-            {currentSample && currentSample[task.columns[0]]
-              ? currentSample[task.columns[0]]
+            {currentSample && (currentSample["text_combined"] || currentSample[task.columns[0]])
+              ? currentSample["text_combined"] || currentSample[task.columns[0]]
               : "No text found for this sample. Pleas proceed to the next sample."}
           </Text>
         </ScrollArea>
 
-        {/* Geenrated content: label, span text and reasoning */}
+        {/* Generated content: label, span text and reasoning */}
         <Group justify="start">
           <LoadingOverlay
             visible={isLoading}
@@ -135,7 +165,7 @@ export default function AnnotationPage() {
           <Text> Error generating reasoning </Text>
         )}
 
-        {/* user input button to confirm correctness of generated content */}
+        {/* User input button to confirm correctness of generated content */}
         <Group justify="center">
           <Button
             variant="filled"
@@ -178,7 +208,7 @@ export default function AnnotationPage() {
           </div>}
 
         {/* "Next" button is enabled if generated content is correct, if not disabled until user feedback is given */}
-        {/* "Next" button moves to next sample in the budget subset */}
+        {/* "Next" button moves to next sample in the current batch */}
         <Button
           disabled={!isCorrect || (isIncorrect && currentUserInput.length < 1)}
           onClick={() => {

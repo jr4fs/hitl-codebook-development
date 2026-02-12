@@ -6,17 +6,13 @@ export interface Label{
 
 export interface EmbedDatasetRequest{
     file_path: string;
-    text_col: string;
+    text_col: string[];
     id_col?: string;
     split_to_sentences?: boolean;
     model_name?: string;
     device?: string;
     labels: Label[]
 }
-
-// interface CsvRow {
-//     [key: string]: string;
-//   }
 
 export interface EmbedDatasetResponse{
     success: boolean;

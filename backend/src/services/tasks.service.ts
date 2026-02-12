@@ -23,9 +23,8 @@ export interface AuthRequest extends Request {
 }
 
 const TASKS_COLLECTION = process.env.TASKS_COLLECTION_NAME || "TaskDetails";
-//const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
 
-//Validates task creation request payload
+// Validates task creation request payload
 function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
   const errors: string[] = [];
 
@@ -66,7 +65,7 @@ function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
   };
 }
 
-//Creates a new task and stores it in the TaskDetails collection
+// Creates a new task and stores it in the TaskDetails collection
 export async function createTask(req: AuthRequest, res: Response) {
 
   const userID = req.user?.userId;
@@ -136,7 +135,7 @@ export async function createTask(req: AuthRequest, res: Response) {
   }
 }
 
-//Retrieves all tasks for a specific user
+// Retrieves all tasks for a specific user
 export async function getUserTasks(req: AuthRequest, res: Response) {
   try {
     const userID = req.user?.userId;
@@ -167,7 +166,7 @@ export async function getUserTasks(req: AuthRequest, res: Response) {
   }
 }
 
-//Retrieves all tasks for a specific user
+// Retrieves all tasks for a specific user
 export async function getTaskByID(req: AuthRequest, res: Response) {
   try {
     const userID = req.user?.userId;
@@ -213,7 +212,7 @@ export async function getTaskByID(req: AuthRequest, res: Response) {
   }
 }
 
-/**
+/*
  * Handles CSV file upload using multer
  * Returns the stored filename to be used in task creation
  */
@@ -305,9 +304,10 @@ export async function getCsvData(req: AuthRequest, res: Response) {
     };
 
     // Read all files using PapaParse
-    const mainFile = await fileExists(fileName);
-    const valFile = await valFileExists(fileName);
-    const restFile = await restFileExists(fileName);
+    const mainFile = fileExists(fileName);
+    const valFile = valFileExists(fileName);
+    const restFile = restFileExists(fileName);
+
     if (mainFile.exists) {
       response.file = await readCsvFile(mainFile.path);
       if (response.file.length > 0) {
@@ -316,17 +316,15 @@ export async function getCsvData(req: AuthRequest, res: Response) {
     }
 
     if (valFile.exists) {
-      response.file = await readCsvFile(valFile.path);
-      if (response.file.length > 0) {
-        response.headers = Object.keys(response.file[0]);
+      response.val_file = await readCsvFile(valFile.path);
+      // If we only have val data, use its headers
+      if (response.headers.length === 0 && response.val_file.length > 0) {
+        response.headers = Object.keys(response.val_file[0]);
       }
     }
 
-    if (valFile.exists) {
-      response.file = await readCsvFile(valFile.path);
-      if (response.file.length > 0) {
-        response.headers = Object.keys(response.file[0]);
-      }
+    if (restFile.exists) {
+      response.rest_file = await readCsvFile(restFile.path);
     }
 
     if (response.file.length === 0) {
@@ -344,14 +342,37 @@ export async function getCsvData(req: AuthRequest, res: Response) {
       headers: response.headers,
       fileName: fileName
     });
-
-
   } catch (error: any) {
     console.error("Error retrieving file:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to retrieve file",
       error: error
+    });
+  }
+}
+
+export async function checkValFileExists(req: AuthRequest, res: Response) {
+  try {
+    const { fileName } = req.params;
+    if (!fileName) {
+      return res.status(400).json({
+        success: false,
+        message: "File name is required"
+      });
+    }
+
+    const check = valFileExists(fileName);
+
+    return res.status(200).json({
+      success: true,
+      exists: check.exists
+    });
+  } catch (error: any) {
+    console.error("Error checking validation file existence:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
     });
   }
 }

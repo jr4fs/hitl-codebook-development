@@ -17,11 +17,12 @@ import {
   ActionIcon,
   TagsInput,
   Button,
+  LoadingOverlay,
 } from "@mantine/core";
 import { IconTrash, IconPlus } from "@tabler/icons-react";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTask } from "../services/tasks.service";
+import { createTask, checkValFileExists } from "../services/tasks.service";
 import { embedDataset } from "../services/embedding.service";
 import { EmbedDatasetRequest } from "@common/types/embedding";
 import { Task } from "@common/types/tasks";
@@ -36,7 +37,6 @@ const MAX_ROWS_PER_PAGE = 10;
 export default function SubsamplingPage() {
   const navigate = useNavigate();
   const { loading, csvData, headers, fileName, task } = useTaskData();
-  //const navProps = location.state as NavProps;
   const [taskName, setTaskName] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
   const [taskType, setTaskType] = useState<"Multiclass" | "Single-class">(
@@ -51,6 +51,8 @@ export default function SubsamplingPage() {
   const [subsampledCsv, setSubsampledCsv] = useState<Record<string, unknown>[]>(
     [],
   );
+  const [valDataExists, setValDataExists] = useState<boolean>(false);
+  const [isLoading, setLoading] = useState<boolean>(false);
 
   const user = useSelector((state: IRootState) => state.user.user);
 
@@ -66,7 +68,17 @@ export default function SubsamplingPage() {
     }
   }, [task]);
 
-  // Filter CSV data based on chosen columns
+  useEffect(() => {
+    const checkValidation = async () => {
+      if (fileName) {
+        const exists = await checkValFileExists(fileName);
+        setValDataExists(exists);
+      }
+    };
+    checkValidation();
+  }, [fileName]);
+
+  // TODO: Filter CSV data based on chosen columns
   // useEffect(() => {
   //   if (chosenCol.length > 0) {
   //     const filtered = csvData.filter((row) => {
@@ -93,7 +105,7 @@ export default function SubsamplingPage() {
     }
     return [];
   }, [displayData]);
-  //calculations for pagination
+  // Calculations for pagination
   const totalPages = Math.ceil(displayData.length / MAX_ROWS_PER_PAGE);
   const startIndex = (currentPage - 1) * MAX_ROWS_PER_PAGE;
   const endIndex = startIndex + MAX_ROWS_PER_PAGE;
@@ -178,11 +190,12 @@ export default function SubsamplingPage() {
     }
 
     try {
-      //save task in DB
+      // Save task in DB
+      setLoading(true);
       handleSaveTaskState();
       const payload: EmbedDatasetRequest = {
         file_path: fileName,
-        text_col: chosenCol[0],
+        text_col: chosenCol,
         labels: taskLabels.filter(
           (label) =>
             label.name?.trim() &&
@@ -198,6 +211,7 @@ export default function SubsamplingPage() {
         console.log("Subsampling completed successfully");
         if (response.val_data && response.val_data.length > 0) {
           setSubsampledCsv(response.val_data);
+          setValDataExists(true);
         }
       } else {
         console.error("Subsampling failed:", response);
@@ -207,6 +221,8 @@ export default function SubsamplingPage() {
       if (error?.response?.data) {
         console.error("Backend error details:", error.response.data);
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -437,9 +453,9 @@ export default function SubsamplingPage() {
               h="auto"
               mb="lg"
               radius={50}
-              disabled={subsampledCsv.length === 0 ? true : false}
+              disabled={!valDataExists}
               onClick={() => {
-                navigate("/annotate", {
+                navigate(`/manual-annotate/${task?._id}`, {
                   state: {
                     subsampledCsv,
                     task,
@@ -454,6 +470,12 @@ export default function SubsamplingPage() {
       </Box>
 
       <Box w="65%" h="100%">
+        <LoadingOverlay
+          visible={isLoading}
+          zIndex={1000}
+          overlayProps={{ radius: 'sm', blur: 2 }}
+          loaderProps={{ color: 'white', type: 'bars' }}
+        />
         <Stack c="#D8D8D8" h="100%" gap="md">
           <Paper
             bg="#1C1A1A"
