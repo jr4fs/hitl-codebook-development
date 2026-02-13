@@ -28,12 +28,31 @@ class InferenceRequest(BaseModel):
 
 class InferenceResponse(BaseModel):
     model_name: str = Field(..., min_length=1)
-    label: str = Field(..., min_length=1)
+    label: List[str] = Field(..., min_length=1)
     span_text: str = Field(..., min_length=1)
     reason: str = Field(..., min_length=1)
     task_type: str = Field(..., min_length=1)
     tokens: int
     time: float
+
+class BatchInferenceRequest(BaseModel):
+    ground_truth_labels:  List[Label] = Field(..., min_length=1)
+    task_definition: str = Field(..., min_length=1)
+    case_notes: str = Field(..., min_length=1)
+    model_name: str = Field(..., min_length=1)
+    user_input: Optional[str] = Field(None, min_length=0)
+    task_type: str = Field(..., min_length=1)
+
+class BatchInferenceResponse(BaseModel):
+    model_name: str = Field(..., min_length=1)
+    is_correct: bool
+    tokens: int
+    time: float
+
+class BatchInferenceSummary(BaseModel):
+    results: List[BatchInferenceResponse]
+    accuracy: float
+
 
 registry = {
     "mistral:7b": OllamaAdapter(model="mistral:7b")

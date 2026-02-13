@@ -17,8 +17,8 @@ You are an expert suicide caseworker trained to correctly categorize suicide rep
 You will have to provide your answer in the following format:
 ```json
 {
-    "label": "one of the provided labels",
+    "label": ["one or more of the provided labels as a list of strings"],
     "span_text": "Which span of text from the case notes helped you make that classification decision, be as specific as possible",
-    "reason": "Your reasoning beind why you classified this as the above mentioned label"
+    "reason": "Your reasoning beind why you classified this as the above mentioned labels"
 }
 ```

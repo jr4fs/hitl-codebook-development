@@ -4,7 +4,8 @@ import pathlib
 
 class PromptTemplate(BaseModel):
     task_dict: Dict[str, str] = {
-        "annotation": "../prompts/annotation_task_prompt.md"
+        "annotation": "../prompts/annotation_task_prompt.md",
+        "rule_synthesis": "../prompts/rule_synthesis_prompt.md"
     }
     def get_task_system_prompt(self, task_name: str):
         try:

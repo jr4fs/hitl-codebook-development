@@ -9,12 +9,15 @@ from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from typing import List
 from pathlib import Path
+import asyncio
 
 from models.embedding_schemas import EmbedDatasetRequest, EmbedDatasetResponse
+from models.rule_synthesis_schema import RuleSynthesisRequest, RuleSynthesisResponse
 from services.embedding_service import EmbeddingService
-from models.ollama_adapter import InferenceRequest, InferenceResponse
+from models.ollama_adapter import InferenceRequest, InferenceResponse, BatchInferenceRequest, BatchInferenceResponse, BatchInferenceSummary
 from services.chat.chat_service import ChatService
 from models.prompt_templating_model import PromptTemplate
+from services.chat.rule_synthesis_service import RuleSynthesisService
 
 embedding_router = APIRouter(prefix="/embedding", tags=["embedding"])
 chat_router = APIRouter(prefix="/inference", tags=["inference"])
@@ -57,7 +60,7 @@ async def run_embedding(request: EmbedDatasetRequest):
 @chat_router.post("/", response_model=InferenceResponse)
 async def run_inference(request: InferenceRequest):
     """
-    Perform the embedding for the input dataset
+    Perform annotation inference for the incoming sample
 
     Returns:
         model_name: Name of the model used to perfrom inference
@@ -67,7 +70,7 @@ async def run_inference(request: InferenceRequest):
     """
     try:
         print(
-            f"Request payload: model_name={request.model_name}, user_input={request.user_input}"
+            f"[AI Annotation] Request payload: model_name={request.model_name}, user_input={request.user_input}"
         )
         chat_service_obj = ChatService()
         prompt_template_obj = PromptTemplate()
@@ -92,4 +95,95 @@ async def run_inference(request: InferenceRequest):
         return inference_response
     except Exception as e:
         print("[Inference] Error while running inference: ", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@chat_router.post("/batch-inference", response_model=BatchInferenceSummary)
+async def run_batch_inference(request: List[BatchInferenceRequest]):
+    """
+    Perform annotation inference for the incoming samples in parallel
+    """
+    try:
+        chat_service_obj = ChatService()
+        prompt_template_obj = PromptTemplate()
+        
+        # We assume all samples in a batch share the same task_type for the system prompt
+        system_prompt = prompt_template_obj.get_task_system_prompt(request[0].task_type) if request else ""
+
+        tasks = [
+            process_single_sample(
+                sample, 
+                chat_service_obj, 
+                system_prompt
+            )
+            for sample in request
+        ]
+
+        inference_results = await asyncio.gather(*tasks)
+        
+        # Calculate overall accuracy
+        correct_count = sum(1 for res in inference_results if res.is_correct)
+        accuracy = correct_count / len(inference_results) if inference_results else 0.0
+
+        return BatchInferenceSummary(
+            results=inference_results,
+            accuracy=accuracy
+        )
+
+    except Exception as e:
+        print("[Batch Inference] Error while running batch inference: ", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def process_single_sample(
+    sample: BatchInferenceRequest, 
+    chat_service_obj: ChatService, 
+    system_prompt: str
+) -> BatchInferenceResponse:
+    """Process a single sample using a thread pool for the synchronous send_chat call"""
+    response = await asyncio.to_thread(
+        chat_service_obj.send_chat,
+        sample.ground_truth_labels,
+        sample.task_definition,
+        sample.model_name,
+        system_prompt,
+        sample.case_notes,
+        sample.user_input,
+    )
+    
+    gt_label_names = [l.name for l in sample.ground_truth_labels]
+    model_labels = response["label"]
+    
+    # Handle both single string and list of strings for model_labels
+    if isinstance(model_labels, str):
+        model_labels = [model_labels]
+    
+    return BatchInferenceResponse(
+        model_name=sample.model_name,
+        is_correct = set(gt_label_names) == set(model_labels),
+        tokens=0,
+        time=0.0,
+    )
+
+@chat_router.post("/rule-synthesis", response_model=RuleSynthesisResponse)
+async def run_rule_synthesis(request: RuleSynthesisRequest):
+    try:
+        print(
+            f"[Rule Synthesis] Request payload: model_name={request.model_name}"
+        )
+        rule_synthesis_service_obj = RuleSynthesisService()
+        prompt_template_obj = PromptTemplate()
+        system_prompt = prompt_template_obj.get_task_system_prompt(request.task_type)
+        response = rule_synthesis_service_obj.send_chat(
+            request.model_name,
+            system_prompt,
+            request.payload
+        )
+        rule_synthesis_response: RuleSynthesisResponse = {
+            "success": response["success"],
+            "model_name": request.model_name,
+            "rules": response["rules"]
+        }
+        return rule_synthesis_response
+
+    except Exception as e:
+        print("[Rule synthesis] Error while running rule synthesis : ", e)
         raise HTTPException(status_code=500, detail=str(e))

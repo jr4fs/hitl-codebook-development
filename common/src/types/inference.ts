@@ -1,7 +1,7 @@
 import { LabelItem } from "./tasks"
 
-export interface InferenceRequest{
-    labels:  LabelItem[]
+export interface InferenceRequest {
+    labels: LabelItem[]
     task_definition: string
     case_notes: string
     model_name: string
@@ -9,12 +9,28 @@ export interface InferenceRequest{
     task_type: string
 }
 
-export interface InferenceResponse{
-    model_name: string 
-    label: string
+export interface InferenceResponse {
+    model_name: string
+    label: string[]
     span_text: string
     reason: string
     task_type: string
     tokens: number
     time: number
+}
+
+export interface BatchInferenceRequest extends InferenceRequest {
+    ground_truth_labels: LabelItem[]
+}
+
+export interface BatchInferenceResponse {
+    model_name: string
+    is_correct: boolean
+    tokens: number
+    time: number
+}
+
+export interface BatchInferenceSummary {
+    results: BatchInferenceResponse[]
+    accuracy: number
 }

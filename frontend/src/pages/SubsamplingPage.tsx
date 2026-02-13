@@ -36,7 +36,7 @@ const MAX_ROWS_PER_PAGE = 10;
 
 export default function SubsamplingPage() {
   const navigate = useNavigate();
-  const { loading, csvData, headers, fileName, task } = useTaskData();
+  const { loading, csvData, subsampledData, headers, fileName, task } = useTaskData();
   const [taskName, setTaskName] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
   const [taskType, setTaskType] = useState<"Multiclass" | "Single-class">(
@@ -51,7 +51,6 @@ export default function SubsamplingPage() {
   const [subsampledCsv, setSubsampledCsv] = useState<Record<string, unknown>[]>(
     [],
   );
-  const [valDataExists, setValDataExists] = useState<boolean>(false);
   const [isLoading, setLoading] = useState<boolean>(false);
 
   const user = useSelector((state: IRootState) => state.user.user);
@@ -69,14 +68,11 @@ export default function SubsamplingPage() {
   }, [task]);
 
   useEffect(() => {
-    const checkValidation = async () => {
-      if (fileName) {
-        const exists = await checkValFileExists(fileName);
-        setValDataExists(exists);
-      }
-    };
-    checkValidation();
-  }, [fileName]);
+    if (subsampledData && subsampledData.length > 0) {
+      setSubsampledCsv(subsampledData);
+    }
+  }, [subsampledData]);
+
 
   // TODO: Filter CSV data based on chosen columns
   // useEffect(() => {
@@ -211,7 +207,6 @@ export default function SubsamplingPage() {
         console.log("Subsampling completed successfully");
         if (response.val_data && response.val_data.length > 0) {
           setSubsampledCsv(response.val_data);
-          setValDataExists(true);
         }
       } else {
         console.error("Subsampling failed:", response);
@@ -453,7 +448,7 @@ export default function SubsamplingPage() {
               h="auto"
               mb="lg"
               radius={50}
-              disabled={!valDataExists}
+              disabled={subsampledCsv.length === 0}
               onClick={() => {
                 navigate(`/manual-annotate/${task?._id}`, {
                   state: {
