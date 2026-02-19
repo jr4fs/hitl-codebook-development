@@ -101,9 +101,12 @@ export async function createTask(req: AuthRequest, res: Response) {
     }
 
     const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
+    const taskId = req.body.taskId?.toString().trim();
+
+    console.log(`[createTask] userID: ${userID}, taskId in request: ${taskId}`);
 
     // Create task document
-    const newTask: Omit<Task, "_id"> = {
+    const taskData: Omit<Task, "_id"> = {
       name: payload.name,
       description: payload.description,
       type: payload.type,
@@ -111,11 +114,39 @@ export async function createTask(req: AuthRequest, res: Response) {
       file: payload.file,
       columns: payload.columns,
       userID: userID,
-      createdAt: new Date().toISOString(),
+      createdAt: req.body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    const result = await taskDetailsCollection.insertOne(newTask);
+    if (taskId) {
+      console.log(`[createTask] Attempting update for taskId: ${taskId}`);
+      const result = await taskDetailsCollection.updateOne(
+        { _id: new ObjectId(taskId) as any, userID: userID },
+        { $set: taskData }
+      );
+      console.log(`[createTask] Update result: matchedCount=${result.matchedCount}, modifiedCount=${result.modifiedCount}`);
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Task not found or you don't have permission to update it"
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Task updated successfully",
+        taskId: taskId,
+        task: {
+          _id: taskId,
+          ...taskData
+        }
+      });
+    }
+
+    console.log(`[createTask] No taskId provided, performing insertOne`);
+    const result = await taskDetailsCollection.insertOne(taskData);
+    console.log(`[createTask] insertOne success: ${result.insertedId}`);
 
     return res.status(201).json({
       success: true,
@@ -123,7 +154,7 @@ export async function createTask(req: AuthRequest, res: Response) {
       taskId: result.insertedId.toString(),
       task: {
         _id: result.insertedId.toString(),
-        ...newTask
+        ...taskData
       }
     });
   } catch (error: any) {

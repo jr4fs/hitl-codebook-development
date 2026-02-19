@@ -1,5 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { User } from "@common/types/accounts";
+import { JWTPayload } from "@common/types/auth";
+import { jwtDecode } from "jwt-decode";
 
 interface UserState {
   user: User | null;
@@ -13,8 +15,33 @@ interface SetUserPayload {
   refreshToken: string;
 }
 
+const getInitialUser = (): User | null => {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return null;
+
+  try {
+    const decoded = jwtDecode<JWTPayload>(token);
+    // Check if token is expired
+    const currentTime = Date.now() / 1000;
+    if ((decoded as any).exp && (decoded as any).exp < currentTime) {
+      localStorage.removeItem('accessToken');
+      return null;
+    }
+
+    return {
+      id: decoded.userId,
+      username: decoded.username,
+      email: decoded.email,
+      name: decoded.username //TODO: Implement taking in a name for the user on account creation OR remove name attribute
+    };
+  } catch (error) {
+    localStorage.removeItem('accessToken');
+    return null;
+  }
+};
+
 const initialState: UserState = {
-  user: null,
+  user: getInitialUser(),
   accessToken: localStorage.getItem('accessToken'),
   refreshToken: localStorage.getItem('refreshToken')
 };

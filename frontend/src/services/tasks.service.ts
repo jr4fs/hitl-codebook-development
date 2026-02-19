@@ -1,8 +1,8 @@
-import { CreateTaskRequest, CreateTaskResponse, TaskQueryResponse, UploadFileResponse } from "@common/types/tasks";
+import { CreateTaskRequest, CreateTaskResponse, TaskQueryResponse, UploadFileResponse, UpdateTaskRequest } from "@common/types/tasks";
 import { apiClient } from "../lib/apiClient";
 
 export async function createTask(
-    payload: CreateTaskRequest
+    payload: CreateTaskRequest | UpdateTaskRequest
 ): Promise<CreateTaskResponse> {
     const { data } = await apiClient.post<CreateTaskResponse>(
         "/api/tasks/createTask",

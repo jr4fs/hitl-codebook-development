@@ -28,7 +28,7 @@ export default function ManualAnnotationPage() {
 
     const totalSamples = subsampledData?.length || 0;
     const currentSample = subsampledData && currentIndex < totalSamples ? subsampledData[currentIndex] : null;
-    const isCompleted = currentIndex >= 7/*totalSamples*/;
+    const isCompleted = currentIndex >= 7//totalSamples;
 
     // Set initial index based on existing annotations
     useEffect(() => {
@@ -125,7 +125,7 @@ export default function ManualAnnotationPage() {
                 setStatus({ type: 'success', message: "Annotation saved successfully" });
                 // Short delay to allow user to review annotation
                 setTimeout(() => {
-                    if (currentIndex < 10 /*totalSamples*/) {
+                    if (currentIndex < totalSamples) {
                         setCurrentIndex(prev => prev + 1);
                     }
                 }, 500);

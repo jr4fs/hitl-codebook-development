@@ -25,7 +25,6 @@ import { useNavigate } from "react-router-dom";
 import { createTask, checkValFileExists } from "../services/tasks.service";
 import { embedDataset } from "../services/embedding.service";
 import { EmbedDatasetRequest } from "@common/types/embedding";
-import { Task } from "@common/types/tasks";
 import { useSelector } from "react-redux";
 import { IRootState } from "../store/store";
 import styles from "../components/layout/styles/Subsampling.module.css";
@@ -37,6 +36,7 @@ const MAX_ROWS_PER_PAGE = 10;
 export default function SubsamplingPage() {
   const navigate = useNavigate();
   const { loading, csvData, subsampledData, headers, fileName, task } = useTaskData();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [taskName, setTaskName] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
   const [taskType, setTaskType] = useState<"Multiclass" | "Single-class">(
@@ -45,16 +45,17 @@ export default function SubsamplingPage() {
   const [taskLabels, setTaskLabels] = useState<LabelItem[]>([
     { name: "", definition: "", keywords: [] },
   ]);
+  const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [chosenCol, setChosenCol] = useState<string[]>([]);
   //const [filteredData, setFilteredData] = useState<CsvRow[]>([]);
   const [subsampledCsv, setSubsampledCsv] = useState<Record<string, unknown>[]>(
     [],
   );
-  const [isLoading, setLoading] = useState<boolean>(false);
 
   const user = useSelector((state: IRootState) => state.user.user);
 
+  // Setting existing task data
   useEffect(() => {
     if (task) {
       setTaskName(task.name);
@@ -137,7 +138,30 @@ export default function SubsamplingPage() {
   };
 
   const handleSaveTaskState = async () => {
-    const payload: Task = {
+    if (isSaving) return;
+
+    // Use task from useTaskData or ID from URL if available
+    const currentTaskId = task?._id;
+
+    if (task) {
+      // Use JSON.stringify for deep comparison of arrays/objects
+      const hasChanges =
+        JSON.stringify(task.columns) !== JSON.stringify(chosenCol) ||
+        task.description !== taskDesc ||
+        task.name !== taskName ||
+        JSON.stringify(task.labels) !== JSON.stringify(taskLabels) ||
+        task.type !== taskType;
+
+      if (!hasChanges) {
+        console.log("No changes detected, skipping save");
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    console.log(`[handleSaveTaskState] Saving task... currentTaskId: ${currentTaskId}`);
+
+    const payload: any = {
       name: taskName,
       description: taskDesc,
       type: taskType,
@@ -145,14 +169,29 @@ export default function SubsamplingPage() {
       columns: chosenCol,
       userID: user?.id || "00000",
       file: fileName,
-      createdAt: new Date().toISOString(),
+      createdAt: task?.createdAt || new Date().toISOString(),
     };
 
-    const response = await createTask(payload);
-    if (response.success) {
-      console.log("Saved Task state successfully");
-    } else {
-      console.log("Error saving task state: ", response.errors);
+    if (currentTaskId) {
+      payload.taskId = currentTaskId;
+    }
+
+    try {
+      const response = await createTask(payload);
+      if (response.success) {
+        console.log("Saved Task state successfully", response);
+        // Replace the URL with /new-task/:taskId so that a page refresh can
+        // recover state from the API instead of hitting an empty nav state.
+        if (!currentTaskId && response.taskId) {
+          navigate(`/new-task/${response.taskId}`, { replace: true });
+        }
+      } else {
+        console.log("Error saving task state: ", response.errors);
+      }
+    } catch (error) {
+      console.error("Failed to save task state:", error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -187,8 +226,8 @@ export default function SubsamplingPage() {
 
     try {
       // Save task in DB
-      setLoading(true);
-      handleSaveTaskState();
+      setIsLoading(true);
+      await handleSaveTaskState();
       const payload: EmbedDatasetRequest = {
         file_path: fileName,
         text_col: chosenCol,
@@ -217,7 +256,7 @@ export default function SubsamplingPage() {
         console.error("Backend error details:", error.response.data);
       }
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -255,6 +294,7 @@ export default function SubsamplingPage() {
       wrap="nowrap"
       bg="#1C1A1A"
     >
+      {/* Left-side task information display */}
       <Box w="30%" h="100%" c="white">
         <Stack w="100%" h="100%" gap="md" justify="flex-start">
           <MultiSelect
@@ -423,6 +463,7 @@ export default function SubsamplingPage() {
               mb="lg"
               radius={50}
               onClick={handleSaveTaskState}
+              loading={isSaving}
             >
               Save Task State
             </Button>
@@ -464,6 +505,7 @@ export default function SubsamplingPage() {
         </Stack>
       </Box>
 
+      {/* Right-side dataset display */}
       <Box w="65%" h="100%">
         <LoadingOverlay
           visible={isLoading}

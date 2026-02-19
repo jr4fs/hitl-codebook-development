@@ -69,7 +69,8 @@ export default function AnnotationPage() {
       const randIndex = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[randIndex]] = [shuffled[randIndex], shuffled[i]];
     }
-    const splitIndex = Math.floor(n * ratio);
+    // Ensure at least one sample in the split if the dataset is not empty
+    const splitIndex = n > 0 ? Math.max(1, Math.floor(n * ratio)) : 0;
     return {
       tenPercent: shuffled.slice(0, splitIndex),
       ninetyPercent: shuffled.slice(splitIndex),
@@ -81,11 +82,28 @@ export default function AnnotationPage() {
     ninetyPercent: AnnotationItem[];
   } | null>(null);
 
+  // Persist the 10/90 split in localStorage so a page refresh restores the same
+  // partition. Keyed by taskId to avoid cross-task collisions.
   useEffect(() => {
-    if (annotations && annotations.length > 0 && !workingSamples) {
-      setWorkingSamples(datasetShuffler(annotations as any, 0.1));
+    if (!annotations || annotations.length === 0 || !task?._id || workingSamples) return;
+
+    const storageKey = `workingSamples_${task._id}`;
+    const stored = localStorage.getItem(storageKey);
+
+    if (stored) {
+      try {
+        setWorkingSamples(JSON.parse(stored));
+        return;
+      } catch {
+        // Corrupt entry — fall through and recompute
+        localStorage.removeItem(storageKey);
+      }
     }
-  }, [annotations]);
+
+    const split = datasetShuffler(annotations as any, 0.1);
+    localStorage.setItem(storageKey, JSON.stringify(split));
+    setWorkingSamples(split);
+  }, [annotations, task]);
 
   const handleClickAnnotation = async () => {
     if (!currentSample) return;
@@ -118,10 +136,11 @@ export default function AnnotationPage() {
     console.log(response);
     setIsLoading(false);
   }
-  // run annotation for very first sample 
+  // Trigger inference whenever the index changes or when samples first become available.
   useEffect(() => {
-    handleClickAnnotation()
-  }, [currentIndex, annotations]);
+    if (!workingSamples || currentIndex >= workingSamples.tenPercent.length) return;
+    handleClickAnnotation();
+  }, [currentIndex, workingSamples]);
 
   const currentSample = workingSamples && currentIndex > -1 ? workingSamples?.tenPercent[currentIndex] : null;
   const totalSamples = workingSamples?.tenPercent.length || 0;
@@ -454,10 +473,9 @@ export default function AnnotationPage() {
                     color={currentBatchProgress === actualBatchSize ? "blue" : "indigo"}
                     disabled={batchResults[currentIndex]?.isCorrect == null || (batchResults[currentIndex]?.isCorrect === false && !batchResults[currentIndex]?.feedback?.trim())}
                     loading={isLoading}
-                    onClick={() => {
+                    onClick={async () => {
                       if (currentBatchProgress === actualBatchSize) {
-                        // Trigger Synthesis Logic (to be implemented)
-                        handleCommitBatch();
+                        await handleCommitBatch();
                       }
                       handleNextClick();
                     }}
