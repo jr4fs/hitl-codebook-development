@@ -15,22 +15,45 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconExclamationMark } from "@tabler/icons-react";
-import { Link, /*useNavigate*/ } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { CreateUserRequest } from "@common/types/accounts";
 import { createUser } from "../services/account.service";
 import { AxiosError } from "axios";
 import { useDispatch } from 'react-redux';
 import { setUser } from '../store/userSlice';
+import { toast } from "../lib/toast";
+
+const isValidEmail = (value: string) => /^\S+@\S+\.\S+$/.test(value);
+
+const getPasswordErrors = (password: string) => {
+  const errors: string[] = [];
+  if (password.length < 8) {
+    errors.push("At least 8 characters");
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push("One uppercase letter");
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push("One lowercase letter");
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push("One number");
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push("One special character");
+  }
+  return errors;
+};
 
 export default function SignUpPage() {
-  //const navigate = useNavigate();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const dispatch = useDispatch();
 
   const form = useForm({
-    mode: "uncontrolled",
+    mode: "controlled",
     initialValues: {
       username: "",
       email: "",
@@ -38,13 +61,25 @@ export default function SignUpPage() {
       rememberMe: true,
     },
     onSubmitPreventDefault: "always",
+    validateInputOnChange: ["password"],
+    validateInputOnBlur: true,
     validate: {
       email: (value: string) =>
-        /^\S+@\S+\.\S+$/.test(value) ? null : "Invalid email",
-      password: (value: string) =>
-        value.length >= 8 ? null : "Must be at least 8 characters",
+        isValidEmail(value) ? null : "Invalid email",
+      password: (value: string) => {
+        const errors = getPasswordErrors(value);
+        return errors.length > 0 ? `Password needs: ${errors.join(", ")}` : null;
+      },
+      username: (value: string) =>
+        value.length >= 3 ? null : "Username must be at least 3 characters",
     },
   });
+
+  const passwordErrors = getPasswordErrors(form.values.password);
+  const canSubmit =
+    form.values.username.length >= 3 &&
+    isValidEmail(form.values.email) &&
+    passwordErrors.length === 0;
 
   const handleSubmit = async (values: CreateUserRequest) => {
     setLoading(true);
@@ -58,7 +93,8 @@ export default function SignUpPage() {
       accessToken: res.jwtToken,
       refreshToken: res.jwtRefreshToken
       }));
-      setLoading(false);
+      toast.success("Account created successfully");
+      navigate("/");
     } catch (error) {
         console.error("Error creating user: ", error);
         if (error instanceof AxiosError){
@@ -98,7 +134,6 @@ export default function SignUpPage() {
                   radius="md"
                   withAsterisk
                   label="Username"
-                  rightSection="@"
                   placeholder="username"
                   key={form.key("username")}
                   {...form.getInputProps("username")}
@@ -129,6 +164,7 @@ export default function SignUpPage() {
                     size="lg"
                     fullWidth
                     loading={loading}
+                    disabled={!canSubmit}
                   >
                     Sign Up
                   </Button>

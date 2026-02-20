@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { CreateTaskRequest, Task } from "@common/types/tasks";
+import { AnonymizeConfig } from "@common/types/anonymize";
 import { getCollection } from "./database.service";
-import { fileExists, restFileExists, valFileExists } from "../utils/fileUpload";
+import { anonymizeAndSaveCsv, fileExists, restFileExists, valFileExists } from "../utils/fileUpload";
 import { ObjectId } from "mongodb";
 import Papa from 'papaparse';
 import fs from 'fs/promises';
@@ -23,6 +24,21 @@ export interface AuthRequest extends Request {
 }
 
 const TASKS_COLLECTION = process.env.TASKS_COLLECTION_NAME || "TaskDetails";
+const ANONYMIZE_CONFIG_COLLECTION = "AnonymizeConfig";
+const CONFIG_DOC_ID = "global";
+
+/**
+ * Fetches the global anonymize config from DB (or returns null if none exists)
+ */
+async function getAnonymizeConfigFromDB(): Promise<AnonymizeConfig | null> {
+  try {
+    const collection = getCollection<AnonymizeConfig>(ANONYMIZE_CONFIG_COLLECTION);
+    return await collection.findOne({ _id: CONFIG_DOC_ID as any });
+  } catch (error) {
+    console.error("Error fetching anonymize config:", error);
+    return null;
+  }
+}
 
 // Validates task creation request payload
 function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
@@ -264,16 +280,27 @@ export async function uploadTaskFile(req: AuthRequest, res: Response) {
         message: "No file provided"
       });
     }
-    if (!fileExists(req.file.filename)) {
-      return res.status(500).json({
+
+    // Fetch anonymize config from DB to pass to pybackend
+    const anonymizeConfig = await getAnonymizeConfigFromDB();
+
+    let filename: string;
+    try {
+      filename = await anonymizeAndSaveCsv(req.file, anonymizeConfig ?? undefined);
+    } catch (error: any) {
+      const message = error?.message || "Failed to anonymize CSV";
+      const status = message.includes("saved") ? 500 : 502;
+      console.error("Error processing upload:", message);
+      return res.status(status).json({
         success: false,
-        message: "File was uploaded but was not saved, internal server error"
+        message
       });
     }
+
     return res.status(200).json({
       success: true,
       message: "File uploaded successfully",
-      filePath: req.file.filename
+      filePath: filename
     });
   } catch (error: any) {
     console.error("Error uploading file:", error);

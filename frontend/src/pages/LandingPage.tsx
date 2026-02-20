@@ -10,16 +10,18 @@ import {
   Button,
 } from "@mantine/core";
 import { Dropzone } from "@mantine/dropzone";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconArrowBadgeRightFilled,
   IconUpload,
   IconX,
   IconFile,
+  IconSettings,
 } from "@tabler/icons-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Papa from "papaparse";
-import { uploadFile } from "../services/tasks.service";
+import { getCsvData, uploadFile } from "../services/tasks.service";
+import AnonymizeConfigModal from "../components/anonymize/AnonymizeConfigModal";
 
 const MAX_ROWS_PER_PAGE = 50;
 
@@ -33,6 +35,7 @@ export default function LandingPage() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [configModalOpened, { open: openConfigModal, close: closeConfigModal }] = useDisclosure(false);
 
   //calculations for pagination
   const totalPages = Math.ceil(csvData.length / MAX_ROWS_PER_PAGE);
@@ -45,23 +48,14 @@ export default function LandingPage() {
     if (inputFile) {
       console.log("Selected file:", inputFile);
       const response = await uploadFile(inputFile);
-      if(response.success){
-        setFileName(response.filePath ?? "");
-        Papa.parse(inputFile, {
-        header: true,
-        complete: (results) => {
-          setCsvData(results.data as CsvRow[]);
-          if (results.meta.fields) {
-            setHeaders(results.meta.fields);
-          }
-          setCurrentPage(1);
-        },
-        error: (error) => {
-          console.error("Error parsing input CSV", error);
-        },
-      });
-      }
-      else{
+      if (response.success) {
+        const uploadedFileName = response.filePath ?? "";
+        setFileName(uploadedFileName);
+        const csvResponse = await getCsvData(uploadedFileName);
+        setCsvData((csvResponse.data || []) as CsvRow[]);
+        setHeaders(csvResponse.headers || []);
+        setCurrentPage(1);
+      } else {
         console.log("Error uploading csv: ",response.errors);
       }
     }
@@ -69,32 +63,55 @@ export default function LandingPage() {
 
   if (csvData.length === 0) {
     return (
-      <Dropzone
-        onDrop={handleFileUpload}
-        accept={["text/csv"]}
-        w="100%"
-        h="100dvh"
-        bg="#000000"
-        bd={0}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Stack align="center" h="100%" gap="sm">
-          <Dropzone.Accept>
-            <IconFile size={36} stroke={1.5} color="#D8D8D8" />
-          </Dropzone.Accept>
-          <Dropzone.Reject>
-            <IconX size={36} stroke={1.5} color="#ff6b6b" />
-          </Dropzone.Reject>
-          <Dropzone.Idle>
-            <IconUpload size={36} stroke={1.5} color="#D8D8D8" />
-          </Dropzone.Idle>
-          <Text c="#D8D8D8">Drop CSV file here or click to upload</Text>
-        </Stack>
-      </Dropzone>
+      <>
+        <Dropzone
+          onDrop={handleFileUpload}
+          accept={["text/csv"]}
+          w="100%"
+          h="100dvh"
+          bg="#000000"
+          bd={0}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Stack align="center" h="100%" gap="sm">
+            <Dropzone.Accept>
+              <IconFile size={36} stroke={1.5} color="#D8D8D8" />
+            </Dropzone.Accept>
+            <Dropzone.Reject>
+              <IconX size={36} stroke={1.5} color="#ff6b6b" />
+            </Dropzone.Reject>
+            <Dropzone.Idle>
+              <IconUpload size={36} stroke={1.5} color="#D8D8D8" />
+            </Dropzone.Idle>
+            <Text c="#D8D8D8">Drop CSV file here or click to upload</Text>
+          </Stack>
+        </Dropzone>
+        <Button
+          variant="filled"
+          color="blue"
+          size="md"
+          radius="xl"
+          leftSection={<IconSettings size={18} />}
+          onClick={(e) => {
+            e.stopPropagation();
+            openConfigModal();
+          }}
+          style={{
+            position: "fixed",
+            bottom: 32,
+            right: 32,
+            padding: "12px 18px",
+            boxShadow: "0 8px 24px rgba(0, 0, 0, 0.35)",
+          }}
+        >
+          Configure Anonymization
+        </Button>
+        <AnonymizeConfigModal opened={configModalOpened} onClose={closeConfigModal} />
+      </>
     );
   } else {
     return (

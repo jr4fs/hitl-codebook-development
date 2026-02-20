@@ -5,15 +5,17 @@ This module contains all FastAPI route definitions for the Annotation Tool.
 Routes are organized by functionality and use dependency injection for services.
 """
 
-from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends
-from fastapi.responses import JSONResponse
-from typing import List
+from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends, Request
+from fastapi.responses import JSONResponse, Response
+from typing import List, Optional
 from pathlib import Path
+import json
 import asyncio
 
 from models.embedding_schemas import EmbedDatasetRequest, EmbedDatasetResponse
 from models.rule_synthesis_schema import RuleSynthesisRequest, RuleSynthesisResponse
 from services.embedding_service import EmbeddingService
+from services.anonymizer.service import anonymize_csv_bytes, get_config_defaults
 from models.ollama_adapter import InferenceRequest, InferenceResponse, BatchInferenceRequest, BatchInferenceResponse, BatchInferenceSummary
 from services.chat.chat_service import ChatService
 from models.prompt_templating_model import PromptTemplate
@@ -21,6 +23,7 @@ from services.chat.rule_synthesis_service import RuleSynthesisService
 
 embedding_router = APIRouter(prefix="/embedding", tags=["embedding"])
 chat_router = APIRouter(prefix="/inference", tags=["inference"])
+anonymize_router = APIRouter(prefix="/anonymize", tags=["anonymize"])
 
 
 @embedding_router.post("/run", response_model=EmbedDatasetResponse)
@@ -55,6 +58,56 @@ async def run_embedding(request: EmbedDatasetRequest):
         raise HTTPException(
             status_code=500, detail=f"Error processing embedding request: {str(e)}"
         )
+
+
+@anonymize_router.post("/csv")
+async def anonymize_csv(
+    file: UploadFile = File(...),
+    config: Optional[str] = Form(None)
+):
+    """
+    Anonymize a CSV file with optional config overrides.
+    
+    Args:
+        file: CSV file to anonymize
+        config: Optional JSON string with config overrides from DB
+    """
+    try:
+        csv_bytes = await file.read()
+        if not csv_bytes:
+            raise HTTPException(status_code=400, detail="CSV payload is empty")
+
+        # Parse config overrides if provided
+        config_overrides = None
+        if config:
+            try:
+                config_overrides = json.loads(config)
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=400, detail="Invalid config JSON")
+
+        anonymized = anonymize_csv_bytes(
+            csv_bytes,
+            text_columns=["Notes"],
+            config_overrides=config_overrides
+        )
+        return Response(content=anonymized, media_type="text/csv")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error anonymizing CSV: {str(e)}")
+
+
+@anonymize_router.get("/defaults")
+async def get_anonymize_defaults():
+    """
+    Return the default anonymization config values parsed from config.yaml.
+    Used by Node.js backend to get defaults instead of hardcoding.
+    """
+    try:
+        defaults = get_config_defaults()
+        return JSONResponse(content={"success": True, "defaults": defaults})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading defaults: {str(e)}")
 
 
 @chat_router.post("/", response_model=InferenceResponse)
