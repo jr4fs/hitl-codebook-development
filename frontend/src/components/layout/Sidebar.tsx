@@ -5,6 +5,8 @@ import {
   Button,
   ActionIcon,
   ScrollArea,
+  Center,
+  LoadingOverlay
 } from "@mantine/core";
 import {
   IconSquarePlus,
@@ -37,8 +39,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>();
 
+  // Fetch user tasks, updates with every access token refresh
   useEffect(() => {
     const fetchTasks = async () => {
       if (!accessToken) return;
@@ -86,9 +89,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           )}
         </Button>
         <ActionIcon
-        onClick={() => {
-          navigate('/');
-        }}
+          onClick={() => {
+            navigate('/');
+          }}
           w="100%"
           size="xl"
           radius="md"
@@ -129,7 +132,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
       <Stack h="100%" bg="#1E1E1E" w="280px">
         <Stack h="auto" pl="md" pr="md" pt="md" pb="0px">
           <Flex justify="space-between" direction="row">
-            <Text c="white" fz="36px" pb="64px" onClick={() => {navigate('/');}}>
+            <Text c="white" fz="36px" pb="64px" onClick={() => { navigate('/'); }}>
               AT
             </Text>
             <ActionIcon
@@ -144,9 +147,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           </Flex>
 
           <Button
-          onClick={() => {
-            navigate('/');
-          }}
+            onClick={() => {
+              navigate('/');
+            }}
             fullWidth
             radius="md"
             c="white"
@@ -163,26 +166,29 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           <Text c="dimmed">Your Tasks</Text>
         </Stack>
         <ScrollArea h="auto" type="auto">
+          <LoadingOverlay visible={loading} zIndex={1000} overlayProps={{ radius: "sm", blur: 2, color: "#1E1E1E" }} loaderProps={{ color: '#D8D8D8', type: 'bars' }} />
           <Stack pl="md" pr="md" pt="md" pb="0px">
-            {tasks.map((task) => (
-              <Button
-              onClick={() => {
-                navigate(`/new-task/${task._id}`);
-              }}
-                key={task._id}
-                fullWidth
-                radius="md"
-                c="white"
-                p="md"
-                h="auto"
-                justify="space-between"
-                rightSection={<IconFile size={28} stroke={1.5} />}
-                fz="md"
-                classNames={{ root: "sidebar-button" }}
-              >
-                {task.name}
-              </Button>
-            ))}
+            {error
+              ? <Center><Text c="#D8D8D8"> {error} </Text></Center>
+              : tasks.map((task) => (
+                <Button
+                  onClick={() => {
+                    navigate(`/new-task/${task._id}`);
+                  }}
+                  key={task._id}
+                  fullWidth
+                  radius="md"
+                  c="white"
+                  p="md"
+                  h="auto"
+                  justify="space-between"
+                  rightSection={<IconFile size={28} stroke={1.5} />}
+                  fz="md"
+                  classNames={{ root: "sidebar-button" }}
+                >
+                  {task.name}
+                </Button>
+              ))}
           </Stack>
         </ScrollArea>
         <Button

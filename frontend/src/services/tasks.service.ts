@@ -1,8 +1,8 @@
-import { CreateTaskRequest, CreateTaskResponse, TaskQueryResponse, UploadFileResponse } from "@common/types/tasks";
+import { CreateTaskRequest, CreateTaskResponse, TaskQueryResponse, UploadFileResponse, UpdateTaskRequest } from "@common/types/tasks";
 import { apiClient } from "../lib/apiClient";
 
 export async function createTask(
-    payload: CreateTaskRequest
+    payload: CreateTaskRequest | UpdateTaskRequest
 ): Promise<CreateTaskResponse> {
     const { data } = await apiClient.post<CreateTaskResponse>(
         "/api/tasks/createTask",
@@ -39,3 +39,9 @@ export async function getCsvData(fileName: string) {
     return data;
 }
 
+export async function checkValFileExists(fileName: string): Promise<boolean> {
+    const { data } = await apiClient.get<{ success: boolean; exists: boolean }>(
+        `/api/tasks/checkValFile/${encodeURIComponent(fileName)}`
+    );
+    return data.exists;
+}

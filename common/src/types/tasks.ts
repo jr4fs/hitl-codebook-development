@@ -27,10 +27,26 @@ export interface CreateTaskRequest {
   userID: string;
 }
 
+export interface UpdateTaskRequest {
+  taskId: string;
+  name?: string;
+  description?: string;
+  type?: "Multiclass" | "Single-class";
+  labels?: LabelItem[];
+  columns?: string[];
+}
+
 export interface CreateTaskResponse {
   success: boolean;
   message?: string;
   taskId?: string;
+  task?: Task;
+  errors?: Record<string, string[]>;
+}
+
+export interface UpdateTaskResponse {
+  success: boolean;
+  message?: string;
   task?: Task;
   errors?: Record<string, string[]>;
 }

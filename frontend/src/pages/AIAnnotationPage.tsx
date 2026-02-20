@@ -1,0 +1,550 @@
+import {
+  Text,
+  Paper,
+  Title,
+  Group,
+  Button,
+  Textarea,
+  Stack,
+  ScrollArea,
+  LoadingOverlay,
+  Center,
+  Box,
+  Grid,
+  Divider,
+  Badge,
+  ActionIcon,
+  Tooltip,
+} from "@mantine/core";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { inference, batchInference } from "../services/inference.service";
+import { RuleSynthesisItem, RuleSynthesisRequest } from "@common/types/ruleSynthesis";
+import { useTaskData } from "../hooks/useTaskData";
+import { AnnotationItem } from "@common/types/annotations";
+import { ruleSynthesis } from "../services/ruleSynthesis.service";
+import { IconCheck, IconX, IconArrowLeft, IconArrowRight, IconBook, IconPlus, IconTrash, IconInfoCircle } from "@tabler/icons-react";
+import { InferenceRequest, InferenceResponse, BatchInferenceRequest, BatchInferenceSummary } from "@common/types/inference";
+
+export default function AnnotationPage() {
+  const navigate = useNavigate();
+  const { loading, task, annotations } = useTaskData();
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [generatedLabels, setGeneratedLabels] = useState<string[]>(["Click next to generate this content"]);
+  const [generatedSpanText, setGeneratedSpanText] = useState<string>("Click next to generate this content");
+  const [generatedReasoning, setGeneratedReasoning] = useState<string>("Click next to generate this content");
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  //const [currentBatchIndex, setCurrentBatchIndex] = useState<number>(0);
+  const batchSize = 1;
+  const currentBatchIndex = Math.floor(currentIndex / batchSize);
+
+  // Performance Metrics State
+  const [totalCorrect, setTotalCorrect] = useState<number>(0);
+  const [totalAttempted, setTotalAttempted] = useState<number>(0);
+  const [predictedAccuracy, setPredictedAccuracy] = useState<number | null>(null);
+
+  // Codebook State
+  const [codebook, setCodebook] = useState<string[]>([]);
+  const [newRule, setNewRule] = useState("");
+
+  interface AIAssisted {
+    label: string[];
+    reason: string;
+    span_text: string;
+    isCorrect: boolean | null;
+    feedback: string;
+  }
+
+  // Annotation States for current batch
+  const [batchResults, setBatchResults] = useState<Record<number, AIAssisted>>({});
+
+  const datasetShuffler = (
+    dataset: AnnotationItem[],
+    ratio: number,
+  ) => {
+    const n = dataset.length;
+    const shuffled = [...dataset];
+    for (let i = n - 1; i > 0; i--) {
+      const randIndex = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[randIndex]] = [shuffled[randIndex], shuffled[i]];
+    }
+    // Ensure at least one sample in the split if the dataset is not empty
+    const splitIndex = n > 0 ? Math.max(1, Math.floor(n * ratio)) : 0;
+    return {
+      tenPercent: shuffled.slice(0, splitIndex),
+      ninetyPercent: shuffled.slice(splitIndex),
+    };
+  };
+
+  const [workingSamples, setWorkingSamples] = useState<{
+    tenPercent: AnnotationItem[];
+    ninetyPercent: AnnotationItem[];
+  } | null>(null);
+
+  // Persist the 10/90 split in localStorage so a page refresh restores the same
+  // partition. Keyed by taskId to avoid cross-task collisions.
+  useEffect(() => {
+    if (!annotations || annotations.length === 0 || !task?._id || workingSamples) return;
+
+    const storageKey = `workingSamples_${task._id}`;
+    const stored = localStorage.getItem(storageKey);
+
+    if (stored) {
+      try {
+        setWorkingSamples(JSON.parse(stored));
+        return;
+      } catch {
+        // Corrupt entry — fall through and recompute
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    const split = datasetShuffler(annotations as any, 0.1);
+    localStorage.setItem(storageKey, JSON.stringify(split));
+    setWorkingSamples(split);
+  }, [annotations, task]);
+
+  const handleClickAnnotation = async () => {
+    if (!currentSample) return;
+    setIsLoading(true);
+    const payload: InferenceRequest = {
+      labels: task?.labels || [],
+      task_definition: task?.description || "",
+      case_notes: currentSample.sampleContent["text_combined"],
+      model_name: "mistral:7b",
+      task_type: "annotation",
+      user_input: codebook.join("\n") // Rules synthesized by an LLM and the user's rules
+    };
+    const response: InferenceResponse = await inference(payload);
+    if (response) {
+      console.log("MODEL RESPONSE: ", response);
+      setBatchResults((sample: Record<number, AIAssisted>) => ({
+        ...sample,
+        [currentIndex]: {
+          label: response.label,
+          reason: response.reason,
+          span_text: response.span_text,
+          isCorrect: sample[currentIndex]?.isCorrect ?? null,
+          feedback: sample[currentIndex]?.feedback ?? "",
+        }
+      }));
+      setGeneratedLabels(response.label);
+      setGeneratedSpanText(response.span_text);
+      setGeneratedReasoning(response.reason);
+    }
+    console.log(response);
+    setIsLoading(false);
+  }
+  // Trigger inference whenever the index changes or when samples first become available.
+  useEffect(() => {
+    if (!workingSamples || currentIndex >= workingSamples.tenPercent.length) return;
+    handleClickAnnotation();
+  }, [currentIndex, workingSamples]);
+
+  const currentSample = workingSamples && currentIndex > -1 ? workingSamples?.tenPercent[currentIndex] : null;
+  const totalSamples = workingSamples?.tenPercent.length || 0;
+
+  const actualBatchSize = Math.min(
+    batchSize,
+    totalSamples - (Math.floor(currentIndex / batchSize) * batchSize)
+  );
+
+  if (loading) {
+    return (
+      <Center h="100vh" bg="black">
+        <Stack align="center" gap="md">
+          <LoadingOverlay visible={true} overlayProps={{ blur: 2 }} />
+          <Text c="white">Loading annotation data...</Text>
+        </Stack>
+      </Center>
+    );
+  }
+
+  if (!task || !annotations || annotations.length === 0) {
+    return (
+      <Center h="100vh" bg="black">
+        <Stack align="center" gap="md">
+          <Text c="white">No data available for annotation</Text>
+          <Button onClick={() => navigate("/")}>Go Home</Button>
+        </Stack>
+      </Center>
+    );
+  }
+
+  const totalBatches = Math.ceil(totalSamples / batchSize);
+  const currentBatchProgress = (currentIndex % batchSize) + 1;
+
+  const addRule = () => {
+    if (newRule.trim()) {
+      setCodebook([...codebook, newRule.trim()]);
+      setNewRule("");
+    }
+  };
+
+  const removeRule = (index: number) => {
+    setCodebook(codebook.filter((_, i) => i !== index));
+  };
+
+  const handleNextClick = () => {
+    if (currentIndex < totalSamples - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+    else {
+      setCurrentIndex(totalSamples);
+    }
+  }
+
+  const handleCommitBatch = async () => {
+    setIsLoading(true)
+    try {
+      const startIdx = currentBatchIndex * batchSize;
+      const endIdx = startIdx + batchSize;
+
+      // Calculate batch metrics before synthesis
+      const batchResultsList = Object.entries(batchResults).filter(([idx]) => {
+        const i = parseInt(idx);
+        return i >= startIdx && i < endIdx;
+      });
+
+      const batchCorrect = batchResultsList.filter(([_, res]) => res.isCorrect === true).length;
+      const batchAttempted = batchResultsList.length;
+
+      setTotalCorrect(prev => prev + batchCorrect);
+      setTotalAttempted(prev => prev + batchAttempted);
+
+      const rule_synthesis_items: RuleSynthesisItem[] = batchResultsList
+        .filter(([_, result]) => result.isCorrect === false) // Only pick incorrect annotations
+        .map(([idx, result]) => {
+          const i = parseInt(idx);
+          const sample = workingSamples?.tenPercent[i];
+          // Create rule synthesis item
+          return {
+            sample_text: sample?.sampleContent["text_combined"] || "",
+            ai_labels: result.label,
+            ai_reasoning: result.reason,
+            ai_span_text: result.span_text,
+            ground_truth_labels: sample?.labels || [],
+            user_feedback: result.feedback // The actual string from the textarea
+          };
+        });
+
+      // Only perform rule synthesis if there are any incorrect model annotations
+      if (rule_synthesis_items.length > 0) {
+        const request: RuleSynthesisRequest = {
+          payload: rule_synthesis_items,
+          task_type: "rule_synthesis",
+          model_name: "mistral:7b"
+        };
+        const response = await ruleSynthesis(request);
+
+        if (response.success) {
+          // Append new rules to the live codebook
+          setCodebook(prev => [...prev, ...response.rules]);
+        }
+      }
+    } catch (error: any) {
+      console.error("Failed to synthesize rules:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const handleBatchInferenceClick = async () => {
+    if (!workingSamples?.ninetyPercent.length || !task) return;
+    //setIsLoading(true);
+    try {
+      const payload: BatchInferenceRequest[] = workingSamples.ninetyPercent.map(sample => ({
+        labels: task.labels,
+        task_definition: task.description || "",
+        case_notes: sample.sampleContent["text_combined"] || "",
+        model_name: "mistral:7b",
+        task_type: "annotation",
+        user_input: codebook.join("\n"),
+        ground_truth_labels: (sample.labels || []).map(labelName => {
+          const taskLabel = task.labels.find(l => l.name === labelName);
+          return taskLabel || { name: labelName, definition: "", keywords: [] };
+        })
+      }));
+
+      const summary = await batchInference(payload);
+      if (summary) {
+        setPredictedAccuracy(summary.accuracy);
+      }
+    } catch (error) {
+      console.error("Batch evaluation failed:", error);
+    } finally {
+      //setIsLoading(false);
+    }
+  };
+
+  return (
+    <Box h="100vh" bg="black" c="#D8D8D8">
+      <Grid gutter={0} h="100%">
+        {/* Main Annotation Area */}
+        <Grid.Col span={8} h="100%" style={{ borderRight: '1px solid #333' }}>
+          <Stack h="100%" p="xl" gap="md">
+            {/* Header / Batch Ribbon */}
+            <Group justify="space-between">
+              <Group gap="sm">
+                <Stack gap={0}>
+                  <Title order={3} c="white">AI Assisted Annotation</Title>
+                  <Text size="xs" c="dimmed">Task: {task.name}</Text>
+                </Stack>
+
+                <Group gap="xs" ml="xs">
+                  <Tooltip label={`Current Accuracy: ${totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : 0}% (${totalCorrect}/${totalAttempted})`}>
+                    <Badge
+
+                      variant="filled"
+                      color={totalAttempted === 0 ? "gray" : (totalCorrect / totalAttempted) > 0.8 ? "green" : "orange"}
+                      size="xl"
+                      fz="xs"
+                      circle
+                      style={{ border: '1px solid #444' }}
+                    >
+                      {totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : "—"}
+                    </Badge>
+                  </Tooltip>
+                  <Tooltip label="Unseen Data Accuracy (Predicted)">
+                    <Badge
+                      variant="outline"
+                      color={predictedAccuracy === null ? "gray" : predictedAccuracy > 0.8 ? "green" : "orange"}
+                      size="xl"
+                      fz="xs"
+                      circle
+                      style={{ border: '1px solid #333' }}
+                    >
+                      {predictedAccuracy === null ? "—" : Math.round(predictedAccuracy * 100)}
+                    </Badge>
+                  </Tooltip>
+                </Group>
+              </Group>
+              <Group gap="xs">
+                {Array.from({ length: Math.min(totalBatches, 5) }).map((_, i) => (
+                  <Badge
+                    key={i}
+                    variant={i === currentBatchIndex ? "filled" : "outline"}
+                    color={i < currentBatchIndex ? "green" : "gray"}
+                    size="lg"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    Batch {i + 1}
+                  </Badge>
+                ))}
+                {totalBatches > 5 && <Text size="xs" c="dimmed">...</Text>}
+              </Group>
+            </Group>
+
+            <Divider color="#333" />
+
+            {/* Progress in Batch */}
+            <Group justify="space-between">
+              <Text size="sm" fw={500}>
+                Batch Progress: {currentBatchProgress} / {actualBatchSize}
+              </Text>
+              <Text size="sm" c="dimmed">
+                Overall: {currentIndex + 1} / {totalSamples}
+              </Text>
+            </Group>
+
+            {/* Case Content */}
+            <Paper bg="#1A1A1A" p="md" radius="md" style={{ border: '1px solid #333', flex: 1 }}>
+              <ScrollArea h="150">
+                <Text size="lg" style={{ whiteSpace: 'pre-wrap' }}>
+                  {currentSample?.sampleContent["text_combined"] || "No text available"}
+                </Text>
+              </ScrollArea>
+            </Paper>
+
+            {/* AI Output Section */}
+            <Paper bg="#222" p="md" radius="md" style={{ border: '1px solid #444' }}>
+              <LoadingOverlay visible={isLoading} overlayProps={{ blur: 1 }} />
+              <Stack gap="xs">
+                <Group justify="space-between">
+                  <Title order={5} c="white">AI Suggestion</Title>
+                  <Badge color="blue" variant="light">{currentSample?.sampleId}</Badge>
+                </Group>
+
+                <Group gap="sm">
+                  <Text fw={700}>Labels:</Text>
+                  {generatedLabels.map((label) => (
+                    <Badge size="lg" variant="filled" color="green">
+                      {label || "..."}
+                    </Badge>
+                  ))}
+
+                </Group>
+
+                <Stack gap={4}>
+                  <Text fw={700} size="sm">Span Text:</Text>
+                  <Text size="sm" bg="#333" p="xs" style={{ borderRadius: '4px' }}>
+                    {generatedSpanText || "..."}
+                  </Text>
+                </Stack>
+
+                <Stack gap={4}>
+                  <Text fw={700} size="sm">Reasoning:</Text>
+                  <Text size="sm" fs="italic" c="dimmed">
+                    {generatedReasoning || "Generating reasoning..."}
+                  </Text>
+                </Stack>
+              </Stack>
+            </Paper>
+
+
+            {/* User Controls */}
+            <Paper p="md" bg="#111" radius="md">
+              <Stack gap="md">
+                <Group justify="center" gap="xl">
+                  <Button
+                    leftSection={<IconCheck size={20} />}
+                    color="green"
+                    variant={batchResults[currentIndex]?.isCorrect === true ? "filled" : "light"}
+                    onClick={() => setBatchResults((sample: Record<number, AIAssisted>) => ({
+                      ...sample,
+                      [currentIndex]: { ...sample[currentIndex], isCorrect: true }
+                    }))}
+                  >
+                    Correct
+                  </Button>
+                  <Button
+                    leftSection={<IconX size={20} />}
+                    color="red"
+                    variant={batchResults[currentIndex]?.isCorrect === false ? "filled" : "light"}
+                    onClick={() => setBatchResults(prev => ({
+                      ...prev,
+                      [currentIndex]: { ...prev[currentIndex], isCorrect: false }
+                    }))}
+                  >
+                    Incorrect
+                  </Button>
+                </Group>
+
+                {batchResults[currentIndex]?.isCorrect === false && (
+                  <Stack gap="xs">
+                    <Group gap="xs">
+                      <Text size="sm" fw={600}>Ground Truth Labels:</Text>
+                      <Group gap={4}>
+                        {currentSample?.labels?.map(l => (
+                          <Badge key={l} variant="light" color="gray">{l}</Badge>
+                        ))}
+                      </Group>
+                    </Group>
+                    <Textarea
+                      placeholder="Why was the AI wrong? (This will help the rule synthesizer)"
+                      variant="filled"
+                      size="sm"
+                      bg="#1A1A1A"
+                      styles={{ input: { color: '#1A1A1A' } }}
+                      onChange={(e) => {
+                        const userFeedback = e.currentTarget.value;
+                        setBatchResults((sample: Record<number, AIAssisted>) => ({
+                          ...sample,
+                          [currentIndex]: { ...sample[currentIndex], feedback: userFeedback }
+                        }))
+                      }}
+                    />
+                  </Stack>
+                )}
+
+                <Group justify="space-between" mt="sm">
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    leftSection={<IconArrowLeft size={16} />}
+                    disabled={currentIndex === 0}
+                    onClick={() => setCurrentIndex(prev => prev - 1)}
+                  >
+                    Previous
+                  </Button>
+
+                  {codebook.length > 0 &&
+                    <Button
+                      variant="filled"
+                      color="green"
+                      onClick={() => handleBatchInferenceClick()}
+                    >
+                      Evaluate
+                    </Button>}
+
+                  <Button
+                    rightSection={currentBatchProgress === actualBatchSize ? <IconBook size={16} /> : <IconArrowRight size={16} />}
+                    color={currentBatchProgress === actualBatchSize ? "blue" : "indigo"}
+                    disabled={batchResults[currentIndex]?.isCorrect == null || (batchResults[currentIndex]?.isCorrect === false && !batchResults[currentIndex]?.feedback?.trim())}
+                    loading={isLoading}
+                    onClick={async () => {
+                      if (currentBatchProgress === actualBatchSize) {
+                        await handleCommitBatch();
+                      }
+                      handleNextClick();
+                    }}
+                  >
+                    {currentBatchProgress === actualBatchSize ? "Commit Batch" : "Next Sample"}
+                  </Button>
+                </Group>
+              </Stack>
+            </Paper>
+          </Stack>
+        </Grid.Col>
+
+        {/* Sidebar: Live Codebook */}
+        <Grid.Col span={4} h="100%" bg="#0A0A0A">
+          <Stack h="100%" p="xl" gap="md">
+            <Group justify="space-between">
+              <Group gap="xs">
+                <IconBook color="#D8D8D8" />
+                <Title order={4} c="white">Live Codebook</Title>
+              </Group>
+              <Tooltip label="These rules guide the AI for future batches">
+                <IconInfoCircle size={18} color="gray" />
+              </Tooltip>
+            </Group>
+
+            <Divider color="#333" />
+
+            <Stack gap="sm" style={{ flex: 1, overflowY: 'auto' }}>
+              {codebook.length === 0 ? (
+                <Center h={200}>
+                  <Text c="dimmed" size="sm" ta="center">
+                    No rules generated yet.<br />Complete a batch to see AI synthesis.
+                  </Text>
+                </Center>
+              ) : (
+                codebook.map((rule, idx) => (
+                  <Paper key={idx} p="sm" bg="#1A1A1A" radius="sm" style={{ border: '1px solid #333' }}>
+                    <Group align="flex-start" wrap="nowrap">
+                      <Text size="sm" style={{ flex: 1 }}>{rule}</Text>
+                      <ActionIcon size="sm" color="red" variant="subtle" onClick={() => removeRule(idx)}>
+                        <IconTrash size={14} />
+                      </ActionIcon>
+                    </Group>
+                  </Paper>
+                ))
+              )}
+            </Stack>
+
+            <Divider color="#333" />
+
+            <Stack gap="xs">
+              <Text size="xs" fw={700} c="dimmed" tt="uppercase">Add Manual Rule</Text>
+              <Group gap="xs">
+                <Textarea
+                  placeholder="Enter a custom rule..."
+                  variant="filled"
+                  size="xs"
+                  style={{ flex: 1 }}
+                  value={newRule}
+                  onChange={(e) => setNewRule(e.currentTarget.value)}
+                />
+                <ActionIcon size="lg" color="blue" onClick={addRule}>
+                  <IconPlus size={20} />
+                </ActionIcon>
+              </Group>
+            </Stack>
+          </Stack>
+        </Grid.Col>
+      </Grid>
+    </Box>
+  );
+}

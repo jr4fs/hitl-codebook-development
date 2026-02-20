@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createTask, getUserTasks, getTaskByID, uploadTaskFile, getCsvData } from "../services/tasks.service";
+import { createTask, getUserTasks, getTaskByID, uploadTaskFile, getCsvData, checkValFileExists } from "../services/tasks.service";
 import { uploadCSV } from "../utils/fileUpload";
 import { authenticateToken } from '../middleware/auth.middleware';
 
@@ -23,5 +23,8 @@ router.get('/getTask/:taskId', getTaskByID);
 
 // Get CSV file when reloading a task
 router.get('/csv/:fileName', getCsvData);
+
+// Check if validation file exists
+router.get('/checkValFile/:fileName', checkValFileExists);
 
 export default router;
