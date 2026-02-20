@@ -40,7 +40,7 @@ async function getAnonymizeConfigFromDB(): Promise<AnonymizeConfig | null> {
   }
 }
 
-//Validates task creation request payload
+// Validates task creation request payload
 function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
   const errors: string[] = [];
 
@@ -81,7 +81,7 @@ function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
   };
 }
 
-//Creates a new task and stores it in the TaskDetails collection
+// Creates a new task and stores it in the TaskDetails collection
 export async function createTask(req: AuthRequest, res: Response) {
 
   const userID = req.user?.userId;
@@ -117,9 +117,12 @@ export async function createTask(req: AuthRequest, res: Response) {
     }
 
     const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
+    const taskId = req.body.taskId?.toString().trim();
+
+    console.log(`[createTask] userID: ${userID}, taskId in request: ${taskId}`);
 
     // Create task document
-    const newTask: Omit<Task, "_id"> = {
+    const taskData: Omit<Task, "_id"> = {
       name: payload.name,
       description: payload.description,
       type: payload.type,
@@ -127,11 +130,39 @@ export async function createTask(req: AuthRequest, res: Response) {
       file: payload.file,
       columns: payload.columns,
       userID: userID,
-      createdAt: new Date().toISOString(),
+      createdAt: req.body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    const result = await taskDetailsCollection.insertOne(newTask);
+    if (taskId) {
+      console.log(`[createTask] Attempting update for taskId: ${taskId}`);
+      const result = await taskDetailsCollection.updateOne(
+        { _id: new ObjectId(taskId) as any, userID: userID },
+        { $set: taskData }
+      );
+      console.log(`[createTask] Update result: matchedCount=${result.matchedCount}, modifiedCount=${result.modifiedCount}`);
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Task not found or you don't have permission to update it"
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Task updated successfully",
+        taskId: taskId,
+        task: {
+          _id: taskId,
+          ...taskData
+        }
+      });
+    }
+
+    console.log(`[createTask] No taskId provided, performing insertOne`);
+    const result = await taskDetailsCollection.insertOne(taskData);
+    console.log(`[createTask] insertOne success: ${result.insertedId}`);
 
     return res.status(201).json({
       success: true,
@@ -139,7 +170,7 @@ export async function createTask(req: AuthRequest, res: Response) {
       taskId: result.insertedId.toString(),
       task: {
         _id: result.insertedId.toString(),
-        ...newTask
+        ...taskData
       }
     });
   } catch (error: any) {
@@ -151,7 +182,7 @@ export async function createTask(req: AuthRequest, res: Response) {
   }
 }
 
-//Retrieves all tasks for a specific user
+// Retrieves all tasks for a specific user
 export async function getUserTasks(req: AuthRequest, res: Response) {
   try {
     const userID = req.user?.userId;
@@ -182,7 +213,7 @@ export async function getUserTasks(req: AuthRequest, res: Response) {
   }
 }
 
-//Retrieves all tasks for a specific user
+// Retrieves all tasks for a specific user
 export async function getTaskByID(req: AuthRequest, res: Response) {
   try {
     const userID = req.user?.userId;
@@ -228,7 +259,7 @@ export async function getTaskByID(req: AuthRequest, res: Response) {
   }
 }
 
-/**
+/*
  * Handles CSV file upload using multer
  * Returns the stored filename to be used in task creation
  */
@@ -331,9 +362,10 @@ export async function getCsvData(req: AuthRequest, res: Response) {
     };
 
     // Read all files using PapaParse
-    const mainFile = await fileExists(fileName);
-    const valFile = await valFileExists(fileName);
-    const restFile = await restFileExists(fileName);
+    const mainFile = fileExists(fileName);
+    const valFile = valFileExists(fileName);
+    const restFile = restFileExists(fileName);
+
     if (mainFile.exists) {
       response.file = await readCsvFile(mainFile.path);
       if (response.file.length > 0) {
@@ -342,17 +374,15 @@ export async function getCsvData(req: AuthRequest, res: Response) {
     }
 
     if (valFile.exists) {
-      response.file = await readCsvFile(valFile.path);
-      if (response.file.length > 0) {
-        response.headers = Object.keys(response.file[0]);
+      response.val_file = await readCsvFile(valFile.path);
+      // If we only have val data, use its headers
+      if (response.headers.length === 0 && response.val_file.length > 0) {
+        response.headers = Object.keys(response.val_file[0]);
       }
     }
 
-    if (valFile.exists) {
-      response.file = await readCsvFile(valFile.path);
-      if (response.file.length > 0) {
-        response.headers = Object.keys(response.file[0]);
-      }
+    if (restFile.exists) {
+      response.rest_file = await readCsvFile(restFile.path);
     }
 
     if (response.file.length === 0) {
@@ -370,14 +400,37 @@ export async function getCsvData(req: AuthRequest, res: Response) {
       headers: response.headers,
       fileName: fileName
     });
-
-
   } catch (error: any) {
     console.error("Error retrieving file:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to retrieve file",
       error: error
+    });
+  }
+}
+
+export async function checkValFileExists(req: AuthRequest, res: Response) {
+  try {
+    const { fileName } = req.params;
+    if (!fileName) {
+      return res.status(400).json({
+        success: false,
+        message: "File name is required"
+      });
+    }
+
+    const check = valFileExists(fileName);
+
+    return res.status(200).json({
+      success: true,
+      exists: check.exists
+    });
+  } catch (error: any) {
+    console.error("Error checking validation file existence:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
     });
   }
 }

@@ -6,7 +6,7 @@ export interface Label{
 
 export interface EmbedDatasetRequest{
     file_path: string;
-    text_col: string;
+    text_col: string[];
     id_col?: string;
     split_to_sentences?: boolean;
     model_name?: string;
@@ -14,14 +14,10 @@ export interface EmbedDatasetRequest{
     labels: Label[]
 }
 
-interface CsvRow {
-    [key: string]: string;
-  }
-
 export interface EmbedDatasetResponse{
     success: boolean;
     val_created: boolean;
     rest_created: boolean;
     file_name: string;
-    val_data?: CsvRow[]; 
+    val_data: Record<string, any>[]; 
 }

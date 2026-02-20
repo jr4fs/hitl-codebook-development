@@ -47,7 +47,31 @@ const initialState: UserState = {
   user: hydratedUser,
   accessToken: validAccessToken,
   refreshToken: validAccessToken ? storedRefreshToken : null
-};
+}
+// const getInitialUser = (): User | null => {
+//   const token = localStorage.getItem('accessToken');
+//   if (!token) return null;
+
+//   try {
+//     const decoded = jwtDecode<JWTPayload>(token);
+//     // Check if token is expired
+//     const currentTime = Date.now() / 1000;
+//     if ((decoded as any).exp && (decoded as any).exp < currentTime) {
+//       localStorage.removeItem('accessToken');
+//       return null;
+//     }
+
+//     return {
+//       id: decoded.userId,
+//       username: decoded.username,
+//       email: decoded.email,
+//       name: decoded.username //TODO: Implement taking in a name for the user on account creation OR remove name attribute
+//     };
+//   } catch (error) {
+//     localStorage.removeItem('accessToken');
+//     return null;
+//   }
+// };
 
 export const userSlice = createSlice({
   name: 'user',

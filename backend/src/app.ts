@@ -3,6 +3,7 @@ import cors from "cors";
 import accountRouter from "./routes/accounts";
 import tasksRouter from "./routes/tasks";
 import anonymizeRouter from "./routes/anonymize";
+import annotationsRouter from "./routes/annotations";
 
 export const app = express();
 
@@ -16,3 +17,4 @@ app.use(express.json());
 app.use("/api/account", accountRouter);
 app.use("/api/tasks", tasksRouter);
 app.use("/api/anonymize", anonymizeRouter);
+app.use("/api/annotate", annotationsRouter);

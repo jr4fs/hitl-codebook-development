@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routes import embedding_router, anonymize_router
+from api.routes import embedding_router, anonymize_router, chat_router
 
 def create_app() -> FastAPI:
     """
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(embedding_router)
     app.include_router(anonymize_router)
+    app.include_router(chat_router)
     
     # Root endpoint
     @app.get("/")

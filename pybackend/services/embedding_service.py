@@ -12,10 +12,10 @@ class EmbeddingService:
         self.request: EmbedDatasetRequest = request
         project_root = Path(__file__).parent.parent.parent  # Go up from pybackend/services to project root
         if os.path.isabs(request.file_path):
-            # If absolute path, use as-is
+            # If absolute filepath
             file_path = request.file_path
         else:
-            # If relative (just filename), resolve from shared_uploads
+            # If only file name, resolve filepath from shared_uploads
             file_path = project_root / 'shared_uploads' / request.file_path
         self.df = pd.read_csv(str(file_path)).head(1000)
         self.df["example_id"] = range(1, len(self.df) + 1)
@@ -25,13 +25,14 @@ class EmbeddingService:
     def run(self):
         dbembed_service_obj = DatasetEmbeddingService(
             df = self.df,
-            text_col=self.request.text_col,
+            text_cols=self.request.text_col,
             id_col=self.request.id_col,
-            split_sent=self.request.split_to_sentences,  # sentences → better retrieval
+            split_sent=self.request.split_to_sentences,  # split to sentences for better retrieval
             model_name=self.request.model_name,
             device=self.request.device
             )
         database_df, sbert_model = dbembed_service_obj.build_embedding_database()
+        self.df = dbembed_service_obj.df
 
         print("Compelted embedding the dataset")
         print("Beginning to build the FAISS index")
@@ -70,7 +71,9 @@ class EmbeddingService:
         df_val.to_csv(self.val_file_path)
         df_rest.to_csv(self.rest_file_path)
 
-        return df_val
+        df_val_json = df_val.to_dict(orient='records')
+        
+        return df_val_json
         
         
 

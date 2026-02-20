@@ -6,12 +6,14 @@ import LandingPage from "./pages/LandingPage";
 import SubsamplingPage from "./pages/SubsamplingPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
+import AnnotationPage from "./pages/AIAnnotationPage";
+import ManualAnnotationPage from "./pages/ManualAnnotationPage";
 
 export const router = createBrowserRouter([
   {
     element: <PublicRoute />,
     children: [
-      //redirect to landing page if user is logged in
+      // Redirect to landing page if user is logged in
       {
         path: "/login",
         element: <LoginPage />,
@@ -37,6 +39,14 @@ export const router = createBrowserRouter([
           {
             path: "/new-task/:taskId?",
             element: <SubsamplingPage />,
+          },
+          {
+            path: "/manual-annotate/:taskId?",
+            element: <ManualAnnotationPage />,
+          },
+          {
+            path: "/auto-annotate/:taskId?",
+            element: <AnnotationPage />,
           },
         ],
       },
