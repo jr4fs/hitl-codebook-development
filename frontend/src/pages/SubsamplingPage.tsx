@@ -4,9 +4,13 @@ import {
   Stack,
   Table,
   Title,
+  Container,
   Paper,
   Pagination,
   Group,
+  Tooltip,
+  Modal,
+  Checkbox,
   ScrollArea,
   MultiSelect,
   TextInput,
@@ -19,23 +23,31 @@ import {
   Button,
   LoadingOverlay,
 } from "@mantine/core";
-import { IconTrash, IconPlus } from "@tabler/icons-react";
+import { IconTrash, IconPlus, IconInfoCircle } from "@tabler/icons-react";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTask, checkValFileExists } from "../services/tasks.service";
+import {
+  createTask,
+  checkValFileExists,
+  getUserTasks,
+} from "../services/tasks.service";
 import { embedDataset } from "../services/embedding.service";
 import { EmbedDatasetRequest } from "@common/types/embedding";
 import { useSelector } from "react-redux";
 import { IRootState } from "../store/store";
 import styles from "../components/layout/styles/Subsampling.module.css";
+import pageStyles from "./SubsamplingPage.module.css";
 import { useTaskData } from "../hooks/useTaskData";
 import { LabelItem } from "@common/types/tasks";
+import StepTrackerBanner from "../components/StepTrackerBanner";
 
 const MAX_ROWS_PER_PAGE = 10;
+type TaskType = "Multiclass" | "Single-class";
 
 export default function SubsamplingPage() {
   const navigate = useNavigate();
-  const { loading, csvData, subsampledData, headers, fileName, task } = useTaskData();
+  const { loading, csvData, subsampledData, headers, fileName, task } =
+    useTaskData();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [taskName, setTaskName] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
@@ -52,6 +64,25 @@ export default function SubsamplingPage() {
   const [subsampledCsv, setSubsampledCsv] = useState<Record<string, unknown>[]>(
     [],
   );
+  const [introOpen, setIntroOpen] = useState(false);
+  const [introDontShow, setIntroDontShow] = useState(false);
+  const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
+  const [codebookModalOpen, setCodebookModalOpen] = useState(false);
+  const [availableCodebooks, setAvailableCodebooks] = useState<
+    {
+      _id?: string;
+      name: string;
+      labels: LabelItem[];
+      type: TaskType;
+      codebook?: string[];
+    }[]
+  >([]);
+  const [isLoadingCodebooks, setIsLoadingCodebooks] = useState(false);
+  const [appliedCodebook, setAppliedCodebook] = useState<string[]>([]);
+  const [appliedCodebookSource, setAppliedCodebookSource] = useState<{
+    id?: string;
+    name?: string;
+  } | null>(null);
 
   const user = useSelector((state: IRootState) => state.user.user);
 
@@ -65,8 +96,62 @@ export default function SubsamplingPage() {
       setTaskLabels(
         task.labels || [{ name: "", definition: "", keywords: [] }],
       );
+      setAppliedCodebook(task.codebook || []);
+      if (task.codebookSourceTaskId || task.codebookSourceTaskName) {
+        setAppliedCodebookSource({
+          id: task.codebookSourceTaskId,
+          name: task.codebookSourceTaskName,
+        });
+      }
     }
   }, [task]);
+
+  const fetchCodebooks = async () => {
+    if (isLoadingCodebooks) return;
+    setIsLoadingCodebooks(true);
+    try {
+      const response = await getUserTasks();
+      if (response.success && response.tasks) {
+        const codebooks = response.tasks
+          .filter((t) => Array.isArray(t.codebook) && t.codebook.length > 0)
+          .map((t) => ({
+            _id: t._id,
+            name: t.name,
+            labels: t.labels,
+            type: t.type,
+            codebook: t.codebook,
+          }));
+        setAvailableCodebooks(codebooks);
+      }
+    } catch (error) {
+      console.error("Failed to load codebooks:", error);
+    } finally {
+      setIsLoadingCodebooks(false);
+    }
+  };
+
+  const handleOpenCodebooks = async () => {
+    setCodebookModalOpen(true);
+    await fetchCodebooks();
+  };
+
+  const handleApplyCodebook = (selected: {
+    _id?: string;
+    name: string;
+    labels: LabelItem[];
+    type: TaskType;
+    codebook?: string[];
+  }) => {
+    setTaskType(selected.type);
+    setTaskLabels(
+      selected.labels.length > 0
+        ? selected.labels
+        : [{ name: "", definition: "", keywords: [] }],
+    );
+    setAppliedCodebook(selected.codebook || []);
+    setAppliedCodebookSource({ id: selected._id, name: selected.name });
+    setCodebookModalOpen(false);
+  };
 
   useEffect(() => {
     if (subsampledData && subsampledData.length > 0) {
@@ -74,6 +159,41 @@ export default function SubsamplingPage() {
     }
   }, [subsampledData]);
 
+  useEffect(() => {
+    const hideIntro = localStorage.getItem("hideStep3Intro") === "true";
+    if (!hideIntro) {
+      setIntroShowCheckbox(true);
+      setIntroOpen(true);
+    }
+  }, []);
+
+  const handleCloseIntro = () => {
+    if (introShowCheckbox && introDontShow) {
+      localStorage.setItem("hideStep3Intro", "true");
+    }
+    setIntroOpen(false);
+  };
+
+  const handleHelp = () => {
+    setIntroShowCheckbox(false);
+    setIntroOpen(true);
+  };
+
+  const infoLabel = (label: string, description: string) => (
+    <Group gap={6} align="center">
+      <Text>{label}</Text>
+      <Tooltip label={description} withArrow position="right">
+        <ActionIcon
+          size="xs"
+          variant="subtle"
+          color="gray"
+          aria-label={`${label} info`}
+        >
+          <IconInfoCircle size={14} />
+        </ActionIcon>
+      </Tooltip>
+    </Group>
+  );
 
   // TODO: Filter CSV data based on chosen columns
   // useEffect(() => {
@@ -150,7 +270,11 @@ export default function SubsamplingPage() {
         task.description !== taskDesc ||
         task.name !== taskName ||
         JSON.stringify(task.labels) !== JSON.stringify(taskLabels) ||
-        task.type !== taskType;
+        task.type !== taskType ||
+        JSON.stringify(task.codebook || []) !==
+          JSON.stringify(appliedCodebook || []) ||
+        task.codebookSourceTaskId !== appliedCodebookSource?.id ||
+        task.codebookSourceTaskName !== appliedCodebookSource?.name;
 
       if (!hasChanges) {
         console.log("No changes detected, skipping save");
@@ -159,13 +283,18 @@ export default function SubsamplingPage() {
     }
 
     setIsSaving(true);
-    console.log(`[handleSaveTaskState] Saving task... currentTaskId: ${currentTaskId}`);
+    console.log(
+      `[handleSaveTaskState] Saving task... currentTaskId: ${currentTaskId}`,
+    );
 
     const payload: any = {
       name: taskName,
       description: taskDesc,
       type: taskType,
       labels: taskLabels,
+      codebook: appliedCodebook,
+      codebookSourceTaskId: appliedCodebookSource?.id,
+      codebookSourceTaskName: appliedCodebookSource?.name,
       columns: chosenCol,
       userID: user?.id || "00000",
       file: fileName,
@@ -180,6 +309,7 @@ export default function SubsamplingPage() {
       const response = await createTask(payload);
       if (response.success) {
         console.log("Saved Task state successfully", response);
+        window.dispatchEvent(new CustomEvent("tasks:updated"));
         // Replace the URL with /new-task/:taskId so that a page refresh can
         // recover state from the API instead of hitting an empty nav state.
         if (!currentTaskId && response.taskId) {
@@ -262,316 +392,472 @@ export default function SubsamplingPage() {
 
   if (loading) {
     return (
-      <Center h="100vh" bg="#1C1A1A">
-        <Text c="white" size="lg">
-          Loading task data...
-        </Text>
-      </Center>
+      <Box className={pageStyles.page}>
+        <Center className={pageStyles.emptyState}>
+          <Text size="lg">Loading task data...</Text>
+        </Center>
+      </Box>
     );
   }
 
   // Handle empty data
   if (!csvData || csvData.length === 0 || !headers || headers.length === 0) {
     return (
-      <Center h="100vh" bg="#1C1A1A">
-        <Stack align="center" gap="md">
-          <Text c="white" size="lg">
-            No data available
-          </Text>
-          <Text c="dimmed">Please upload a CSV file to get started</Text>
-          <Button onClick={() => navigate("/")}>Upload CSV File</Button>
-        </Stack>
-      </Center>
+      <Box className={pageStyles.page}>
+        <Center className={pageStyles.emptyState}>
+          <Stack align="center" gap="md">
+            <Text size="lg">No data available</Text>
+            <Text c="dimmed">Please upload a CSV file to get started</Text>
+            <Button
+              className={pageStyles.secondaryButton}
+              onClick={() => navigate("/")}
+            >
+              Upload CSV File
+            </Button>
+          </Stack>
+        </Center>
+      </Box>
     );
   }
 
   return (
-    <Flex
-      gap="md"
-      h="100dvh"
-      justify="flex-start"
-      direction="row"
-      wrap="nowrap"
-      bg="#1C1A1A"
-    >
-      {/* Left-side task information display */}
-      <Box w="30%" h="100%" c="white">
-        <Stack w="100%" h="100%" gap="md" justify="flex-start">
-          <MultiSelect
-            ml="15"
-            mr="15"
-            bg="#1C1A1A"
-            variant="filled"
-            fz="lg"
-            label="Select columns to use for annotation"
-            placeholder="Select columns"
-            clearable
-            searchable
-            nothingFoundMessage="Column does not exist"
-            limit={5}
-            data={headers}
-            value={chosenCol}
-            onChange={setChosenCol}
-            comboboxProps={{
-              transitionProps: { transition: "pop", duration: 200 },
-            }}
-            classNames={{
-              input: styles.input,
-              dropdown: styles.dropdown,
-              option: styles.option,
-            }}
-          ></MultiSelect>
-          <Title order={4} c="#D8D8D8" ml="15" mr="15">
-            Task Definition
-          </Title>
-          <TextInput
-            ml="15"
-            mr="15"
-            variant="filled"
-            label="Task name"
-            placeholder="Enter task name"
-            value={taskName}
-            onChange={(event) => setTaskName(event.currentTarget.value)}
-            classNames={{
-              input: styles.input,
-            }}
-          />
-          <Textarea
-            ml="15"
-            mr="15"
-            variant="filled"
-            label="Task Description"
-            placeholder="Enter task description"
-            value={taskDesc}
-            onChange={(event) => setTaskDesc(event.currentTarget.value)}
-            classNames={{
-              input: styles.input,
-            }}
-          />
-          <Select
-            ml="15"
-            mr="15"
-            variant="filled"
-            label="Select task type"
-            placeholder="Pick value"
-            data={["Multiclass", "Single-class"]}
-            value={taskType}
-            onChange={(_value) =>
-              setTaskType(_value as "Multiclass" | "Single-class")
-            }
-            classNames={{
-              input: styles.input,
-              dropdown: styles.dropdown,
-              option: styles.option,
-            }}
-          />
-          <ScrollArea
-            ml="15"
-            mr="15"
-            h="100%"
-            offsetScrollbars
-            scrollbarSize={6}
-            type="hover"
-          >
-            <Stack gap="md" pb="sm">
-              {taskLabels.map((label, idx) => (
-                <Paper
-                  key={idx}
-                  p="sm"
-                  radius="md"
-                  bg="#222020"
-                  withBorder
-                  style={{ borderColor: "#3A3A3A" }}
-                >
-                  <Group justify="space-between" align="center" mb="xs">
-                    <Text fw={600} c="#D8D8D8">
-                      Label {idx + 1}
-                    </Text>
-
-                    <ActionIcon
-                      variant="subtle"
-                      color="gray"
-                      onClick={() => removeLabelItem(idx)}
-                      disabled={taskLabels.length === 1}
-                      title={
-                        taskLabels.length === 1
-                          ? "At least 1 label is required"
-                          : "Remove label"
-                      }
-                    >
-                      <IconTrash size={18} />
-                    </ActionIcon>
-                  </Group>
-
-                  <Stack gap="xs">
-                    <TextInput
-                      variant="filled"
-                      label="Label name"
-                      placeholder={`Enter name for label ${idx + 1}`}
-                      value={label.name}
-                      onChange={(e) =>
-                        updateLabelName(idx, e.currentTarget.value)
-                      }
-                      classNames={{ input: styles.input }}
-                    />
-
-                    <TextInput
-                      variant="filled"
-                      label="Label Description"
-                      placeholder={`Enter description for label ${idx + 1}`}
-                      value={label.definition}
-                      onChange={(e) =>
-                        updateLabelDefinition(idx, e.currentTarget.value)
-                      }
-                      classNames={{ input: styles.input }}
-                    />
-
-                    <TagsInput
-                      variant="filled"
-                      label="Keywords"
-                      placeholder="Type keyword and press Enter"
-                      value={label.keywords}
-                      onChange={(values) => updateLabelKeywords(idx, values)}
-                      clearable
-                      classNames={{ input: styles.input }}
-                    />
-                  </Stack>
-                </Paper>
-              ))}
-              <Center>
-                <ActionIcon
-                  variant="filled"
-                  radius="xl"
-                  size="lg"
-                  color="gray"
-                  onClick={addLabelItem}
-                  title="Add label"
-                >
-                  <IconPlus size={20} />
-                </ActionIcon>
-              </Center>
-            </Stack>
-          </ScrollArea>
-          <Center>
-            <Button
-              variant="filled"
-              color="#2C2C2C"
-              w="200"
-              p="sm"
-              m="md"
-              h="auto"
-              mb="lg"
-              radius={50}
-              onClick={handleSaveTaskState}
-              loading={isSaving}
-            >
-              Save Task State
-            </Button>
-            <Button
-              variant="filled"
-              color="#2C2C2C"
-              w="200"
-              p="sm"
-              m="md"
-              h="auto"
-              mb="lg"
-              radius={50}
-              onClick={handleSubsampling}
-            >
-              Perform Subsampling
-            </Button>
-            <Button
-              variant="filled"
-              color="#2C2C2C"
-              w="200"
-              p="sm"
-              m="md"
-              h="auto"
-              mb="lg"
-              radius={50}
-              disabled={subsampledCsv.length === 0}
-              onClick={() => {
-                navigate(`/manual-annotate/${task?._id}`, {
-                  state: {
-                    subsampledCsv,
-                    task,
-                  },
-                });
-              }}
-            >
-              Annotate Data
-            </Button>
-          </Center>
-        </Stack>
-      </Box>
-
-      {/* Right-side dataset display */}
-      <Box w="65%" h="100%">
-        <LoadingOverlay
-          visible={isLoading}
-          zIndex={1000}
-          overlayProps={{ radius: 'sm', blur: 2 }}
-          loaderProps={{ color: 'white', type: 'bars' }}
-        />
-        <Stack c="#D8D8D8" h="100%" gap="md">
-          <Paper
-            bg="#1C1A1A"
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-            }}
-          >
-            <Title order={4}> {fileName}</Title>
-            <Text c="dimmed" fz="md">
-              {displayData.length} rows
-            </Text>
-            <Table.ScrollContainer
-              minWidth={500}
-              style={{ flex: 1, overflow: "auto" }}
-            >
-              <Table withColumnBorders withTableBorder borderColor="#D8D8D8">
-                <Table.Thead>
-                  <Table.Tr>
-                    {displayHeaders.map((header, index) => (
-                      <Table.Th key={index}>{header}</Table.Th>
-                    ))}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {paginatedData.map((row, rowIndex) => (
-                    <Table.Tr key={rowIndex}>
-                      {displayHeaders.map((header, cellIndex) => (
-                        <Table.Td key={cellIndex}>{String(row[header])}</Table.Td>
-                      ))}
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-          </Paper>
-          <Group justify="center" p="md">
-            <Pagination
-              total={totalPages}
-              value={currentPage}
-              onChange={setCurrentPage}
-              color="gray"
-              withEdges
-              styles={{
-                control: {
-                  backgroundColor: "#2C2C2C",
-                  border: "none",
-                  color: "#FFFFFF",
-                },
-                dots: {
-                  color: "#FFFFFF",
-                },
-              }}
+    <Box className={pageStyles.page}>
+      <div className={pageStyles.orbOne} />
+      <Modal
+        opened={introOpen}
+        onClose={handleCloseIntro}
+        centered
+        title="Step 3: Task definition"
+        overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
+        styles={{
+          content: {
+            backgroundColor: "rgba(20, 28, 34, 0.98)",
+            border: "1px solid rgba(124, 231, 225, 0.25)",
+            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
+            color: "#e8eef1",
+          },
+          header: { backgroundColor: "transparent" },
+          title: { color: "#e8eef1", fontWeight: 600 },
+          close: { color: "#e8eef1" },
+        }}
+      >
+        <Stack gap="sm">
+          <Text>
+            Define the task, labels, and columns so annotations stay consistent.
+            This guides the subsampling step and the later AI review.
+          </Text>
+          {introShowCheckbox && (
+            <Checkbox
+              label="Don't show again"
+              checked={introDontShow}
+              onChange={(event) =>
+                setIntroDontShow(event.currentTarget.checked)
+              }
             />
+          )}
+          <Group justify="flex-end">
+            <Button onClick={handleCloseIntro}>Got it</Button>
           </Group>
         </Stack>
-      </Box>
-    </Flex>
+      </Modal>
+      <Modal
+        opened={codebookModalOpen}
+        onClose={() => setCodebookModalOpen(false)}
+        centered
+        title="Apply Existing Codebook"
+        overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
+        styles={{
+          content: {
+            backgroundColor: "rgba(20, 28, 34, 0.98)",
+            border: "1px solid rgba(124, 231, 225, 0.25)",
+            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
+            color: "#e8eef1",
+          },
+          header: { backgroundColor: "transparent" },
+          title: { color: "#e8eef1", fontWeight: 600 },
+          close: { color: "#e8eef1" },
+        }}
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Select a completed task to reuse its labels and rules.
+          </Text>
+          {isLoadingCodebooks ? (
+            <Text size="sm">Loading codebooks...</Text>
+          ) : availableCodebooks.length === 0 ? (
+            <Text size="sm">No saved codebooks yet.</Text>
+          ) : (
+            <Stack gap="xs">
+              {availableCodebooks.map((book) => (
+                <Paper
+                  key={book._id || book.name}
+                  p="sm"
+                  radius="md"
+                  bg="rgba(12, 18, 23, 0.9)"
+                  withBorder
+                  style={{ borderColor: "rgba(255, 255, 255, 0.08)" }}
+                >
+                  <Group justify="space-between" align="center">
+                    <Stack gap={2}>
+                      <Text fw={600}>{book.name}</Text>
+                      <Text size="xs" c="dimmed">
+                        {book.labels.length} labels • {book.type}
+                      </Text>
+                    </Stack>
+                    <Button
+                      size="xs"
+                      variant="light"
+                      onClick={() => handleApplyCodebook(book)}
+                    >
+                      Apply
+                    </Button>
+                  </Group>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      </Modal>
+      <Container fluid className={pageStyles.content}>
+        <StepTrackerBanner currentStep={3} onHelp={handleHelp} />
+        <Flex
+          h="100%"
+          justify="flex-start"
+          direction="row"
+          wrap="nowrap"
+          className={pageStyles.layout}
+        >
+          {/* Left-side task information display */}
+          <Paper className={pageStyles.sidePanel}>
+            <Stack
+              w="100%"
+              h="100%"
+              gap="md"
+              justify="flex-start"
+              className={pageStyles.sideStack}
+            >
+              <Button
+                variant="outline"
+                color="gray"
+                radius="xl"
+                size="sm"
+                onClick={handleOpenCodebooks}
+              >
+                Apply Existing Codebook
+              </Button>
+              {appliedCodebook.length > 0 && (
+                <Text size="xs" c="dimmed" ml="xs">
+                  Using codebook: {appliedCodebookSource?.name || "Custom"}
+                </Text>
+              )}
+              <MultiSelect
+                ml="15"
+                mr="15"
+                variant="filled"
+                fz="lg"
+                label={infoLabel(
+                  "Select columns to use for annotation",
+                  "These columns are used for labeling, embeddings, and subsampling.",
+                )}
+                placeholder="Select columns"
+                clearable
+                searchable
+                nothingFoundMessage="Column does not exist"
+                limit={5}
+                data={headers}
+                value={chosenCol}
+                onChange={setChosenCol}
+                comboboxProps={{
+                  transitionProps: { transition: "pop", duration: 200 },
+                }}
+                classNames={{
+                  input: styles.input,
+                  dropdown: styles.dropdown,
+                  option: styles.option,
+                }}
+              ></MultiSelect>
+              <Title order={4} c="#D8D8D8" ml="15" mr="15">
+                Task Definition
+              </Title>
+              <TextInput
+                ml="15"
+                mr="15"
+                variant="filled"
+                label={infoLabel(
+                  "Task name",
+                  "Shown in the task list and used to organize your work.",
+                )}
+                placeholder="Enter task name"
+                value={taskName}
+                onChange={(event) => setTaskName(event.currentTarget.value)}
+                classNames={{
+                  input: styles.input,
+                }}
+              />
+              <Textarea
+                ml="15"
+                mr="15"
+                variant="filled"
+                label={infoLabel(
+                  "Task description",
+                  "Defines what should be labeled and guides the model later.",
+                )}
+                placeholder="Enter task description"
+                value={taskDesc}
+                onChange={(event) => setTaskDesc(event.currentTarget.value)}
+                classNames={{
+                  input: styles.input,
+                }}
+              />
+              <Select
+                ml="15"
+                mr="15"
+                variant="filled"
+                label={infoLabel(
+                  "Select task type",
+                  "Single-class selects one label per sample; Multiclass allows multiple.",
+                )}
+                placeholder="Pick value"
+                data={["Multiclass", "Single-class"]}
+                value={taskType}
+                onChange={(_value) =>
+                  setTaskType(_value as "Multiclass" | "Single-class")
+                }
+                classNames={{
+                  input: styles.input,
+                  dropdown: styles.dropdown,
+                  option: styles.option,
+                }}
+              />
+              <ScrollArea
+                ml="15"
+                mr="15"
+                offsetScrollbars
+                scrollbarSize={6}
+                type="hover"
+                className={pageStyles.labelScroll}
+              >
+                <Stack gap="md" pb="sm">
+                  {taskLabels.map((label, idx) => (
+                    <Paper
+                      key={idx}
+                      p="sm"
+                      radius="md"
+                      bg="rgba(12, 18, 23, 0.9)"
+                      withBorder
+                      style={{ borderColor: "rgba(255, 255, 255, 0.08)" }}
+                    >
+                      <Group justify="space-between" align="center" mb="xs">
+                        <Text fw={600} c="#D8D8D8">
+                          Label {idx + 1}
+                        </Text>
+
+                        <ActionIcon
+                          variant="subtle"
+                          color="gray"
+                          onClick={() => removeLabelItem(idx)}
+                          disabled={taskLabels.length === 1}
+                          title={
+                            taskLabels.length === 1
+                              ? "At least 1 label is required"
+                              : "Remove label"
+                          }
+                        >
+                          <IconTrash size={18} />
+                        </ActionIcon>
+                      </Group>
+
+                      <Stack gap="xs">
+                        <TextInput
+                          variant="filled"
+                          label={infoLabel(
+                            "Label name",
+                            "Short label used during manual and AI annotation.",
+                          )}
+                          placeholder={`Enter name for label ${idx + 1}`}
+                          value={label.name}
+                          onChange={(e) =>
+                            updateLabelName(idx, e.currentTarget.value)
+                          }
+                          classNames={{ input: styles.input }}
+                        />
+
+                        <TextInput
+                          variant="filled"
+                          label={infoLabel(
+                            "Label description",
+                            "Definition used to guide annotators and the model.",
+                          )}
+                          placeholder={`Enter description for label ${idx + 1}`}
+                          value={label.definition}
+                          onChange={(e) =>
+                            updateLabelDefinition(idx, e.currentTarget.value)
+                          }
+                          classNames={{ input: styles.input }}
+                        />
+
+                        <TagsInput
+                          variant="filled"
+                          label={infoLabel(
+                            "Keywords",
+                            "Examples that help the model understand the label.",
+                          )}
+                          placeholder="Type keyword and press Enter"
+                          value={label.keywords}
+                          onChange={(values) =>
+                            updateLabelKeywords(idx, values)
+                          }
+                          clearable
+                          classNames={{ input: styles.input }}
+                        />
+                      </Stack>
+                    </Paper>
+                  ))}
+                  <Center>
+                    <ActionIcon
+                      variant="filled"
+                      radius="xl"
+                      size="lg"
+                      color="gray"
+                      onClick={addLabelItem}
+                      title="Add label"
+                    >
+                      <IconPlus size={20} />
+                    </ActionIcon>
+                  </Center>
+                </Stack>
+              </ScrollArea>
+              <Stack className={pageStyles.sideActions}>
+                <Button
+                  variant="filled"
+                  className={pageStyles.secondaryButton}
+                  fullWidth
+                  radius={50}
+                  size="sm"
+                  onClick={handleSaveTaskState}
+                  loading={isSaving}
+                >
+                  Save Task State
+                </Button>
+                <Button
+                  variant="filled"
+                  className={pageStyles.primaryButton}
+                  fullWidth
+                  radius={50}
+                  size="sm"
+                  onClick={handleSubsampling}
+                >
+                  Perform Subsampling
+                </Button>
+                <Button
+                  variant="filled"
+                  className={pageStyles.secondaryButton}
+                  fullWidth
+                  radius={50}
+                  size="sm"
+                  disabled={subsampledCsv.length === 0}
+                  onClick={() => {
+                    navigate(`/manual-annotate/${task?._id}`, {
+                      state: {
+                        subsampledCsv,
+                        task: task
+                          ? {
+                              ...task,
+                              codebook: appliedCodebook,
+                              codebookSourceTaskId: appliedCodebookSource?.id,
+                              codebookSourceTaskName:
+                                appliedCodebookSource?.name,
+                            }
+                          : task,
+                      },
+                    });
+                  }}
+                >
+                  Annotate Data
+                </Button>
+              </Stack>
+            </Stack>
+          </Paper>
+
+          {/* Right-side dataset display */}
+          {/* Right-side dataset display */}
+          <Paper className={pageStyles.tablePanel}>
+            <LoadingOverlay
+              visible={isLoading}
+              zIndex={1000}
+              overlayProps={{ radius: "sm", blur: 2 }}
+              loaderProps={{ color: "white", type: "bars" }}
+            />
+            <Stack h="100%" gap="md">
+              <div>
+                <Title order={4} className={pageStyles.panelTitle}>
+                  {fileName}
+                </Title>
+                <Text className={pageStyles.panelMeta} fz="md">
+                  {displayData.length} rows
+                </Text>
+              </div>
+              <Paper className={pageStyles.tableCard}>
+                <Table.ScrollContainer minWidth={500} h="100%">
+                  <Table
+                    withColumnBorders
+                    withTableBorder
+                    borderColor="rgba(232, 238, 241, 0.2)"
+                  >
+                    <Table.Thead>
+                      <Table.Tr>
+                        {displayHeaders.map((header, index) => (
+                          <Table.Th
+                            key={index}
+                            className={pageStyles.tableHeader}
+                          >
+                            {header}
+                          </Table.Th>
+                        ))}
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {paginatedData.map((row, rowIndex) => (
+                        <Table.Tr key={rowIndex}>
+                          {displayHeaders.map((header, cellIndex) => (
+                            <Table.Td
+                              key={cellIndex}
+                              className={pageStyles.tableCell}
+                            >
+                              <div className={pageStyles.tableCellContent}>
+                                {String(row[header])}
+                              </div>
+                            </Table.Td>
+                          ))}
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+              </Paper>
+              <Group justify="center" p="md">
+                <Pagination
+                  total={totalPages}
+                  value={currentPage}
+                  onChange={setCurrentPage}
+                  color="gray"
+                  withEdges
+                  styles={{
+                    control: {
+                      backgroundColor: "#1a232b",
+                      border: "none",
+                      color: "#e8eef1",
+                    },
+                    dots: {
+                      color: "#e8eef1",
+                    },
+                  }}
+                />
+              </Group>
+            </Stack>
+          </Paper>
+        </Flex>
+      </Container>
+    </Box>
   );
 }

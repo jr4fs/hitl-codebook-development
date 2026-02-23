@@ -1,0 +1,231 @@
+.page {
+  --accent: #7ce7e1;
+  --accent-strong: #36c2b3;
+  --accent-warm: #f3a578;
+  position: relative;
+  min-height: 100%;
+  background:
+    radial-gradient(
+      1200px 800px at 10% 20%,
+      rgba(124, 231, 225, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 600px at 90% 0%,
+      rgba(243, 165, 120, 0.2),
+      transparent 55%
+    ),
+    linear-gradient(180deg, #11171c 0%, #080c10 100%);
+  color: #e8eef1;
+  overflow: hidden;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.25;
+  background-image:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.orbOne {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(0.5px);
+  opacity: 0.5;
+}
+
+.orbOne {
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(124, 231, 225, 0.6),
+    transparent 70%
+  );
+  top: -120px;
+  left: -80px;
+}
+
+.hero {
+  position: relative;
+  z-index: 1;
+  padding: 60px 24px 36px;
+  max-width: 1400px;
+  margin: 0 auto;
+  animation: fadeUp 700ms ease both;
+}
+
+.kicker {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: clamp(36px, 3.6vw, 62px);
+  font-weight: 650;
+  line-height: 1.05;
+  max-width: 620px;
+}
+
+.subtitle {
+  max-width: none;
+  color: rgba(232, 238, 241, 0.7);
+  font-size: 1.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sparkle {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.primaryCta {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #031016;
+  font-weight: 600;
+}
+
+.secondaryCta {
+  color: rgba(232, 238, 241, 0.7);
+}
+
+.flowSection {
+  position: relative;
+  z-index: 1;
+  padding: 32px 24px 72px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.sectionTitle {
+  font-size: clamp(24px, 2.4vw, 36px);
+}
+
+.sectionHint {
+  color: rgba(232, 238, 241, 0.55);
+}
+
+.stepCard {
+  background: rgba(18, 24, 29, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 20px 22px 24px;
+  backdrop-filter: blur(6px);
+  min-height: 240px;
+  animation: riseIn 700ms ease both;
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.stepCard:hover {
+  transform: translateY(-6px);
+  border-color: rgba(124, 231, 225, 0.5);
+  box-shadow: 0 18px 40px rgba(4, 8, 12, 0.4);
+}
+
+.stepNumber {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 2rem;
+  letter-spacing: 0.2em;
+  color: rgba(124, 231, 225, 0.85);
+}
+
+.stepIcon {
+  color: rgba(232, 238, 241, 0.7);
+}
+
+.stepTitle {
+  color: #f0f5f7;
+  font-size: 1.2rem;
+}
+
+.stepDescription {
+  color: rgba(232, 238, 241, 0.65);
+  font-size: 1rem;
+}
+
+.stepCta {
+  margin-top: 18px;
+  background: rgba(124, 231, 225, 0.15);
+  color: #baf3ee;
+}
+
+.flowStrip {
+  margin-top: 32px;
+  padding: 22px 24px;
+  border-radius: 16px;
+  background: rgba(18, 24, 29, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.flowPills {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 6px;
+}
+
+.flowPills::-webkit-scrollbar {
+  display: none;
+}
+
+.flowLabel {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(232, 238, 241, 0.6);
+  font-size: 0.8rem;
+}
+
+.flowPill {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(124, 231, 225, 0.12);
+  color: rgba(232, 238, 241, 0.85);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding-top: 48px;
+  }
+
+  .primaryCta,
+  .secondaryCta {
+    width: 100%;
+  }
+}

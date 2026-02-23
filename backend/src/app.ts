@@ -9,10 +9,27 @@ export const app = express();
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-app.use(cors({
-	exposedHeaders: ["Content-Disposition", "X-Filename"]
-}));
+app.use(
+  cors({
+    exposedHeaders: ["Content-Disposition", "X-Filename"],
+  }),
+);
 app.use(express.json());
+
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+
+  res.on("finish", () => {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1e6;
+    console.info(
+      `${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs.toFixed(
+        1,
+      )} ms`,
+    );
+  });
+
+  next();
+});
 
 app.use("/api/account", accountRouter);
 app.use("/api/tasks", tasksRouter);

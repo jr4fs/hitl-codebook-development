@@ -142,8 +142,8 @@ async def run_inference(request: InferenceRequest):
             "span_text": response["span_text"],
             "reason": response["reason"],
             "task_type": request.task_type,
-            "tokens": 0,
-            "time": 0.0,
+            "tokens": response.get("tokens", 0),
+            "time": response.get("time", 0.0),
         }
         return inference_response
     except Exception as e:
@@ -212,8 +212,8 @@ async def process_single_sample(
     return BatchInferenceResponse(
         model_name=sample.model_name,
         is_correct = set(gt_label_names) == set(model_labels),
-        tokens=0,
-        time=0.0,
+        tokens=response.get("tokens", 0),
+        time=response.get("time", 0.0),
     )
 
 @chat_router.post("/rule-synthesis", response_model=RuleSynthesisResponse)

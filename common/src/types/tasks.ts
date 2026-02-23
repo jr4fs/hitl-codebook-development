@@ -10,6 +10,9 @@ export interface Task {
   description: string;
   type: "Multiclass" | "Single-class";
   labels: LabelItem[];
+  codebook?: string[];
+  codebookSourceTaskId?: string;
+  codebookSourceTaskName?: string;
   userID: string;
   columns: string[];
   file: string; // filename stored in /backend/uploads
@@ -22,6 +25,9 @@ export interface CreateTaskRequest {
   description: string;
   type: "Multiclass" | "Single-class";
   labels: LabelItem[];
+  codebook?: string[];
+  codebookSourceTaskId?: string;
+  codebookSourceTaskName?: string;
   columns: string[];
   file: string; // filename from upload endpoint
   userID: string;
@@ -33,6 +39,9 @@ export interface UpdateTaskRequest {
   description?: string;
   type?: "Multiclass" | "Single-class";
   labels?: LabelItem[];
+  codebook?: string[];
+  codebookSourceTaskId?: string;
+  codebookSourceTaskName?: string;
   columns?: string[];
 }
 
