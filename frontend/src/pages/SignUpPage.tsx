@@ -18,10 +18,10 @@ import { IconExclamationMark } from "@tabler/icons-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { CreateUserRequest } from "@common/types/accounts";
-import { createUser } from "../services/account.service";
+import { createUser, loginUser } from "../services/account.service";
 import { AxiosError } from "axios";
-import { useDispatch } from 'react-redux';
-import { setUser } from '../store/userSlice';
+import { useDispatch } from "react-redux";
+import { setUser } from "../store/userSlice";
 import { toast } from "../lib/toast";
 
 const isValidEmail = (value: string) => /^\S+@\S+\.\S+$/.test(value);
@@ -64,11 +64,12 @@ export default function SignUpPage() {
     validateInputOnChange: ["password"],
     validateInputOnBlur: true,
     validate: {
-      email: (value: string) =>
-        isValidEmail(value) ? null : "Invalid email",
+      email: (value: string) => (isValidEmail(value) ? null : "Invalid email"),
       password: (value: string) => {
         const errors = getPasswordErrors(value);
-        return errors.length > 0 ? `Password needs: ${errors.join(", ")}` : null;
+        return errors.length > 0
+          ? `Password needs: ${errors.join(", ")}`
+          : null;
       },
       username: (value: string) =>
         value.length >= 3 ? null : "Username must be at least 3 characters",
@@ -87,25 +88,37 @@ export default function SignUpPage() {
     try {
       const res = await createUser(values);
       console.log("Created user successfully:", res);
-      // TODO: store auth token (JWT) / redirect user to landing page
-      dispatch(setUser({
-        user: res.user,
-      accessToken: res.jwtToken,
-      refreshToken: res.jwtRefreshToken
-      }));
+      if (!res.jwtToken || !res.jwtRefreshToken) {
+        const loginRes = await loginUser({
+          email: values.email,
+          password: values.password,
+        });
+        dispatch(
+          setUser({
+            user: loginRes.user,
+            accessToken: loginRes.jwtToken,
+            refreshToken: loginRes.jwtRefreshToken,
+          }),
+        );
+      } else {
+        dispatch(
+          setUser({
+            user: res.user,
+            accessToken: res.jwtToken,
+            refreshToken: res.jwtRefreshToken,
+          }),
+        );
+      }
       toast.success("Account created successfully");
       navigate("/");
     } catch (error) {
-        console.error("Error creating user: ", error);
-        if (error instanceof AxiosError){
-             const errorMessage =
-        error?.response?.data?.message ||
-        error?.message
+      console.error("Error creating user: ", error);
+      if (error instanceof AxiosError) {
+        const errorMessage = error?.response?.data?.message || error?.message;
         setError(errorMessage);
-        }
-        else{
-            setError("Failed creating user. Internal Server Error");
-        }
+      } else {
+        setError("Failed creating user. Internal Server Error");
+      }
     } finally {
       setLoading(false);
     }

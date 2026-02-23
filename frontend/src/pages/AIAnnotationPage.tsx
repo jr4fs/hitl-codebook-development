@@ -85,8 +85,6 @@ export default function AnnotationPage() {
   const [codebook, setCodebook] = useState<string[]>([]);
   const [newRule, setNewRule] = useState("");
 
-  console.log("codebook", codebook);
-
   interface AIAssisted {
     label: string[];
     reason: string;

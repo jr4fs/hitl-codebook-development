@@ -56,7 +56,6 @@ export default function ManualAnnotationPage() {
   const [editingRuleIndex, setEditingRuleIndex] = useState<number | null>(null);
   const [editingRuleValue, setEditingRuleValue] = useState("");
   const [isReviewing, setIsReviewing] = useState(false);
-  const [reviewPosition, setReviewPosition] = useState(0);
   const [localAnnotations, setLocalAnnotations] = useState<AnnotationItem[]>(
     [],
   );
@@ -107,7 +106,6 @@ export default function ManualAnnotationPage() {
   useEffect(() => {
     hasInitializedIndex.current = false;
     setIsReviewing(false);
-    setReviewPosition(0);
   }, [task?._id]);
 
   // Set initial index based on existing annotations
@@ -146,20 +144,6 @@ export default function ManualAnnotationPage() {
     }
   }, [isCompleted, isReviewing, totalSamples]);
 
-  useEffect(() => {
-    if (!isReviewing) return;
-    if (reviewIndices.length === 0) return;
-
-    const indexInReview = reviewIndices.indexOf(currentIndex);
-    if (indexInReview === -1) {
-      const fallbackIndex = reviewIndices[reviewIndices.length - 1];
-      setReviewPosition(reviewIndices.length - 1);
-      setCurrentIndex(fallbackIndex);
-      return;
-    }
-
-    setReviewPosition(indexInReview);
-  }, [currentIndex, isReviewing, reviewIndices]);
 
   useEffect(() => {
     const hideIntro = localStorage.getItem("hideStep4Intro") === "true";
@@ -348,19 +332,26 @@ export default function ManualAnnotationPage() {
           type: "success",
           message: "Annotation saved successfully",
         });
-        // Short delay to allow user to review annotation
-        setTimeout(() => {
-          if (isReviewing) {
-            if (reviewPosition < reviewIndices.length - 1) {
-              const nextIndex = reviewIndices[reviewPosition + 1];
-              setCurrentIndex(nextIndex);
-            } else {
-              setIsReviewing(false);
-              setCurrentIndex(totalSamples);
+        if (isReviewing) {
+          const reviewPos = reviewIndices.indexOf(currentIndex);
+          if (reviewPos === -1) {
+            if (reviewIndices.length > 0) {
+              setCurrentIndex(reviewIndices[reviewIndices.length - 1]);
             }
             return;
           }
 
+          if (reviewPos < reviewIndices.length - 1) {
+            setCurrentIndex(reviewIndices[reviewPos + 1]);
+          } else {
+            setIsReviewing(false);
+            setCurrentIndex(totalSamples);
+          }
+          return;
+        }
+
+        // Short delay to allow user to review annotation
+        setTimeout(() => {
           if (currentIndex < totalSamples) {
             setCurrentIndex((prev) => prev + 1);
           }
@@ -383,9 +374,16 @@ export default function ManualAnnotationPage() {
 
   const handlePrevious = () => {
     if (isReviewing) {
-      if (reviewPosition > 0) {
-        const prevIndex = reviewIndices[reviewPosition - 1];
-        setCurrentIndex(prevIndex);
+      const reviewPos = reviewIndices.indexOf(currentIndex);
+      if (reviewPos === -1) {
+        if (reviewIndices.length > 0) {
+          setCurrentIndex(reviewIndices[reviewIndices.length - 1]);
+        }
+        return;
+      }
+
+      if (reviewPos > 0) {
+        setCurrentIndex(reviewIndices[reviewPos - 1]);
       }
       return;
     }
@@ -419,7 +417,6 @@ export default function ManualAnnotationPage() {
     }
 
     setIsReviewing(true);
-    setReviewPosition(reviewIndices.length - 1);
     setCurrentIndex(reviewIndices[reviewIndices.length - 1]);
   };
 

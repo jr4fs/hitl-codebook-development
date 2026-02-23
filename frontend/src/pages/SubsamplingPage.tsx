@@ -257,6 +257,21 @@ export default function SubsamplingPage() {
     );
   };
 
+  const hasValidLabels = taskLabels.every(
+    (label) =>
+      label.name?.trim() &&
+      label.definition?.trim() &&
+      label.keywords &&
+      label.keywords.length > 0,
+  );
+  const isTaskStateValid =
+    Boolean(taskName.trim()) &&
+    Boolean(taskDesc.trim()) &&
+    Boolean(taskType) &&
+    Boolean(fileName) &&
+    taskLabels.length > 0 &&
+    hasValidLabels;
+
   const handleSaveTaskState = async () => {
     if (isSaving) return;
 
@@ -287,6 +302,7 @@ export default function SubsamplingPage() {
       `[handleSaveTaskState] Saving task... currentTaskId: ${currentTaskId}`,
     );
 
+    const createdAt = task?.createdAt || new Date().toISOString();
     const payload: any = {
       name: taskName,
       description: taskDesc,
@@ -298,7 +314,7 @@ export default function SubsamplingPage() {
       columns: chosenCol,
       userID: user?.id || "00000",
       file: fileName,
-      createdAt: task?.createdAt || new Date().toISOString(),
+      createdAt,
     };
 
     if (currentTaskId) {
@@ -313,7 +329,29 @@ export default function SubsamplingPage() {
         // Replace the URL with /new-task/:taskId so that a page refresh can
         // recover state from the API instead of hitting an empty nav state.
         if (!currentTaskId && response.taskId) {
-          navigate(`/new-task/${response.taskId}`, { replace: true });
+          navigate(`/new-task/${response.taskId}`, {
+            replace: true,
+            state: {
+              csvData,
+              headers,
+              fileName,
+              subsampledCsv,
+              task: {
+                _id: response.taskId,
+                name: taskName,
+                description: taskDesc,
+                type: taskType,
+                labels: taskLabels,
+                codebook: appliedCodebook,
+                codebookSourceTaskId: appliedCodebookSource?.id,
+                codebookSourceTaskName: appliedCodebookSource?.name,
+                userID: user?.id || "00000",
+                columns: chosenCol,
+                file: fileName,
+                createdAt,
+              },
+            },
+          });
         }
       } else {
         console.log("Error saving task state: ", response.errors);
@@ -736,6 +774,7 @@ export default function SubsamplingPage() {
                   size="sm"
                   onClick={handleSaveTaskState}
                   loading={isSaving}
+                  disabled={!isTaskStateValid}
                 >
                   Save Task State
                 </Button>
