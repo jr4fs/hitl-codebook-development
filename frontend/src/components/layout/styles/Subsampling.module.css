@@ -1,33 +1,33 @@
 .input {
-  background-color: #2C2C2C;
-  color: #FFFFFF;
-  border: 1px solid #2C2C2C;
+  background-color: #12181d;
+  color: #e8eef1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .input:focus-within {
-  border-color: #4A4A4A;
+  border-color: rgba(124, 231, 225, 0.4);
 }
 
 .control {
-  background-color: #2C2C2C;
+  background-color: #12181d;
   border: none;
-  color: #FFFFFF;
+  color: #e8eef1;
 }
 
 .control:hover {
-  background-color: #4A4A4A;
+  background-color: #1a232b;
 }
 
 .dropdown {
-  background-color: #2C2C2C;
+  background-color: #10161b;
   border: 0;
 }
 
 .option {
-  color: #FFFFFF;
+  color: #e8eef1;
   border: 0;
 }
 
 .option:hover {
-  background-color: #4A4A4A;
+  background-color: #1a232b;
 }

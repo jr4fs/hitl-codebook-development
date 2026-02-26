@@ -1,0 +1,164 @@
+.page {
+  --accent: #7ce7e1;
+  --accent-strong: #36c2b3;
+  position: relative;
+  min-height: 100dvh;
+  background:
+    radial-gradient(
+      1200px 800px at 10% 20%,
+      rgba(124, 231, 225, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(180deg, #11171c 0%, #080c10 100%);
+  color: #e8eef1;
+  overflow: hidden;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.2;
+  background-image:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.orbOne {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 999px;
+  filter: blur(0.5px);
+  opacity: 0.5;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(124, 231, 225, 0.6),
+    transparent 70%
+  );
+  top: -140px;
+  left: -100px;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  padding: 56px 24px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  height: 100dvh;
+  overflow: hidden;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.layout {
+  gap: 24px;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidePanel,
+.tablePanel {
+  background: rgba(18, 24, 29, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 20px;
+  backdrop-filter: blur(6px);
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidePanel {
+  width: 36%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tablePanel {
+  width: 64%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sideStack {
+  flex: 1;
+  min-height: 0;
+}
+
+.labelScroll {
+  flex: 1;
+}
+
+.sideActions {
+  margin-top: auto;
+  padding: 8px 12px 4px;
+  gap: 10px;
+}
+
+.panelTitle {
+  color: #f0f5f7;
+}
+
+.panelMeta {
+  color: rgba(232, 238, 241, 0.6);
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #031016;
+  font-weight: 600;
+}
+
+.secondaryButton {
+  background: rgba(124, 231, 225, 0.12);
+  color: #baf3ee;
+}
+
+.tableCard {
+  background: rgba(18, 24, 29, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tableHeader {
+  font-size: 0.85rem;
+}
+
+.tableCell {
+  padding-right: 8px;
+  font-size: 0.85rem;
+}
+
+.tableCellContent {
+  max-height: 120px;
+  overflow: auto;
+  display: block;
+}
+
+.emptyState {
+  height: 100dvh;
+  color: #e8eef1;
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .sidePanel,
+  .tablePanel {
+    width: 100%;
+  }
+}

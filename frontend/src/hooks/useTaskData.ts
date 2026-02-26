@@ -1,10 +1,10 @@
 // hooks/useTaskData.ts
-import { useState, useEffect } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
-import { getTaskById, getCsvData } from '../services/tasks.service';
-import { getTaskAnnotations } from '../services/annotations.service';
-import { Task } from '@common/types/tasks';
-import { AnnotationItem } from '@common/types/annotations';
+import { useState, useEffect } from "react";
+import { useParams, useLocation } from "react-router-dom";
+import { getTaskById, getCsvData } from "../services/tasks.service";
+import { getTaskAnnotations } from "../services/annotations.service";
+import { Task } from "@common/types/tasks";
+import { AnnotationItem } from "@common/types/annotations";
 
 interface CsvRow {
   [key: string]: string;
@@ -34,48 +34,82 @@ export const useTaskData = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Case 1: Data passed via navigation state (new upload from LandingPage or SubsamplingPage)
-      if (navProps?.csvData && navProps?.headers && navProps?.fileName) {
+      const hasNavState = Boolean(
+        navProps?.csvData ||
+        navProps?.headers ||
+        navProps?.fileName ||
+        navProps?.task ||
+        navProps?.subsampledCsv ||
+        navProps?.annotations,
+      );
+
+      if (hasNavState) {
         console.log("Using navigation state data");
-        setCsvData(navProps.csvData);
-        setHeaders(navProps.headers);
-        setFileName(navProps.fileName);
-        if (navProps.subsampledCsv) {
+        if (navProps?.csvData) {
+          setCsvData(navProps.csvData);
+        }
+        if (navProps?.headers) {
+          setHeaders(navProps.headers);
+        }
+        if (navProps?.fileName) {
+          setFileName(navProps.fileName);
+        }
+        if (navProps?.subsampledCsv) {
           setSubsampledData(navProps.subsampledCsv);
         }
-        if (navProps.task) {
+        if (navProps?.task) {
           setTask(navProps.task);
         }
-        if (navProps.annotations) {
+        if (navProps?.annotations) {
           setAnnotations(navProps.annotations);
+        }
+      }
+
+      const effectiveTaskId = taskId || navProps?.task?._id;
+      if (!effectiveTaskId) {
+        if (!hasNavState) {
+          console.log("No taskId and no navProps - empty state");
         }
         return;
       }
 
-      // Case 2: Load task from database via taskId (from Sidebar or direct URL)
-      if (!taskId) {
-        console.log("No taskId and no navProps - empty state");
+      const needsTask = !navProps?.task;
+      const needsCsv = !navProps?.csvData || !navProps?.headers;
+      const needsAnnotations = !navProps?.annotations;
+
+      if (!needsTask && !needsCsv && !needsAnnotations) {
         return;
       }
 
-      console.log("Fetching task from backend:", taskId);
+      console.log("Fetching task from backend:", effectiveTaskId);
       setLoading(true);
       try {
-        // Fetch task
-        const taskResponse = await getTaskById(taskId);
-        setTask(taskResponse.task);
+        const taskResponse = needsTask
+          ? await getTaskById(effectiveTaskId)
+          : { task: navProps?.task };
 
-        // Fetch CSV data associated with task
-        const csvResponse = await getCsvData(taskResponse.task.file);
-        setCsvData(csvResponse.data || []);
-        setSubsampledData(csvResponse.val_data || []);
-        setHeaders(csvResponse.headers || []);
-        setFileName(taskResponse.task.file);
+        if (needsTask && taskResponse.task) {
+          setTask(taskResponse.task);
+        }
 
-        // Fetch annotations
-        const annotationsResponse = await getTaskAnnotations(taskId);
-        if (annotationsResponse.success) {
-          setAnnotations(annotationsResponse.annotations || []);
+        const taskFile = taskResponse.task?.file || navProps?.fileName;
+        if (taskFile && needsCsv) {
+          const csvResponse = await getCsvData(taskFile);
+          setCsvData((prev) => (prev.length ? prev : csvResponse.data || []));
+          setSubsampledData((prev) =>
+            prev.length ? prev : csvResponse.val_data || [],
+          );
+          setHeaders((prev) =>
+            prev.length ? prev : csvResponse.headers || [],
+          );
+          setFileName(taskFile);
+        }
+
+        if (needsAnnotations) {
+          const annotationsResponse = await getTaskAnnotations(effectiveTaskId);
+          if (annotationsResponse.success) {
+            setAnnotations(annotationsResponse.annotations || []);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch task data:", error);
@@ -87,5 +121,13 @@ export const useTaskData = () => {
     fetchData();
   }, [taskId]);
 
-  return { loading, csvData, subsampledData, headers, fileName, task, annotations };
+  return {
+    loading,
+    csvData,
+    subsampledData,
+    headers,
+    fileName,
+    task,
+    annotations,
+  };
 };

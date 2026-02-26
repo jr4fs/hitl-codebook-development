@@ -1,0 +1,73 @@
+import { ActionIcon, Box, Group, Text, Tooltip } from "@mantine/core";
+import { IconHelpCircle } from "@tabler/icons-react";
+import styles from "./StepTrackerBanner.module.css";
+
+const steps = [
+  "Configure anonymization",
+  "Upload CSV",
+  "Task definition",
+  "Manual seed annotation",
+  "AI annotation review",
+  "Codebook completion",
+];
+
+interface StepTrackerBannerProps {
+  currentStep: number;
+  activeSteps?: number[];
+  onHelp?: () => void;
+  helpLabel?: string;
+}
+
+export default function StepTrackerBanner({
+  currentStep,
+  activeSteps,
+  onHelp,
+  helpLabel = "About this step",
+}: StepTrackerBannerProps) {
+  const activeList =
+    activeSteps && activeSteps.length > 0 ? activeSteps : [currentStep];
+  const activeSet = new Set(activeList);
+  const minActive = Math.min(...activeList);
+  const maxActive = Math.max(...activeList);
+  const stepLabel =
+    activeList.length > 1
+      ? `Steps ${minActive}-${maxActive} of ${steps.length}`
+      : `Step ${currentStep} of ${steps.length}`;
+  return (
+    <Box className={styles.banner}>
+      <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+        <Group gap="xs" align="center">
+          <Text className={styles.kicker}>{stepLabel}</Text>
+          {onHelp && (
+            <Tooltip label={helpLabel} withArrow>
+              <ActionIcon
+                size="sm"
+                variant="subtle"
+                className={styles.helpButton}
+                onClick={onHelp}
+                aria-label={helpLabel}
+              >
+                <IconHelpCircle size={16} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+        </Group>
+        <div className={styles.steps}>
+          {steps.map((label, index) => {
+            const stepNumber = index + 1;
+            const isActive = activeSet.has(stepNumber);
+            const isComplete = stepNumber < minActive;
+            return (
+              <span
+                key={label}
+                className={`${styles.pill} ${isActive ? styles.pillActive : ""} ${isComplete ? styles.pillComplete : ""}`}
+              >
+                {label}
+              </span>
+            );
+          })}
+        </div>
+      </Group>
+    </Box>
+  );
+}

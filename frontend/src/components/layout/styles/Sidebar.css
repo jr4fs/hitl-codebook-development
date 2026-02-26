@@ -1,28 +1,57 @@
+.sidebar-shell {
+  background: #10161b;
+}
+
 .sidebar-button {
-  background-color: #373636;
-  color: white;
-  transition: background-color 0.15s ease;
+  background-color: #1a2329;
+  color: #e8eef1;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .sidebar-button:hover {
-  background-color: #4b4949;
-  border-color: #4b4949;
+  background-color: #24303a;
+  border-color: rgba(124, 231, 225, 0.5);
+  color: #f5fbfd;
 }
 
 .sidebar-button-collapsed {
   background-color: transparent;
-  color: white;
-  transition: background-color 0.5s ease-out, border-color 0.5s ease-out;
+  color: #e8eef1;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease;
 }
 
 .sidebar-button-collapsed:hover {
-  background-color: #373636;
-  border-color: #373636;
+  background-color: rgba(124, 231, 225, 0.12);
+  border-color: rgba(124, 231, 225, 0.12);
+}
+
+.sidebar-home-button {
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
+}
+
+.sidebar-home-icon {
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
+  color: #e8eef1;
+}
+
+.sidebar-home-button:hover .sidebar-home-icon,
+.sidebar-home-button:focus-visible .sidebar-home-icon {
+  color: #7ce7e1;
+  transform: translateY(-2px) scale(1.05);
 }
 
 .sidebar-menu-dropdown {
-  background-color: #1c1a1a;
-  border: 1px solid #2b2a2a;
+  background-color: #10161b;
+  border: 1px solid #1e2730;
 }
 
 .sidebar-menu-item {
@@ -32,4 +61,3 @@
 .sidebar-menu-item[data-hovered] {
   background-color: #373636;
 }
-

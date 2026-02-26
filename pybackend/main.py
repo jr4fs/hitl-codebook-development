@@ -1,3 +1,5 @@
+import logging
+import time
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,6 +29,22 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    logger = logging.getLogger("uvicorn.error")
+
+    @app.middleware("http")
+    async def log_request_time(request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = (time.perf_counter() - start) * 1000
+        logger.info(
+            "%s %s %s %.1f ms",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
+        return response
     
     # Include routers
     app.include_router(embedding_router)

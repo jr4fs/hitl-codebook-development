@@ -3,6 +3,7 @@ import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import { AppLayout } from "./components/layout/AppLayout";
 import LandingPage from "./pages/LandingPage";
+import DatasetUploadPage from "./pages/DatasetUploadPage";
 import SubsamplingPage from "./pages/SubsamplingPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
           {
             path: "",
             element: <LandingPage />,
+          },
+          {
+            path: "/upload",
+            element: <DatasetUploadPage />,
           },
           {
             path: "/new-task/:taskId?",

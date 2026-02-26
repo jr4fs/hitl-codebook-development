@@ -1,0 +1,207 @@
+.page {
+  --accent: #7ce7e1;
+  --accent-strong: #36c2b3;
+  --accent-warm: #f3a578;
+  position: relative;
+  min-height: 100dvh;
+  background:
+    radial-gradient(
+      1200px 800px at 10% 20%,
+      rgba(124, 231, 225, 0.16),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 600px at 90% 0%,
+      rgba(243, 165, 120, 0.18),
+      transparent 55%
+    ),
+    linear-gradient(180deg, #11171c 0%, #080c10 100%);
+  color: #e8eef1;
+  overflow: hidden;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.25;
+  background-image:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.orbOne {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(0.5px);
+  opacity: 0.45;
+}
+
+.orbOne {
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(124, 231, 225, 0.6),
+    transparent 70%
+  );
+  top: -120px;
+  left: -80px;
+}
+
+.hero {
+  position: relative;
+  z-index: 1;
+  padding: 72px 24px 32px;
+  animation: fadeUp 700ms ease both;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.kicker {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.title {
+  font-size: clamp(30px, 3vw, 46px);
+  font-weight: 650;
+  line-height: 1.1;
+}
+
+.subtitle {
+  max-width: 560px;
+  color: rgba(232, 238, 241, 0.7);
+  font-size: 1.05rem;
+}
+
+.dropCard {
+  background: rgba(18, 24, 29, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 12px;
+  backdrop-filter: blur(6px);
+}
+
+.dropzone {
+  border-radius: 16px;
+  border: 1px dashed rgba(124, 231, 225, 0.3);
+  background: rgba(18, 24, 29, 0.65);
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dropzone:hover {
+  border-color: rgba(124, 231, 225, 0.6);
+  background: rgba(22, 30, 36, 0.82);
+  transform: translateY(-2px);
+}
+
+.iconIdle {
+  color: rgba(232, 238, 241, 0.8);
+}
+
+.iconReject {
+  color: #ff6b6b;
+}
+
+.dropTitle {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.dropHint {
+  color: white;
+  font-size: 0.95rem;
+}
+
+.primaryCta {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #031016;
+  font-weight: 600;
+}
+
+.secondaryCta {
+  background: rgba(124, 231, 225, 0.12);
+  color: #baf3ee;
+}
+
+.tableSection {
+  position: relative;
+  z-index: 1;
+  padding: 48px 24px 72px;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow: hidden;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.tableTitle {
+  font-size: clamp(24px, 2.4vw, 34px);
+  font-weight: 600;
+}
+
+.tableMeta {
+  color: rgba(232, 238, 241, 0.6);
+}
+
+.tableCard {
+  background: rgba(18, 24, 29, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 12px;
+  backdrop-filter: blur(6px);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tableHeader {
+  font-size: 0.85rem;
+}
+
+.tableCell {
+  padding-right: 8px;
+  font-size: 0.85rem;
+}
+
+.tableCellContent {
+  max-height: 120px;
+  overflow: auto;
+  display: block;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding-top: 56px;
+  }
+}

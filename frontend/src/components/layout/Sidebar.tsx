@@ -7,7 +7,7 @@ import {
   ScrollArea,
   Menu,
   Center,
-  LoadingOverlay
+  LoadingOverlay,
 } from "@mantine/core";
 import {
   IconSquarePlus,
@@ -15,8 +15,8 @@ import {
   IconUserCircle,
   IconFile,
   IconHistory,
+  IconHome2,
 } from "@tabler/icons-react";
-import { useHover } from "@mantine/hooks";
 import "./styles/Sidebar.css";
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -32,73 +32,80 @@ interface SideBarProps {
   toggleCollapsed: () => void;
 }
 
-
 export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
-  const { hovered, ref } = useHover();
   const user = useSelector((state: IRootState) => state.user.user);
-  const accessToken = useSelector((state: IRootState) => state.user.accessToken);
+  const accessToken = useSelector(
+    (state: IRootState) => state.user.accessToken,
+  );
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     dispatch(clearUser());
-    navigate('/login');
+    navigate("/login");
   };
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>();
 
+  const fetchTasks = async () => {
+    if (!accessToken) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const userTasks = await getUserTasks();
+      setTasks(userTasks.tasks || []);
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err);
+      setError("Failed to load tasks");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch user tasks, updates with every access token refresh
   useEffect(() => {
-    const fetchTasks = async () => {
-      if (!accessToken) return;
+    fetchTasks();
+  }, [accessToken]);
 
-      setLoading(true);
-      setError(null);
-
-      try {
-        const userTasks = await getUserTasks();
-        setTasks(userTasks.tasks || []);
-      } catch (err) {
-        console.error('Failed to fetch tasks:', err);
-        setError('Failed to load tasks');
-      } finally {
-        setLoading(false);
-      }
+  useEffect(() => {
+    const handleTaskUpdate = () => {
+      fetchTasks();
     };
 
-    fetchTasks();
+    window.addEventListener("tasks:updated", handleTaskUpdate);
+    return () => {
+      window.removeEventListener("tasks:updated", handleTaskUpdate);
+    };
   }, [accessToken]);
 
   if (collapsed) {
     //Collapsed sidebar
     return (
-      <Stack h="100%" bg="#1E1E1E" w="70px">
+      <Stack h="100%" bg="#0b0f12" w="70px" className="sidebar-shell">
         <Button
-          ref={ref}
           fullWidth
           variant="transparent"
           size="xl"
-          onClick={toggleCollapsed}
+          onClick={() => {
+            navigate("/");
+            toggleCollapsed();
+          }}
           c="white"
           h="auto"
           p="0"
           mt="10"
           bd="0px"
-          classNames={{ root: "sidebar-button-collapsed" }}
+          classNames={{ root: "sidebar-button-collapsed sidebar-home-button" }}
         >
-          {hovered ? (
-            <IconLayoutSidebar size={36} stroke={1.5} />
-          ) : (
-            <Text fz="36px" lh="1">
-              AT
-            </Text>
-          )}
+          <IconHome2 size={34} stroke={1.5} className="sidebar-home-icon" />
         </Button>
         <ActionIcon
           onClick={() => {
-            navigate('/');
+            navigate("/upload");
           }}
           w="100%"
           size="xl"
@@ -132,18 +139,27 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
         >
           <IconUserCircle size={28} stroke={1.5} />
         </ActionIcon>
-        
       </Stack>
     );
   } else {
     //Expanded sidebar
     return (
-      <Stack h="100%" bg="#1E1E1E" w="280px">
+      <Stack h="100%" bg="#0b0f12" w="280px" className="sidebar-shell">
         <Stack h="auto" pl="md" pr="md" pt="md" pb="0px">
           <Flex justify="space-between" direction="row">
-            <Text c="white" fz="36px" pb="64px" onClick={() => { navigate('/'); }}>
-              AT
-            </Text>
+            <ActionIcon
+              variant="transparent"
+              size="lg"
+              c="white"
+              onClick={() => {
+                navigate("/");
+              }}
+              bd="0"
+              title="Home"
+              className="sidebar-home-button"
+            >
+              <IconHome2 size={30} stroke={1.5} className="sidebar-home-icon" />
+            </ActionIcon>
             <ActionIcon
               variant="transparent"
               size="lg"
@@ -157,7 +173,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
 
           <Button
             onClick={() => {
-              navigate('/');
+              navigate("/upload");
             }}
             fullWidth
             radius="md"
@@ -175,11 +191,19 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           <Text c="dimmed">Your Tasks</Text>
         </Stack>
         <ScrollArea h="auto" type="auto">
-          <LoadingOverlay visible={loading} zIndex={1000} overlayProps={{ radius: "sm", blur: 2, color: "#1E1E1E" }} loaderProps={{ color: '#D8D8D8', type: 'bars' }} />
+          <LoadingOverlay
+            visible={loading}
+            zIndex={1000}
+            overlayProps={{ radius: "sm", blur: 2, color: "#1E1E1E" }}
+            loaderProps={{ color: "#D8D8D8", type: "bars" }}
+          />
           <Stack pl="md" pr="md" pt="md" pb="0px">
-            {error
-              ? <Center><Text c="#D8D8D8"> {error} </Text></Center>
-              : tasks.map((task) => (
+            {error ? (
+              <Center>
+                <Text c="#D8D8D8"> {error} </Text>
+              </Center>
+            ) : (
+              tasks.map((task) => (
                 <Button
                   onClick={() => {
                     navigate(`/new-task/${task._id}`);
@@ -197,7 +221,8 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
                 >
                   {task.name}
                 </Button>
-              ))}
+              ))
+            )}
           </Stack>
         </ScrollArea>
         <Menu
@@ -205,7 +230,10 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           width={200}
           position="right-end"
           offset={8}
-          classNames={{ dropdown: "sidebar-menu-dropdown", item: "sidebar-menu-item" }}
+          classNames={{
+            dropdown: "sidebar-menu-dropdown",
+            item: "sidebar-menu-item",
+          }}
         >
           <Menu.Target>
             <Button
@@ -225,7 +253,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             </Button>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Item color="red" onClick={handleLogout}>Logout</Menu.Item>
+            <Menu.Item color="red" onClick={handleLogout}>
+              Logout
+            </Menu.Item>
           </Menu.Dropdown>
         </Menu>
       </Stack>

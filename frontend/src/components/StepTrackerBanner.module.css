@@ -1,0 +1,57 @@
+.banner {
+  background: rgba(18, 24, 29, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px 20px;
+  backdrop-filter: blur(6px);
+}
+
+.kicker {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(232, 238, 241, 0.7);
+  font-size: 0.75rem;
+}
+
+.steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.steps::-webkit-scrollbar {
+  display: none;
+}
+
+.pill {
+  white-space: nowrap;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(124, 231, 225, 0.1);
+  color: rgba(232, 238, 241, 0.7);
+  font-size: 0.85rem;
+}
+
+.helpButton {
+  color: rgba(232, 238, 241, 0.75);
+}
+
+.helpButton:hover {
+  color: #7ce7e1;
+}
+
+.pillActive {
+  background: rgba(124, 231, 225, 0.3);
+  color: #e8f9f7;
+  border: 1px solid rgba(124, 231, 225, 0.55);
+  box-shadow: 0 0 0 1px rgba(124, 231, 225, 0.2);
+  font-weight: 600;
+}
+
+.pillComplete {
+  color: rgba(232, 238, 241, 0.9);
+}
