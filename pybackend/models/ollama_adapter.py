@@ -11,7 +11,7 @@ class OllamaAdapter(BaseModel):
     
     def chat(self, messages: List[Dict[str,str]], **opts):
         payload = {"model": self.model, "messages": messages, "stream":False, "format": "json", **opts}
-        r = requests.post(f"{self.base}/api/chat", json=payload, timeout=30) #TODO: add retry and backoff 
+        r = requests.post(f"{self.base}/api/chat", json=payload, timeout=180) #TODO: add retry and backoff 
         r.raise_for_status()
         return r
 

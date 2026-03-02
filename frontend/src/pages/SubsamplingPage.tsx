@@ -287,7 +287,7 @@ export default function SubsamplingPage() {
         JSON.stringify(task.labels) !== JSON.stringify(taskLabels) ||
         task.type !== taskType ||
         JSON.stringify(task.codebook || []) !==
-          JSON.stringify(appliedCodebook || []) ||
+        JSON.stringify(appliedCodebook || []) ||
         task.codebookSourceTaskId !== appliedCodebookSource?.id ||
         task.codebookSourceTaskName !== appliedCodebookSource?.name;
 
@@ -574,108 +574,111 @@ export default function SubsamplingPage() {
               justify="flex-start"
               className={pageStyles.sideStack}
             >
-              <Button
-                variant="outline"
-                color="gray"
-                radius="xl"
-                size="sm"
-                onClick={handleOpenCodebooks}
-              >
-                Apply Existing Codebook
-              </Button>
-              {appliedCodebook.length > 0 && (
-                <Text size="xs" c="dimmed" ml="xs">
-                  Using codebook: {appliedCodebookSource?.name || "Custom"}
-                </Text>
-              )}
-              <MultiSelect
-                ml="15"
-                mr="15"
-                variant="filled"
-                fz="lg"
-                label={infoLabel(
-                  "Select columns to use for annotation",
-                  "These columns are used for labeling, embeddings, and subsampling.",
-                )}
-                placeholder="Select columns"
-                clearable
-                searchable
-                nothingFoundMessage="Column does not exist"
-                limit={5}
-                data={headers}
-                value={chosenCol}
-                onChange={setChosenCol}
-                comboboxProps={{
-                  transitionProps: { transition: "pop", duration: 200 },
-                }}
-                classNames={{
-                  input: styles.input,
-                  dropdown: styles.dropdown,
-                  option: styles.option,
-                }}
-              ></MultiSelect>
-              <Title order={4} c="#D8D8D8" ml="15" mr="15">
-                Task Definition
-              </Title>
-              <TextInput
-                ml="15"
-                mr="15"
-                variant="filled"
-                label={infoLabel(
-                  "Task name",
-                  "Shown in the task list and used to organize your work.",
-                )}
-                placeholder="Enter task name"
-                value={taskName}
-                onChange={(event) => setTaskName(event.currentTarget.value)}
-                classNames={{
-                  input: styles.input,
-                }}
-              />
-              <Textarea
-                ml="15"
-                mr="15"
-                variant="filled"
-                label={infoLabel(
-                  "Task description",
-                  "Defines what should be labeled and guides the model later.",
-                )}
-                placeholder="Enter task description"
-                value={taskDesc}
-                onChange={(event) => setTaskDesc(event.currentTarget.value)}
-                classNames={{
-                  input: styles.input,
-                }}
-              />
-              <Select
-                ml="15"
-                mr="15"
-                variant="filled"
-                label={infoLabel(
-                  "Select task type",
-                  "Single-class selects one label per sample; Multiclass allows multiple.",
-                )}
-                placeholder="Pick value"
-                data={["Multiclass", "Single-class"]}
-                value={taskType}
-                onChange={(_value) =>
-                  setTaskType(_value as "Multiclass" | "Single-class")
-                }
-                classNames={{
-                  input: styles.input,
-                  dropdown: styles.dropdown,
-                  option: styles.option,
-                }}
-              />
               <ScrollArea
-                ml="15"
-                mr="15"
                 offsetScrollbars
                 scrollbarSize={6}
                 type="hover"
                 className={pageStyles.labelScroll}
               >
-                <Stack gap="md" pb="sm">
+                <Stack gap="md" px="15" pt="sm" pb="sm">
+                  <Button
+                    variant="outline"
+                    color="gray"
+                    radius="xl"
+                    size="sm"
+                    onClick={handleOpenCodebooks}
+                  >
+                    Apply Existing Codebook
+                  </Button>
+                  {appliedCodebook.length > 0 && (
+                    <Text size="xs" c="dimmed" ml="xs">
+                      Using codebook: {appliedCodebookSource?.name || "Custom"}
+                    </Text>
+                  )}
+                  <MultiSelect
+                ml="15"
+                mr="15"
+                    variant="filled"
+                    fz="lg"
+                    label={infoLabel(
+                      "Select columns to use for annotation",
+                      "These columns are used for labeling, embeddings, and subsampling.",
+                    )}
+                    placeholder="Select columns"
+                    clearable
+                    searchable
+                    nothingFoundMessage="Column does not exist"
+                    limit={5}
+                    data={headers}
+                    value={chosenCol}
+                    onChange={setChosenCol}
+                    comboboxProps={{
+                      transitionProps: { transition: "pop", duration: 200 },
+                    }}
+                    classNames={{
+                      input: styles.input,
+                      dropdown: styles.dropdown,
+                      option: styles.option,
+                    }}
+                  ></MultiSelect>
+              <Title order={4} c="#D8D8D8" ml="15" mr="15">
+                    Task Definition
+                  </Title>
+                  <TextInput
+                ml="15"
+                mr="15"
+                    variant="filled"
+                    label={infoLabel(
+                      "Task name",
+                      "Shown in the task list and used to organize your work.",
+                    )}
+                    placeholder="Enter task name"
+                    value={taskName}
+                    onChange={(event) => setTaskName(event.currentTarget.value)}
+                    classNames={{
+                      input: styles.input,
+                    }}
+                  />
+                  <Textarea
+                ml="15"
+                mr="15"
+                    variant="filled"
+                    label={infoLabel(
+                      "Task description",
+                      "Defines what should be labeled and guides the model later.",
+                    )}
+                    placeholder="Enter task description"
+                    value={taskDesc}
+                    onChange={(event) => setTaskDesc(event.currentTarget.value)}
+                    classNames={{
+                      input: styles.input,
+                    }}
+                  />
+                  <Select
+                ml="15"
+                mr="15"
+                    variant="filled"
+                    label={infoLabel(
+                      "Select task type",
+                      "Single-class selects one label per sample; Multiclass allows multiple.",
+                    )}
+                    placeholder="Pick value"
+                    data={["Multiclass", "Single-class"]}
+                    value={taskType}
+                    onChange={(_value) =>
+                      setTaskType(_value as "Multiclass" | "Single-class")
+                    }
+                    classNames={{
+                      input: styles.input,
+                      dropdown: styles.dropdown,
+                      option: styles.option,
+                    }}
+                  />
+
+                  <Title order={5} c="#D8D8D8" mt="sm">
+                    Task Labels
+                  </Title>
+
                   {taskLabels.map((label, idx) => (
                     <Paper
                       key={idx}
@@ -801,12 +804,12 @@ export default function SubsamplingPage() {
                         subsampledCsv,
                         task: task
                           ? {
-                              ...task,
-                              codebook: appliedCodebook,
-                              codebookSourceTaskId: appliedCodebookSource?.id,
-                              codebookSourceTaskName:
-                                appliedCodebookSource?.name,
-                            }
+                            ...task,
+                            codebook: appliedCodebook,
+                            codebookSourceTaskId: appliedCodebookSource?.id,
+                            codebookSourceTaskName:
+                              appliedCodebookSource?.name,
+                          }
                           : task,
                       },
                     });
