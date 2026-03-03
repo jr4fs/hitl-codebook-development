@@ -101,9 +101,9 @@ export default function DatasetUploadPage() {
               </Title>
               <Text size="sm" className={styles.tableMeta}>
                 The labeled dataset should include columns:{" "}
-                <strong>text</strong>
-                and <strong>task_label</strong>. The unlabeled dataset contains
-                the remaining rows with <strong>text</strong> only.
+                <strong>text</strong> and <strong>task_label</strong>. The
+                unlabeled dataset contains the remaining rows with{" "}
+                <strong>text</strong> only.
               </Text>
 
               <Stack gap="xs" className={styles.fileRow}>
@@ -233,16 +233,17 @@ export default function DatasetUploadPage() {
                 What happens next
               </Title>
               <Text className={styles.tableMeta} size="sm">
-                We create the task, store your datasets, and seed the annotation
-                table from the labeled examples. You will land directly in the
-                AI review step with a ready-to-use codebook.
+                We create the task, store your datasets, and seed the model with
+                your labeled examples. You will land directly in the AI review
+                step to provide feedback and generate the codebook.
               </Text>
               <Paper className={styles.infoCard} p="xl" radius="lg">
                 <Stack align="center" gap="xs">
                   <IconUpload size={36} className={styles.iconIdle} />
                   <Text className={styles.dropTitle}>4 files, one launch</Text>
                   <Text className={styles.dropHint}>
-                    We will validate the files and take you straight to review.
+                    We will validate the files and take you to review the AI
+                    annotations.
                   </Text>
                 </Stack>
               </Paper>
