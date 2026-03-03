@@ -51,7 +51,7 @@ import { toast } from "../lib/toast";
 
 export default function AnnotationPage() {
   const navigate = useNavigate();
-  const { loading, task, annotations } = useTaskData();
+  const { loading, task, annotations, restData } = useTaskData();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [generatedLabels, setGeneratedLabels] = useState<string[]>([
@@ -117,35 +117,78 @@ export default function AnnotationPage() {
     tenPercent: AnnotationItem[];
     ninetyPercent: AnnotationItem[];
   } | null>(null);
+  const [fallbackAnnotations, setFallbackAnnotations] = useState<
+    AnnotationItem[]
+  >([]);
+
+  useEffect(() => {
+    setWorkingSamples(null);
+  }, [task?._id]);
+
+  useEffect(() => {
+    if (annotations && annotations.length > 0) {
+      setFallbackAnnotations([]);
+      return;
+    }
+
+    if (!task?._id || !restData || restData.length === 0) {
+      return;
+    }
+
+    if (fallbackAnnotations.length > 0) {
+      return;
+    }
+
+    const shuffled = [...restData].sort(() => Math.random() - 0.5);
+    const sample = shuffled.slice(0, Math.min(20, shuffled.length));
+    const generated = sample.map((row, idx) => {
+      const textValue = String(row.text || "");
+      return {
+        taskId: task._id as string,
+        sampleId: idx + 1,
+        sampleContent: {
+          ...row,
+          text_combined: textValue,
+        } as Record<string, string>,
+        labels: [],
+        createdBy: "system",
+        createdAt: new Date().toISOString(),
+      } as AnnotationItem;
+    });
+
+    setFallbackAnnotations(generated);
+  }, [annotations, restData, task?._id, fallbackAnnotations.length]);
+
+  const annotationsForReview =
+    annotations && annotations.length > 0 ? annotations : fallbackAnnotations;
 
   // Persist the 10/90 split in localStorage so a page refresh restores the same
   // partition. Keyed by taskId to avoid cross-task collisions.
   useEffect(() => {
-    if (
-      !annotations ||
-      annotations.length === 0 ||
-      !task?._id ||
-      workingSamples
-    )
-      return;
+    if (!annotationsForReview.length || !task?._id || workingSamples) return;
 
-    const storageKey = `workingSamples_${task._id}`;
-    const stored = localStorage.getItem(storageKey);
+    if (annotations && annotations.length > 0) {
+      const storageKey = `workingSamples_${task._id}`;
+      const stored = localStorage.getItem(storageKey);
 
-    if (stored) {
-      try {
-        setWorkingSamples(JSON.parse(stored));
-        return;
-      } catch {
-        // Corrupt entry — fall through and recompute
-        localStorage.removeItem(storageKey);
+      if (stored) {
+        try {
+          setWorkingSamples(JSON.parse(stored));
+          return;
+        } catch {
+          localStorage.removeItem(storageKey);
+        }
       }
+
+      const split = datasetShuffler(annotations as any, 0.1);
+      localStorage.setItem(storageKey, JSON.stringify(split));
+      setWorkingSamples(split);
+      return;
     }
 
-    const split = datasetShuffler(annotations as any, 0.1);
-    localStorage.setItem(storageKey, JSON.stringify(split));
+    const split = datasetShuffler(annotationsForReview as any, 0.1);
     setWorkingSamples(split);
-  }, [annotations, task]);
+  }, [annotations, annotationsForReview, task, workingSamples]);
 
   useEffect(() => {
     if (task?.codebook && task.codebook.length > 0 && codebook.length === 0) {
@@ -153,13 +196,31 @@ export default function AnnotationPage() {
     }
   }, [task, codebook.length]);
 
+  const getSampleText = (sample?: AnnotationItem | null) => {
+    if (!sample?.sampleContent) return "";
+    const combined = sample.sampleContent["text_combined"];
+    if (typeof combined === "string" && combined.trim()) {
+      return combined.trim();
+    }
+    const rawText = sample.sampleContent["text"];
+    if (typeof rawText === "string") {
+      return rawText.trim();
+    }
+    return "";
+  };
+
   const handleClickAnnotation = async () => {
     if (!currentSample) return;
+    const finalText = getSampleText(currentSample);
+    if (!finalText) {
+      console.warn("No text available for inference.");
+      return;
+    }
     setIsLoading(true);
     const payload: InferenceRequest = {
       labels: task?.labels || [],
       task_definition: task?.description || "",
-      case_notes: currentSample.sampleContent["text_combined"],
+      case_notes: finalText,
       model_name: "mistral:7b",
       task_type: "annotation",
       user_input: codebook.join("\n"), // Rules synthesized by an LLM and the user's rules
@@ -241,7 +302,7 @@ export default function AnnotationPage() {
     );
   }
 
-  if (!task || !annotations || annotations.length === 0) {
+  if (!task || annotationsForReview.length === 0) {
     return (
       <Center h="100vh" bg="#0f1418">
         <Stack align="center" gap="md">
@@ -360,7 +421,7 @@ export default function AnnotationPage() {
         (sample) => ({
           labels: task.labels,
           task_definition: task.description || "",
-          case_notes: sample.sampleContent["text_combined"] || "",
+          case_notes: getSampleText(sample),
           model_name: "mistral:7b",
           task_type: "annotation",
           user_input: codebook.join("\n"),
@@ -409,7 +470,7 @@ export default function AnnotationPage() {
           opened={introOpen}
           onClose={handleCloseIntro}
           centered
-          title="Step 5-6: AI annotation review + codebook completion"
+          title="Step 2: AI annotation review"
           overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
           styles={{
             content: {
@@ -444,8 +505,8 @@ export default function AnnotationPage() {
           </Stack>
         </Modal>
         <StepTrackerBanner
-          currentStep={5}
-          activeSteps={[5, 6]}
+          currentStep={2}
+          activeSteps={[2, 3]}
           onHelp={handleHelp}
         />
         <Grid gutter={0} style={{ flex: 1, minHeight: 0 }}>
@@ -553,7 +614,9 @@ export default function AnnotationPage() {
                 </Text>
               </Group>
 
-              {/* Case Content */}
+              <Text size="sm" fw={600} c="white">
+                Final Text
+              </Text>
               <Paper
                 bg="#1c242b"
                 p="md"
@@ -562,8 +625,7 @@ export default function AnnotationPage() {
               >
                 <ScrollArea h="150">
                   <Text size="lg" style={{ whiteSpace: "pre-wrap" }}>
-                    {currentSample?.sampleContent["text_combined"] ||
-                      "No text available"}
+                    {getSampleText(currentSample) || "No text available"}
                   </Text>
                 </ScrollArea>
               </Paper>
@@ -689,14 +751,20 @@ export default function AnnotationPage() {
                           Ground Truth Labels:
                         </Text>
                         {infoIcon(
-                          "Labels you originally assigned in manual annotation.",
+                          "Labels from your uploaded D_val seed set, when available.",
                         )}
                         <Group gap={4}>
-                          {currentSample?.labels?.map((l) => (
-                            <Badge key={l} variant="light" color="gray">
-                              {l}
-                            </Badge>
-                          ))}
+                          {currentSample?.labels?.length ? (
+                            currentSample.labels.map((l) => (
+                              <Badge key={l} variant="light" color="gray">
+                                {l}
+                              </Badge>
+                            ))
+                          ) : (
+                            <Text size="xs" c="dimmed">
+                              No ground truth labels available.
+                            </Text>
+                          )}
                         </Group>
                       </Group>
                       <Textarea
@@ -883,7 +951,7 @@ export default function AnnotationPage() {
 
               <Stack gap="xs">
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-                  Add Manual Rule
+                  Add Codebook Rule
                 </Text>
                 <Group gap="xs">
                   <Textarea

@@ -206,7 +206,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
               tasks.map((task) => (
                 <Button
                   onClick={() => {
-                    navigate(`/new-task/${task._id}`);
+                    navigate(`/auto-annotate/${task._id}`);
                   }}
                   key={task._id}
                   fullWidth

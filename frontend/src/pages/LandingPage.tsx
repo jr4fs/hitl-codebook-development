@@ -13,10 +13,7 @@ import {
 import {
   IconArrowRight,
   IconBook2,
-  IconHandClick,
-  IconListCheck,
   IconRobot,
-  IconSettings,
   IconUpload,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
@@ -24,32 +21,14 @@ import styles from "./LandingPage.module.css";
 
 const steps = [
   {
-    title: "Configure anonymization",
+    title: "Upload task bundle",
     description:
-      "Review defaults and add any rules that should apply before data enters the flow.",
-    icon: IconSettings,
-  },
-  {
-    title: "Upload CSV dataset",
-    description:
-      "Drop the dataset you want to annotate and preview a clean sample.",
+      "Upload a subset of the data (labeled), the remaining unlabeled data, and the task and labels definition files to start in one step.",
     icon: IconUpload,
   },
   {
-    title: "Define the task",
-    description:
-      "Name the task, set labels, and pick the columns you want to label.",
-    icon: IconListCheck,
-  },
-  {
-    title: "Manual seed annotation",
-    description:
-      "Label a focused set so the AI mirrors your intent and edge cases.",
-    icon: IconHandClick,
-  },
-  {
     title: "AI annotation review",
-    description: "Approve or correct suggestions with a quick review loop.",
+    description: "Approve or correct suggestions with a focused review loop.",
     icon: IconRobot,
   },
   {
@@ -127,7 +106,7 @@ export default function LandingPage() {
                     rightSection={<IconArrowRight size={14} />}
                     onClick={() => navigate("/upload")}
                   >
-                    Configure and upload
+                    Upload bundle
                   </Button>
                 )}
               </Paper>
@@ -139,10 +118,7 @@ export default function LandingPage() {
           <Text className={styles.flowLabel}>Flow snapshot</Text>
           <Group gap="xs" wrap="nowrap" className={styles.flowPills}>
             {[
-              "Configure anonymization",
-              "Upload CSV dataset",
-              "Task definition",
-              "Manual seed annotation",
+              "Upload task bundle",
               "AI annotation review",
               "Codebook completion",
             ].map((label) => (

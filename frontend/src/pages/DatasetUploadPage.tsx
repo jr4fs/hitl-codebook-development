@@ -1,310 +1,255 @@
 import {
+  Alert,
   Badge,
   Box,
   Button,
-  Center,
   Container,
+  Divider,
   Group,
-  Modal,
   Paper,
-  Pagination,
   Stack,
-  Table,
   Text,
   Title,
-  Checkbox,
 } from "@mantine/core";
-import { Dropzone } from "@mantine/dropzone";
-import { useDisclosure } from "@mantine/hooks";
 import {
+  IconAlertCircle,
   IconArrowRight,
   IconUpload,
-  IconX,
-  IconFile,
-  IconSettings,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getCsvData, uploadFile } from "../services/tasks.service";
-import AnonymizeConfigModal from "../components/anonymize/AnonymizeConfigModal";
 import StepTrackerBanner from "../components/StepTrackerBanner";
+import { uploadTaskBundle } from "../services/tasks.service";
+import { toast } from "../lib/toast";
 import styles from "./DatasetUploadPage.module.css";
-
-const MAX_ROWS_PER_PAGE = 50;
-
-interface CsvRow {
-  [key: string]: string;
-}
 
 export default function DatasetUploadPage() {
   const navigate = useNavigate();
-  const [csvData, setCsvData] = useState<CsvRow[]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [fileName, setFileName] = useState<string>("");
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [introOpen, setIntroOpen] = useState(false);
-  const [introDontShow, setIntroDontShow] = useState(false);
-  const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
-  const [
-    configModalOpened,
-    { open: openConfigModal, close: closeConfigModal },
-  ] = useDisclosure(false);
+  const [dValFile, setDValFile] = useState<File | null>(null);
+  const [dAllFile, setDAllFile] = useState<File | null>(null);
+  const [taskJsonFile, setTaskJsonFile] = useState<File | null>(null);
+  const [labelsJsonFile, setLabelsJsonFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const totalPages = Math.ceil(csvData.length / MAX_ROWS_PER_PAGE);
-  const startIndex = (currentPage - 1) * MAX_ROWS_PER_PAGE;
-  const endIndex = startIndex + MAX_ROWS_PER_PAGE;
-  const paginatedData = csvData.slice(startIndex, endIndex);
+  const isReady = Boolean(
+    dValFile && dAllFile && taskJsonFile && labelsJsonFile,
+  );
 
-  const handleFileUpload = async (files: File[]) => {
-    const inputFile = files[0];
-    if (inputFile) {
-      console.log("Selected file:", inputFile);
-      const response = await uploadFile(inputFile);
-      if (response.success) {
-        const uploadedFileName = response.filePath ?? "";
-        setFileName(uploadedFileName);
-        const csvResponse = await getCsvData(uploadedFileName);
-        setCsvData((csvResponse.data || []) as CsvRow[]);
-        setHeaders(csvResponse.headers || []);
-        setCurrentPage(1);
-      } else {
-        console.log("Error uploading csv: ", response.errors);
+  const handleUpload = async () => {
+    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile) {
+      setError("Please provide all four files before continuing.");
+      return;
+    }
+
+    setError(null);
+    setIsUploading(true);
+
+    try {
+      const response = await uploadTaskBundle({
+        dValFile,
+        dAllFile,
+        taskJsonFile,
+        labelsJsonFile,
+      });
+
+      if (!response.success || !response.taskId) {
+        throw new Error(response.message || "Upload failed.");
       }
+
+      if (response.valSummary && response.restSummary) {
+        toast.success(
+          `Upload complete. Labeled rows: ${response.valSummary.rows}. Unlabeled rows: ${response.restSummary.rows}.`,
+        );
+      } else {
+        toast.success("Upload complete. Opening AI review...");
+      }
+      navigate(`/auto-annotate/${response.taskId}`, {
+        state: {
+          task: response.task,
+          fileName: response.fileName,
+        },
+      });
+    } catch (err: any) {
+      setError(err?.message || "Failed to upload files.");
+    } finally {
+      setIsUploading(false);
     }
   };
-
-  useEffect(() => {
-    const hideIntro = localStorage.getItem("hideStep12Intro") === "true";
-    if (!hideIntro) {
-      setIntroShowCheckbox(true);
-      setIntroOpen(true);
-    }
-  }, []);
-
-  const handleCloseIntro = () => {
-    if (introShowCheckbox && introDontShow) {
-      localStorage.setItem("hideStep12Intro", "true");
-    }
-    setIntroOpen(false);
-  };
-
-  const handleHelp = () => {
-    setIntroShowCheckbox(false);
-    setIntroOpen(true);
-  };
-
-  if (csvData.length === 0) {
-    return (
-      <Box className={styles.page}>
-        <div className={styles.orbOne} />
-        <Modal
-          opened={introOpen}
-          onClose={handleCloseIntro}
-          centered
-          title="Steps 1-2: Anonymization and upload"
-          overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
-          styles={{
-            content: {
-              backgroundColor: "rgba(20, 28, 34, 0.98)",
-              border: "1px solid rgba(124, 231, 225, 0.25)",
-              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
-              color: "#e8eef1",
-            },
-            header: { backgroundColor: "transparent" },
-            title: { color: "#e8eef1", fontWeight: 600 },
-            close: { color: "#e8eef1" },
-          }}
-        >
-          <Stack gap="sm">
-            <Text>
-              Configure anonymization rules, then upload your CSV so the dataset
-              is ready for task definition.
-            </Text>
-            {introShowCheckbox && (
-              <Checkbox
-                label="Don't show again"
-                checked={introDontShow}
-                onChange={(event) =>
-                  setIntroDontShow(event.currentTarget.checked)
-                }
-              />
-            )}
-            <Group justify="flex-end">
-              <Button onClick={handleCloseIntro}>Got it</Button>
-            </Group>
-          </Stack>
-        </Modal>
-        <Container fluid className={styles.hero}>
-          <StepTrackerBanner
-            currentStep={2}
-            activeSteps={[1, 2]}
-            onHelp={handleHelp}
-            helpLabel="About steps 1 and 2"
-          />
-          <Badge className={styles.kicker} variant="light" color="gray">
-            Steps 1-2 of 6
-          </Badge>
-          <Title className={styles.title} mt="md">
-            Upload your CSV dataset
-          </Title>
-          <Text className={styles.subtitle} mt="sm">
-            Add the dataset you want to label so you can preview samples before
-            defining the task.
-          </Text>
-
-          <Paper className={styles.dropCard} mt="lg">
-            <Dropzone
-              onDrop={handleFileUpload}
-              accept={["text/csv"]}
-              className={styles.dropzone}
-            >
-              <Stack align="center" h="100%" gap="sm">
-                <Dropzone.Accept>
-                  <IconFile
-                    size={40}
-                    stroke={1.5}
-                    className={styles.iconIdle}
-                  />
-                </Dropzone.Accept>
-                <Dropzone.Reject>
-                  <IconX size={40} stroke={1.5} className={styles.iconReject} />
-                </Dropzone.Reject>
-                <Dropzone.Idle>
-                  <IconUpload
-                    size={40}
-                    stroke={1.5}
-                    className={styles.iconIdle}
-                  />
-                </Dropzone.Idle>
-                <Text className={styles.dropTitle}>Drop CSV file here</Text>
-                <Text className={styles.dropHint}>or click to browse</Text>
-              </Stack>
-            </Dropzone>
-          </Paper>
-
-          <Group mt="lg" gap="sm">
-            <Button
-              variant="light"
-              radius="xl"
-              className={styles.secondaryCta}
-              leftSection={<IconSettings size={18} />}
-              onClick={openConfigModal}
-            >
-              Configure anonymization
-            </Button>
-          </Group>
-        </Container>
-        <AnonymizeConfigModal
-          opened={configModalOpened}
-          onClose={closeConfigModal}
-        />
-      </Box>
-    );
-  }
 
   return (
     <Box className={styles.page}>
       <div className={styles.orbOne} />
-      <Container fluid className={styles.tableSection}>
-        <StepTrackerBanner
-          currentStep={2}
-          activeSteps={[1, 2]}
-          onHelp={handleHelp}
-          helpLabel="About steps 1 and 2"
-        />
-        <Group justify="space-between" align="center" wrap="wrap" gap="md">
-          <div>
-            <Title className={styles.tableTitle}>
-              {fileName || "Dataset preview"}
-            </Title>
-            <Text className={styles.tableMeta}>{csvData.length} rows</Text>
-          </div>
-          <Button
-            variant="light"
-            radius="xl"
-            className={styles.secondaryCta}
-            leftSection={<IconSettings size={18} />}
-            onClick={openConfigModal}
-          >
-            Configure anonymization
-          </Button>
-        </Group>
-
-        <Paper className={styles.tableCard} mt="lg">
-          <Table.ScrollContainer minWidth={500} h="100%">
-            <Table
-              withColumnBorders
-              withTableBorder
-              borderColor="rgba(232, 238, 241, 0.2)"
-            >
-              <Table.Thead>
-                <Table.Tr>
-                  {headers.map((header, index) => (
-                    <Table.Th key={index} className={styles.tableHeader}>
-                      {header}
-                    </Table.Th>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {paginatedData.map((row, rowIndex) => (
-                  <Table.Tr key={rowIndex}>
-                    {headers.map((header, cellIndex) => (
-                      <Table.Td key={cellIndex} className={styles.tableCell}>
-                        <div className={styles.tableCellContent}>
-                          {row[header]}
-                        </div>
-                      </Table.Td>
-                    ))}
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        </Paper>
-
-        <Group justify="center" mt="lg">
-          <Pagination
-            total={totalPages}
-            value={currentPage}
-            onChange={setCurrentPage}
-            color="gray"
-            withEdges
-            styles={{
-              control: {
-                backgroundColor: "#1a232b",
-                border: "none",
-                color: "#e8eef1",
-              },
-              dots: {
-                color: "#e8eef1",
-              },
-            }}
-          />
-        </Group>
-        <Center w="100%" mt="md">
-          <Button
-            className={styles.primaryCta}
-            radius="xl"
-            rightSection={<IconArrowRight size={18} />}
-            onClick={() => {
-              navigate("/new-task", {
-                state: {
-                  csvData,
-                  headers,
-                  fileName,
-                },
-              });
-            }}
-          >
-            Continue to task definition
-          </Button>
-        </Center>
+      <Container fluid className={styles.hero}>
+        <Badge className={styles.kicker} variant="light" color="gray">
+          New Task Setup
+        </Badge>
+        <Title className={styles.title}>Upload Your Task Files</Title>
+        <Text className={styles.subtitle}>
+          Upload your labeled examples, the remaining unlabeled data, and the
+          task definition files to get started.
+        </Text>
       </Container>
-      <AnonymizeConfigModal
-        opened={configModalOpened}
-        onClose={closeConfigModal}
-      />
+
+      <Container fluid className={styles.tableSection}>
+        <StepTrackerBanner currentStep={1} />
+        <Group align="flex-start" wrap="wrap" gap="lg" grow>
+          <Paper className={styles.dropCard} radius="lg">
+            <Stack gap="md">
+              <Title order={4} className={styles.tableTitle}>
+                Required files
+              </Title>
+              <Text size="sm" className={styles.tableMeta}>
+                The labeled dataset should include columns:{" "}
+                <strong>text</strong>
+                and <strong>task_label</strong>. The unlabeled dataset contains
+                the remaining rows with <strong>text</strong> only.
+              </Text>
+
+              <Stack gap="xs" className={styles.fileRow}>
+                <input
+                  id="labeled-dataset"
+                  className={styles.fileInput}
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) =>
+                    setDValFile(event.currentTarget.files?.[0] || null)
+                  }
+                />
+                <label htmlFor="labeled-dataset" className={styles.fileButton}>
+                  Choose labeled dataset (CSV)
+                </label>
+                <Text size="xs" className={styles.fileName}>
+                  {dValFile ? dValFile.name : "No file selected"}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Labeled dataset with text + task_label columns.
+                </Text>
+              </Stack>
+
+              <Stack gap="xs" className={styles.fileRow}>
+                <input
+                  id="unlabeled-dataset"
+                  className={styles.fileInput}
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) =>
+                    setDAllFile(event.currentTarget.files?.[0] || null)
+                  }
+                />
+                <label
+                  htmlFor="unlabeled-dataset"
+                  className={styles.fileButton}
+                >
+                  Choose unlabeled dataset (CSV)
+                </label>
+                <Text size="xs" className={styles.fileName}>
+                  {dAllFile ? dAllFile.name : "No file selected"}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Unlabeled dataset with text only.
+                </Text>
+              </Stack>
+
+              <Divider my="sm" color="rgba(255, 255, 255, 0.08)" />
+
+              <Stack gap="xs" className={styles.fileRow}>
+                <input
+                  id="task-json"
+                  className={styles.fileInput}
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={(event) =>
+                    setTaskJsonFile(event.currentTarget.files?.[0] || null)
+                  }
+                />
+                <label htmlFor="task-json" className={styles.fileButton}>
+                  Choose task details (JSON)
+                </label>
+                <Text size="xs" className={styles.fileName}>
+                  {taskJsonFile ? taskJsonFile.name : "No file selected"}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Task JSON with taskname and description.
+                </Text>
+              </Stack>
+
+              <Stack gap="xs" className={styles.fileRow}>
+                <input
+                  id="labels-json"
+                  className={styles.fileInput}
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={(event) =>
+                    setLabelsJsonFile(event.currentTarget.files?.[0] || null)
+                  }
+                />
+                <label htmlFor="labels-json" className={styles.fileButton}>
+                  Choose label set (JSON)
+                </label>
+                <Text size="xs" className={styles.fileName}>
+                  {labelsJsonFile ? labelsJsonFile.name : "No file selected"}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Labels array with name, description, keywords, guidelines.
+                </Text>
+              </Stack>
+
+              {error && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  variant="light"
+                >
+                  {error}
+                </Alert>
+              )}
+
+              <Group justify="space-between" mt="sm">
+                <Button
+                  variant="light"
+                  className={styles.secondaryCta}
+                  onClick={() => navigate("/")}
+                >
+                  Back to home
+                </Button>
+                <Button
+                  className={styles.primaryCta}
+                  leftSection={<IconUpload size={18} />}
+                  rightSection={<IconArrowRight size={16} />}
+                  loading={isUploading}
+                  disabled={!isReady}
+                  onClick={handleUpload}
+                >
+                  Upload bundle
+                </Button>
+              </Group>
+            </Stack>
+          </Paper>
+
+          <Paper className={styles.dropCard} radius="lg">
+            <Stack gap="md">
+              <Title order={4} className={styles.tableTitle}>
+                What happens next
+              </Title>
+              <Text className={styles.tableMeta} size="sm">
+                We create the task, store your datasets, and seed the annotation
+                table from the labeled examples. You will land directly in the
+                AI review step with a ready-to-use codebook.
+              </Text>
+              <Paper className={styles.infoCard} p="xl" radius="lg">
+                <Stack align="center" gap="xs">
+                  <IconUpload size={36} className={styles.iconIdle} />
+                  <Text className={styles.dropTitle}>4 files, one launch</Text>
+                  <Text className={styles.dropHint}>
+                    We will validate the files and take you straight to review.
+                  </Text>
+                </Stack>
+              </Paper>
+            </Stack>
+          </Paper>
+        </Group>
+      </Container>
     </Box>
   );
 }

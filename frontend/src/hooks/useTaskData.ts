@@ -16,6 +16,7 @@ interface NavProps {
   fileName?: string;
   task?: Task;
   subsampledCsv?: CsvRow[];
+  restData?: CsvRow[];
   annotations?: AnnotationItem[];
 }
 
@@ -27,6 +28,7 @@ export const useTaskData = () => {
   const [loading, setLoading] = useState(false);
   const [csvData, setCsvData] = useState<CsvRow[]>([]);
   const [subsampledData, setSubsampledData] = useState<CsvRow[]>([]);
+  const [restData, setRestData] = useState<CsvRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
   const [task, setTask] = useState<Task | null>(null);
@@ -40,6 +42,7 @@ export const useTaskData = () => {
         navProps?.fileName ||
         navProps?.task ||
         navProps?.subsampledCsv ||
+        navProps?.restData ||
         navProps?.annotations,
       );
 
@@ -56,6 +59,9 @@ export const useTaskData = () => {
         }
         if (navProps?.subsampledCsv) {
           setSubsampledData(navProps.subsampledCsv);
+        }
+        if (navProps?.restData) {
+          setRestData(navProps.restData);
         }
         if (navProps?.task) {
           setTask(navProps.task);
@@ -93,11 +99,15 @@ export const useTaskData = () => {
         }
 
         const taskFile = taskResponse.task?.file || navProps?.fileName;
+        const taskValFile = taskResponse.task?.valFile;
         if (taskFile && needsCsv) {
-          const csvResponse = await getCsvData(taskFile);
+          const csvResponse = await getCsvData(taskFile, taskValFile);
           setCsvData((prev) => (prev.length ? prev : csvResponse.data || []));
           setSubsampledData((prev) =>
             prev.length ? prev : csvResponse.val_data || [],
+          );
+          setRestData((prev) =>
+            prev.length ? prev : csvResponse.rest_data || [],
           );
           setHeaders((prev) =>
             prev.length ? prev : csvResponse.headers || [],
@@ -125,6 +135,7 @@ export const useTaskData = () => {
     loading,
     csvData,
     subsampledData,
+    restData,
     headers,
     fileName,
     task,
