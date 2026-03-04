@@ -22,6 +22,7 @@ import {
   TagsInput,
   Button,
   LoadingOverlay,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { IconTrash, IconPlus, IconInfoCircle } from "@tabler/icons-react";
 import { useState, useEffect, useMemo } from "react";
@@ -46,6 +47,8 @@ type TaskType = "Multiclass" | "Single-class";
 
 export default function SubsamplingPage() {
   const navigate = useNavigate();
+  const { colorScheme } = useMantineColorScheme();
+  const isLight = colorScheme === "light";
   const { loading, csvData, subsampledData, headers, fileName, task } =
     useTaskData();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -287,7 +290,7 @@ export default function SubsamplingPage() {
         JSON.stringify(task.labels) !== JSON.stringify(taskLabels) ||
         task.type !== taskType ||
         JSON.stringify(task.codebook || []) !==
-        JSON.stringify(appliedCodebook || []) ||
+          JSON.stringify(appliedCodebook || []) ||
         task.codebookSourceTaskId !== appliedCodebookSource?.id ||
         task.codebookSourceTaskName !== appliedCodebookSource?.name;
 
@@ -466,17 +469,25 @@ export default function SubsamplingPage() {
         onClose={handleCloseIntro}
         centered
         title="Step 3: Task definition"
-        overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
+        overlayProps={{
+          blur: 2,
+          opacity: 0.5,
+          color: isLight ? "#f7fafb" : "#11171c",
+        }}
         styles={{
           content: {
-            backgroundColor: "rgba(20, 28, 34, 0.98)",
-            border: "1px solid rgba(124, 231, 225, 0.25)",
-            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
-            color: "#e8eef1",
+            backgroundColor: isLight ? "#ffffff" : "rgba(20, 28, 34, 0.98)",
+            border: isLight
+              ? "1px solid rgba(15, 20, 24, 0.12)"
+              : "1px solid rgba(124, 231, 225, 0.25)",
+            boxShadow: isLight
+              ? "0 24px 60px rgba(0, 0, 0, 0.15)"
+              : "0 24px 60px rgba(0, 0, 0, 0.35)",
+            color: isLight ? "#0f1418" : "#e8eef1",
           },
           header: { backgroundColor: "transparent" },
-          title: { color: "#e8eef1", fontWeight: 600 },
-          close: { color: "#e8eef1" },
+          title: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+          close: { color: isLight ? "#0f1418" : "#e8eef1" },
         }}
       >
         <Stack gap="sm">
@@ -503,17 +514,25 @@ export default function SubsamplingPage() {
         onClose={() => setCodebookModalOpen(false)}
         centered
         title="Apply Existing Codebook"
-        overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
+        overlayProps={{
+          blur: 2,
+          opacity: 0.5,
+          color: isLight ? "#f7fafb" : "#11171c",
+        }}
         styles={{
           content: {
-            backgroundColor: "rgba(20, 28, 34, 0.98)",
-            border: "1px solid rgba(124, 231, 225, 0.25)",
-            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
-            color: "#e8eef1",
+            backgroundColor: isLight ? "#ffffff" : "rgba(20, 28, 34, 0.98)",
+            border: isLight
+              ? "1px solid rgba(15, 20, 24, 0.12)"
+              : "1px solid rgba(124, 231, 225, 0.25)",
+            boxShadow: isLight
+              ? "0 24px 60px rgba(0, 0, 0, 0.15)"
+              : "0 24px 60px rgba(0, 0, 0, 0.35)",
+            color: isLight ? "#0f1418" : "#e8eef1",
           },
           header: { backgroundColor: "transparent" },
-          title: { color: "#e8eef1", fontWeight: 600 },
-          close: { color: "#e8eef1" },
+          title: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+          close: { color: isLight ? "#0f1418" : "#e8eef1" },
         }}
       >
         <Stack gap="sm">
@@ -531,9 +550,13 @@ export default function SubsamplingPage() {
                   key={book._id || book.name}
                   p="sm"
                   radius="md"
-                  bg="rgba(12, 18, 23, 0.9)"
+                  bg={isLight ? "#f4f7f9" : "rgba(12, 18, 23, 0.9)"}
                   withBorder
-                  style={{ borderColor: "rgba(255, 255, 255, 0.08)" }}
+                  style={{
+                    borderColor: isLight
+                      ? "rgba(15, 20, 24, 0.12)"
+                      : "rgba(255, 255, 255, 0.08)",
+                  }}
                 >
                   <Group justify="space-between" align="center">
                     <Stack gap={2}>
@@ -596,8 +619,8 @@ export default function SubsamplingPage() {
                     </Text>
                   )}
                   <MultiSelect
-                ml="15"
-                mr="15"
+                    ml="15"
+                    mr="15"
                     variant="filled"
                     fz="lg"
                     label={infoLabel(
@@ -621,12 +644,17 @@ export default function SubsamplingPage() {
                       option: styles.option,
                     }}
                   ></MultiSelect>
-              <Title order={4} c="#D8D8D8" ml="15" mr="15">
+                  <Title
+                    order={4}
+                    c={isLight ? "#0f1418" : "#D8D8D8"}
+                    ml="15"
+                    mr="15"
+                  >
                     Task Definition
                   </Title>
                   <TextInput
-                ml="15"
-                mr="15"
+                    ml="15"
+                    mr="15"
                     variant="filled"
                     label={infoLabel(
                       "Task name",
@@ -640,8 +668,8 @@ export default function SubsamplingPage() {
                     }}
                   />
                   <Textarea
-                ml="15"
-                mr="15"
+                    ml="15"
+                    mr="15"
                     variant="filled"
                     label={infoLabel(
                       "Task description",
@@ -655,8 +683,8 @@ export default function SubsamplingPage() {
                     }}
                   />
                   <Select
-                ml="15"
-                mr="15"
+                    ml="15"
+                    mr="15"
                     variant="filled"
                     label={infoLabel(
                       "Select task type",
@@ -675,7 +703,7 @@ export default function SubsamplingPage() {
                     }}
                   />
 
-                  <Title order={5} c="#D8D8D8" mt="sm">
+                  <Title order={5} c={isLight ? "#0f1418" : "#D8D8D8"} mt="sm">
                     Task Labels
                   </Title>
 
@@ -684,12 +712,16 @@ export default function SubsamplingPage() {
                       key={idx}
                       p="sm"
                       radius="md"
-                      bg="rgba(12, 18, 23, 0.9)"
+                      bg={isLight ? "#f4f7f9" : "rgba(12, 18, 23, 0.9)"}
                       withBorder
-                      style={{ borderColor: "rgba(255, 255, 255, 0.08)" }}
+                      style={{
+                        borderColor: isLight
+                          ? "rgba(15, 20, 24, 0.12)"
+                          : "rgba(255, 255, 255, 0.08)",
+                      }}
                     >
                       <Group justify="space-between" align="center" mb="xs">
-                        <Text fw={600} c="#D8D8D8">
+                        <Text fw={600} c={isLight ? "#0f1418" : "#D8D8D8"}>
                           Label {idx + 1}
                         </Text>
 
@@ -804,12 +836,12 @@ export default function SubsamplingPage() {
                         subsampledCsv,
                         task: task
                           ? {
-                            ...task,
-                            codebook: appliedCodebook,
-                            codebookSourceTaskId: appliedCodebookSource?.id,
-                            codebookSourceTaskName:
-                              appliedCodebookSource?.name,
-                          }
+                              ...task,
+                              codebook: appliedCodebook,
+                              codebookSourceTaskId: appliedCodebookSource?.id,
+                              codebookSourceTaskName:
+                                appliedCodebookSource?.name,
+                            }
                           : task,
                       },
                     });
@@ -828,7 +860,10 @@ export default function SubsamplingPage() {
               visible={isLoading}
               zIndex={1000}
               overlayProps={{ radius: "sm", blur: 2 }}
-              loaderProps={{ color: "white", type: "bars" }}
+              loaderProps={{
+                color: isLight ? "#0f1418" : "white",
+                type: "bars",
+              }}
             />
             <Stack h="100%" gap="md">
               <div>
@@ -844,7 +879,11 @@ export default function SubsamplingPage() {
                   <Table
                     withColumnBorders
                     withTableBorder
-                    borderColor="rgba(232, 238, 241, 0.2)"
+                    borderColor={
+                      isLight
+                        ? "rgba(15, 20, 24, 0.12)"
+                        : "rgba(232, 238, 241, 0.2)"
+                    }
                   >
                     <Table.Thead>
                       <Table.Tr>
@@ -886,12 +925,12 @@ export default function SubsamplingPage() {
                   withEdges
                   styles={{
                     control: {
-                      backgroundColor: "#1a232b",
+                      backgroundColor: isLight ? "#ffffff" : "#1a232b",
                       border: "none",
-                      color: "#e8eef1",
+                      color: isLight ? "#0f1418" : "#e8eef1",
                     },
                     dots: {
-                      color: "#e8eef1",
+                      color: isLight ? "#0f1418" : "#e8eef1",
                     },
                   }}
                 />

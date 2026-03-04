@@ -55,3 +55,20 @@
 .pillComplete {
   color: rgba(232, 238, 241, 0.9);
 }
+
+:global([data-mantine-color-scheme="light"]) .banner {
+  background: #ffffff;
+  border: 1px solid rgba(15, 20, 24, 0.08);
+}
+
+:global([data-mantine-color-scheme="light"]) .kicker,
+:global([data-mantine-color-scheme="light"]) .pill,
+:global([data-mantine-color-scheme="light"]) .pillComplete,
+:global([data-mantine-color-scheme="light"]) .helpButton {
+  color: rgba(15, 20, 24, 0.65);
+}
+
+:global([data-mantine-color-scheme="light"]) .pillActive {
+  color: #0f1418;
+  border-color: rgba(54, 194, 179, 0.45);
+}

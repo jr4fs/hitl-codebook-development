@@ -15,8 +15,15 @@ import {
   LoadingOverlay,
   Alert,
   FileButton,
+  useMantineColorScheme,
 } from "@mantine/core";
-import { IconPlus, IconTrash, IconDownload, IconUpload, IconAlertCircle } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconTrash,
+  IconDownload,
+  IconUpload,
+  IconAlertCircle,
+} from "@tabler/icons-react";
 import { PhraseMapping } from "@common/types/anonymize";
 import {
   getAnonymizeConfig,
@@ -31,7 +38,12 @@ interface AnonymizeConfigModalProps {
   onClose: () => void;
 }
 
-export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfigModalProps) {
+export default function AnonymizeConfigModal({
+  opened,
+  onClose,
+}: AnonymizeConfigModalProps) {
+  const { colorScheme } = useMantineColorScheme();
+  const isLight = colorScheme === "light";
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,11 +146,21 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
     setPhrases(phrases.filter((_, i) => i !== index));
   };
 
-  const updatePhrase = (index: number, field: "text" | "replacement", value: string) => {
+  const updatePhrase = (
+    index: number,
+    field: "text" | "replacement",
+    value: string,
+  ) => {
     const updated = [...phrases];
     updated[index] = { ...updated[index], [field]: value };
     setPhrases(updated);
   };
+
+  const modalSurface = isLight ? "#ffffff" : "#1C1A1A";
+  const panelSurface = isLight ? "#f4f7f9" : "#2C2C2C";
+  const panelBorder = isLight ? "rgba(15, 20, 24, 0.12)" : "#444";
+  const inputSurface = isLight ? "#ffffff" : "#1C1A1A";
+  const inputText = isLight ? "#0f1418" : "#D8D8D8";
 
   return (
     <Modal
@@ -148,25 +170,39 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
       size="lg"
       centered
       styles={{
-        header: { backgroundColor: "#1C1A1A", color: "#D8D8D8" },
-        body: { backgroundColor: "#1C1A1A", color: "#D8D8D8" },
-        content: { backgroundColor: "#1C1A1A" },
+        header: {
+          backgroundColor: modalSurface,
+          color: inputText,
+        },
+        body: {
+          backgroundColor: modalSurface,
+          color: inputText,
+        },
+        content: { backgroundColor: modalSurface },
       }}
     >
       <LoadingOverlay visible={loading} />
 
       <Stack gap="md">
         {error && (
-          <Alert icon={<IconAlertCircle size={16} />} color="red" onClose={() => setError(null)} withCloseButton>
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            color="red"
+            onClose={() => setError(null)}
+            withCloseButton
+          >
             {error}
           </Alert>
         )}
 
         {/* Names File Section */}
-        <Paper p="md" bg="#2C2C2C" radius="sm">
-          <Text fw={500} mb="sm">Names File</Text>
+        <Paper p="md" bg={panelSurface} radius="sm">
+          <Text fw={500} mb="sm">
+            Names File
+          </Text>
           <Text size="sm" c="dimmed" mb="md">
-            Upload a CSV with names to anonymize (columns: First Name, Middle Name, Last Name, Other Name)
+            Upload a CSV with names to anonymize (columns: First Name, Middle
+            Name, Last Name, Other Name)
           </Text>
           <Group>
             <Button
@@ -192,11 +228,13 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
           </Group>
         </Paper>
 
-        <Divider color="#444" />
+        <Divider color={panelBorder} />
 
         {/* Toggle Rules */}
-        <Paper p="md" bg="#2C2C2C" radius="sm">
-          <Text fw={500} mb="md">Rule Toggles</Text>
+        <Paper p="md" bg={panelSurface} radius="sm">
+          <Text fw={500} mb="md">
+            Rule Toggles
+          </Text>
           <Stack gap="sm">
             <Switch
               label="Anonymize Ages"
@@ -204,7 +242,10 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
               checked={ageEnabled}
               onChange={(e) => setAgeEnabled(e.currentTarget.checked)}
               color="blue"
-              styles={{ track: { cursor: "pointer" }, label: { cursor: "pointer" } }}
+              styles={{
+                track: { cursor: "pointer" },
+                label: { cursor: "pointer" },
+              }}
             />
             <Switch
               label="Anonymize Emails"
@@ -212,7 +253,10 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
               checked={emailEnabled}
               onChange={(e) => setEmailEnabled(e.currentTarget.checked)}
               color="blue"
-              styles={{ track: { cursor: "pointer" }, label: { cursor: "pointer" } }}
+              styles={{
+                track: { cursor: "pointer" },
+                label: { cursor: "pointer" },
+              }}
             />
             <Switch
               label="Anonymize Phone Numbers"
@@ -220,7 +264,10 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
               checked={phoneEnabled}
               onChange={(e) => setPhoneEnabled(e.currentTarget.checked)}
               color="blue"
-              styles={{ track: { cursor: "pointer" }, label: { cursor: "pointer" } }}
+              styles={{
+                track: { cursor: "pointer" },
+                label: { cursor: "pointer" },
+              }}
             />
             <Switch
               label="Anonymize Pronouns"
@@ -228,18 +275,24 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
               checked={pronounEnabled}
               onChange={(e) => setPronounEnabled(e.currentTarget.checked)}
               color="blue"
-              styles={{ track: { cursor: "pointer" }, label: { cursor: "pointer" } }}
+              styles={{
+                track: { cursor: "pointer" },
+                label: { cursor: "pointer" },
+              }}
             />
           </Stack>
         </Paper>
 
-        <Divider color="#444" />
+        <Divider color={panelBorder} />
 
         {/* Phrase Mappings */}
-        <Paper p="md" bg="#2C2C2C" radius="sm">
-          <Text fw={500} mb="md">Phrase Replacements</Text>
+        <Paper p="md" bg={panelSurface} radius="sm">
+          <Text fw={500} mb="md">
+            Phrase Replacements
+          </Text>
           <Text size="sm" c="dimmed" mb="md">
-            Define phrases and their replacements (e.g., "Mercy Medical" → "ORG")
+            Define phrases and their replacements (e.g., "Mercy Medical" →
+            "ORG")
           </Text>
           <Stack gap="xs">
             {phrases.map((phrase, index) => (
@@ -250,16 +303,26 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
                   onChange={(e) => updatePhrase(index, "text", e.target.value)}
                   style={{ flex: 1 }}
                   styles={{
-                    input: { backgroundColor: "#1C1A1A", borderColor: "#444", color: "#D8D8D8" },
+                    input: {
+                      backgroundColor: inputSurface,
+                      borderColor: panelBorder,
+                      color: inputText,
+                    },
                   }}
                 />
                 <TextInput
                   placeholder="Replacement"
                   value={phrase.replacement}
-                  onChange={(e) => updatePhrase(index, "replacement", e.target.value)}
+                  onChange={(e) =>
+                    updatePhrase(index, "replacement", e.target.value)
+                  }
                   style={{ flex: 1 }}
                   styles={{
-                    input: { backgroundColor: "#1C1A1A", borderColor: "#444", color: "#D8D8D8" },
+                    input: {
+                      backgroundColor: inputSurface,
+                      borderColor: panelBorder,
+                      color: inputText,
+                    },
                   }}
                 />
                 <ActionIcon
@@ -290,13 +353,16 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
           </Group>
         </Paper>
 
-        <Divider color="#444" />
+        <Divider color={panelBorder} />
 
         {/* Skip Words */}
-        <Paper p="md" bg="#2C2C2C" radius="sm">
-          <Text fw={500} mb="sm">Skip Words</Text>
+        <Paper p="md" bg={panelSurface} radius="sm">
+          <Text fw={500} mb="sm">
+            Skip Words
+          </Text>
           <Text size="sm" c="dimmed" mb="md">
-            Words to skip during anonymization (separate with new lines or commas)
+            Words to skip during anonymization (separate with new lines or
+            commas)
           </Text>
           <Textarea
             placeholder="Enter words to skip, one per line or comma-separated..."
@@ -306,12 +372,16 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
             maxRows={8}
             autosize
             styles={{
-              input: { backgroundColor: "#1C1A1A", borderColor: "#444", color: "#D8D8D8" },
+              input: {
+                backgroundColor: inputSurface,
+                borderColor: panelBorder,
+                color: inputText,
+              },
             }}
           />
         </Paper>
 
-        <Divider color="#444" />
+        <Divider color={panelBorder} />
 
         {/* Actions */}
         <Group justify="flex-end">

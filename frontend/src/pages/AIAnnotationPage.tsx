@@ -17,6 +17,7 @@ import {
   Tooltip,
   Modal,
   Checkbox,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -51,6 +52,17 @@ import { toast } from "../lib/toast";
 
 export default function AnnotationPage() {
   const navigate = useNavigate();
+  const { colorScheme } = useMantineColorScheme();
+  const isLight = colorScheme === "light";
+  const mutedColor = isLight ? "#3b4750" : "dimmed";
+  const surface = isLight ? "#ffffff" : "var(--app-surface)";
+  const surface2 = isLight ? "#f4f7f9" : "var(--app-surface-2)";
+  const surface3 = isLight ? "#eef3f5" : "var(--app-surface-3)";
+  const panelBg = isLight ? "#f2f6f8" : "var(--app-panel)";
+  const borderColor = isLight ? "rgba(15, 20, 24, 0.12)" : "var(--app-border)";
+  const borderStrong = isLight
+    ? "rgba(15, 20, 24, 0.18)"
+    : "var(--app-border-strong)";
   const { loading, task, annotations, restData } = useTaskData();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -293,10 +305,12 @@ export default function AnnotationPage() {
 
   if (loading) {
     return (
-      <Center h="100vh" bg="#0f1418">
+      <Center h="100vh" bg="var(--app-bg)">
         <Stack align="center" gap="md">
           <LoadingOverlay visible={true} overlayProps={{ blur: 2 }} />
-          <Text c="white">Loading annotation data...</Text>
+          <Text c={isLight ? "#0f1418" : "white"}>
+            Loading annotation data...
+          </Text>
         </Stack>
       </Center>
     );
@@ -304,9 +318,11 @@ export default function AnnotationPage() {
 
   if (!task || annotationsForReview.length === 0) {
     return (
-      <Center h="100vh" bg="#0f1418">
+      <Center h="100vh" bg="var(--app-bg)">
         <Stack align="center" gap="md">
-          <Text c="white">No data available for annotation</Text>
+          <Text c={isLight ? "#0f1418" : "white"}>
+            No data available for annotation
+          </Text>
           <Button onClick={() => navigate("/")}>Go Home</Button>
         </Stack>
       </Center>
@@ -464,24 +480,36 @@ export default function AnnotationPage() {
   };
 
   return (
-    <Box h="100vh" bg="#0f1418" c="#D8D8D8">
+    <Box
+      h="100vh"
+      bg={isLight ? "#f7fafb" : "var(--app-bg)"}
+      c={isLight ? "#0f1418" : "var(--app-text)"}
+    >
       <Stack h="100%" gap="md" p="xl">
         <Modal
           opened={introOpen}
           onClose={handleCloseIntro}
           centered
           title="Step 2: AI annotation review"
-          overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
+          overlayProps={{
+            blur: 2,
+            opacity: 0.5,
+            color: isLight ? "#f7fafb" : "#11171c",
+          }}
           styles={{
             content: {
-              backgroundColor: "rgba(20, 28, 34, 0.98)",
-              border: "1px solid rgba(124, 231, 225, 0.25)",
-              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
-              color: "#e8eef1",
+              backgroundColor: isLight ? "#ffffff" : "rgba(20, 28, 34, 0.98)",
+              border: isLight
+                ? "1px solid rgba(15, 20, 24, 0.12)"
+                : "1px solid rgba(124, 231, 225, 0.25)",
+              boxShadow: isLight
+                ? "0 24px 60px rgba(0, 0, 0, 0.15)"
+                : "0 24px 60px rgba(0, 0, 0, 0.35)",
+              color: isLight ? "#0f1418" : "#e8eef1",
             },
             header: { backgroundColor: "transparent" },
-            title: { color: "#e8eef1", fontWeight: 600 },
-            close: { color: "#e8eef1" },
+            title: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+            close: { color: isLight ? "#0f1418" : "#e8eef1" },
           }}
         >
           <Stack gap="sm">
@@ -514,20 +542,20 @@ export default function AnnotationPage() {
           <Grid.Col
             span={8}
             h="100%"
-            style={{ borderRight: "1px solid #2b3944" }}
+            style={{ borderRight: `1px solid ${borderColor}` }}
           >
             <Stack h="100%" p="xl" gap="md">
               {/* Header / Batch Ribbon */}
               <Group justify="space-between">
                 <Group gap="sm">
                   <Stack gap={0}>
-                    <Title order={3} c="white">
+                    <Title order={3} c={isLight ? "#0f1418" : "white"}>
                       AI Assisted Annotation
                     </Title>
-                    <Text size="xs" c="dimmed">
+                    <Text size="xs" c={mutedColor}>
                       Task: {task.name}
                     </Text>
-                    <Text size="xs" c="dimmed">
+                    <Text size="xs" c={mutedColor}>
                       {task.description}
                     </Text>
                   </Stack>
@@ -548,7 +576,7 @@ export default function AnnotationPage() {
                         size="xl"
                         fz="xs"
                         circle
-                        style={{ border: "1px solid #444" }}
+                        style={{ border: `1px solid ${borderColor}` }}
                       >
                         {totalAttempted > 0
                           ? Math.round((totalCorrect / totalAttempted) * 100)
@@ -568,7 +596,7 @@ export default function AnnotationPage() {
                         size="xl"
                         fz="xs"
                         circle
-                        style={{ border: "1px solid #333" }}
+                        style={{ border: `1px solid ${borderColor}` }}
                       >
                         {predictedAccuracy === null
                           ? "—"
@@ -595,33 +623,33 @@ export default function AnnotationPage() {
                     "Batch groups reviewed samples to build the live codebook.",
                   )}
                   {totalBatches > 5 && (
-                    <Text size="xs" c="dimmed">
+                    <Text size="xs" c={mutedColor}>
                       ...
                     </Text>
                   )}
                 </Group>
               </Group>
 
-              <Divider color="#2b3944" />
+              <Divider color={borderColor} />
 
               {/* Progress in Batch */}
               <Group justify="space-between">
                 <Text size="sm" fw={500}>
                   Batch Progress: {currentBatchProgress} / {actualBatchSize}
                 </Text>
-                <Text size="sm" c="dimmed">
+                <Text size="sm" c={mutedColor}>
                   Overall: {currentIndex + 1} / {totalSamples}
                 </Text>
               </Group>
 
-              <Text size="sm" fw={600} c="white">
+              <Text size="sm" fw={600} c={isLight ? "#0f1418" : "white"}>
                 Final Text
               </Text>
               <Paper
-                bg="#1c242b"
+                bg={surface}
                 p="md"
                 radius="md"
-                style={{ border: "1px solid #2b3944", flex: 1 }}
+                style={{ border: `1px solid ${borderColor}`, flex: 1 }}
               >
                 <ScrollArea h="150">
                   <Text size="lg" style={{ whiteSpace: "pre-wrap" }}>
@@ -632,10 +660,10 @@ export default function AnnotationPage() {
 
               {/* AI Output Section */}
               <Paper
-                bg="#1f2a32"
+                bg={surface2}
                 p="md"
                 radius="md"
-                style={{ border: "1px solid #33424d" }}
+                style={{ border: `1px solid ${borderStrong}` }}
               >
                 <LoadingOverlay
                   visible={isLoading}
@@ -644,7 +672,7 @@ export default function AnnotationPage() {
                 <Stack gap="xs">
                   <Group justify="space-between">
                     <Group gap={6} align="center">
-                      <Title order={5} c="white">
+                      <Title order={5} c={isLight ? "#0f1418" : "white"}>
                         AI Suggestion
                       </Title>
                       {infoIcon("The model's proposed labels and rationale.")}
@@ -674,7 +702,7 @@ export default function AnnotationPage() {
                     </Group>
                     <Text
                       size="sm"
-                      bg="#333"
+                      bg={isLight ? "#e6ecf0" : "var(--app-chip)"}
                       p="xs"
                       style={{ borderRadius: "4px" }}
                     >
@@ -689,7 +717,7 @@ export default function AnnotationPage() {
                       </Text>
                       {infoIcon("Short explanation produced by the model.")}
                     </Group>
-                    <Text size="sm" fs="italic" c="dimmed">
+                    <Text size="sm" fs="italic" c={mutedColor}>
                       {generatedReasoning || "Generating reasoning..."}
                     </Text>
                   </Stack>
@@ -697,7 +725,7 @@ export default function AnnotationPage() {
               </Paper>
 
               {/* User Controls */}
-              <Paper p="md" bg="#182028" radius="md">
+              <Paper p="md" bg={surface3} radius="md">
                 <Stack gap="md">
                   <Group justify="center" gap="xl">
                     <Button
@@ -761,7 +789,7 @@ export default function AnnotationPage() {
                               </Badge>
                             ))
                           ) : (
-                            <Text size="xs" c="dimmed">
+                            <Text size="xs" c={mutedColor}>
                               No ground truth labels available.
                             </Text>
                           )}
@@ -771,8 +799,12 @@ export default function AnnotationPage() {
                         placeholder="Why was the AI wrong? (This will help the rule synthesizer)"
                         variant="filled"
                         size="sm"
-                        bg="#1A1A1A"
-                        styles={{ input: { color: "#1A1A1A" } }}
+                        bg={surface2}
+                        styles={{
+                          input: {
+                            color: isLight ? "#0f1418" : "var(--app-text)",
+                          },
+                        }}
                         onChange={(e) => {
                           const userFeedback = e.currentTarget.value;
                           setBatchResults(
@@ -847,12 +879,12 @@ export default function AnnotationPage() {
           </Grid.Col>
 
           {/* Sidebar: Live Codebook */}
-          <Grid.Col span={4} h="100%" bg="#12181d">
+          <Grid.Col span={4} h="100%" bg={panelBg}>
             <Stack h="100%" p="xl" gap="md">
               <Group justify="space-between">
                 <Group gap="xs">
-                  <IconBook color="#D8D8D8" />
-                  <Title order={4} c="white">
+                  <IconBook color="var(--app-text)" />
+                  <Title order={4} c={isLight ? "#0f1418" : "white"}>
                     Live Codebook
                   </Title>
                 </Group>
@@ -874,12 +906,12 @@ export default function AnnotationPage() {
                 </Group>
               </Group>
 
-              <Divider color="#2b3944" />
+              <Divider color={borderColor} />
 
               <Stack gap="sm" style={{ flex: 1, overflowY: "auto" }}>
                 {codebook.length === 0 ? (
                   <Center h={200}>
-                    <Text c="dimmed" size="sm" ta="center">
+                    <Text c={mutedColor} size="sm" ta="center">
                       No rules generated yet.
                       <br />
                       Complete a batch to see AI synthesis.
@@ -890,9 +922,9 @@ export default function AnnotationPage() {
                     <Paper
                       key={idx}
                       p="sm"
-                      bg="#1c242b"
+                      bg={surface}
                       radius="sm"
-                      style={{ border: "1px solid #2b3944" }}
+                      style={{ border: `1px solid ${borderColor}` }}
                     >
                       {editingRuleIndex === idx ? (
                         <Stack gap="xs">
@@ -947,10 +979,10 @@ export default function AnnotationPage() {
                 )}
               </Stack>
 
-              <Divider color="#2b3944" />
+              <Divider color={borderColor} />
 
               <Stack gap="xs">
-                <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                <Text size="xs" fw={700} c={mutedColor} tt="uppercase">
                   Add Codebook Rule
                 </Text>
                 <Group gap="xs">

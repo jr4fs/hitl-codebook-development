@@ -1,10 +1,10 @@
 .sidebar-shell {
-  background: #10161b;
+  background: var(--app-sidebar-bg);
 }
 
 .sidebar-button {
-  background-color: #1a2329;
-  color: #e8eef1;
+  background-color: var(--app-sidebar-button);
+  color: var(--app-sidebar-text);
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
@@ -12,14 +12,14 @@
 }
 
 .sidebar-button:hover {
-  background-color: #24303a;
+  background-color: var(--app-sidebar-button-hover);
   border-color: rgba(124, 231, 225, 0.5);
-  color: #f5fbfd;
+  color: var(--app-sidebar-text);
 }
 
 .sidebar-button-collapsed {
   background-color: transparent;
-  color: #e8eef1;
+  color: var(--app-sidebar-text);
   transition:
     background-color 0.3s ease,
     border-color 0.3s ease;
@@ -40,7 +40,7 @@
   transition:
     transform 0.2s ease,
     color 0.2s ease;
-  color: #e8eef1;
+  color: var(--app-sidebar-text);
 }
 
 .sidebar-home-button:hover .sidebar-home-icon,
@@ -50,14 +50,22 @@
 }
 
 .sidebar-menu-dropdown {
-  background-color: #10161b;
-  border: 1px solid #1e2730;
+  background-color: var(--app-sidebar-bg);
+  border: 1px solid var(--app-sidebar-border);
 }
 
 .sidebar-menu-item {
-  color: #ffffff;
+  color: var(--app-sidebar-text);
 }
 
 .sidebar-menu-item[data-hovered] {
-  background-color: #373636;
+  background-color: var(--app-sidebar-button-hover);
+}
+
+.sidebar-user-button {
+  overflow: visible;
+}
+
+.sidebar-user-icon {
+  display: block;
 }

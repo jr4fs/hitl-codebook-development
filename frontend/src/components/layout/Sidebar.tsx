@@ -85,7 +85,12 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   if (collapsed) {
     //Collapsed sidebar
     return (
-      <Stack h="100%" bg="#0b0f12" w="70px" className="sidebar-shell">
+      <Stack
+        h="100%"
+        bg="var(--app-sidebar-bg)"
+        w="70px"
+        className="sidebar-shell"
+      >
         <Button
           fullWidth
           variant="transparent"
@@ -94,7 +99,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             navigate("/");
             toggleCollapsed();
           }}
-          c="white"
+          c="var(--app-sidebar-text)"
           h="auto"
           p="0"
           mt="10"
@@ -110,7 +115,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           w="100%"
           size="xl"
           radius="md"
-          c="white"
+          c="var(--app-sidebar-text)"
           variant="subtle"
           classNames={{ root: "sidebar-button-collapsed" }}
         >
@@ -121,7 +126,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           w="100%"
           size="xl"
           radius="md"
-          c="white"
+          c="var(--app-sidebar-text)"
           variant="subtle"
           classNames={{ root: "sidebar-button-collapsed" }}
         >
@@ -132,7 +137,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           w="100%"
           size="xl"
           radius="md"
-          c="white"
+          c="var(--app-sidebar-text)"
           variant="subtle"
           classNames={{ root: "sidebar-button-collapsed" }}
           style={{ marginTop: "auto" }}
@@ -144,13 +149,18 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   } else {
     //Expanded sidebar
     return (
-      <Stack h="100%" bg="#0b0f12" w="280px" className="sidebar-shell">
+      <Stack
+        h="100%"
+        bg="var(--app-sidebar-bg)"
+        w="280px"
+        className="sidebar-shell"
+      >
         <Stack h="auto" pl="md" pr="md" pt="md" pb="0px">
           <Flex justify="space-between" direction="row">
             <ActionIcon
               variant="transparent"
               size="lg"
-              c="white"
+              c="var(--app-sidebar-text)"
               onClick={() => {
                 navigate("/");
               }}
@@ -177,7 +187,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             }}
             fullWidth
             radius="md"
-            c="white"
+            c="var(--app-sidebar-text)"
             p="md"
             h="auto"
             justify="space-between"
@@ -194,13 +204,17 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           <LoadingOverlay
             visible={loading}
             zIndex={1000}
-            overlayProps={{ radius: "sm", blur: 2, color: "#1E1E1E" }}
-            loaderProps={{ color: "#D8D8D8", type: "bars" }}
+            overlayProps={{
+              radius: "sm",
+              blur: 2,
+              color: "var(--app-sidebar-bg)",
+            }}
+            loaderProps={{ color: "var(--app-sidebar-text)", type: "bars" }}
           />
           <Stack pl="md" pr="md" pt="md" pb="0px">
             {error ? (
               <Center>
-                <Text c="#D8D8D8"> {error} </Text>
+                <Text c="var(--app-sidebar-text)"> {error} </Text>
               </Center>
             ) : (
               tasks.map((task) => (
@@ -211,7 +225,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
                   key={task._id}
                   fullWidth
                   radius="md"
-                  c="white"
+                  c="var(--app-sidebar-text)"
                   p="md"
                   h="auto"
                   justify="space-between"
@@ -244,10 +258,14 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
               fz="md"
               fullWidth
               justify="center"
-              classNames={{ root: "sidebar-button" }}
+              classNames={{ root: "sidebar-button sidebar-user-button" }}
             >
               <Flex align="center" justify="center" gap="xs">
-                <IconUserCircle size={28} stroke={1.5} />
+                <IconUserCircle
+                  size={28}
+                  stroke={1.5}
+                  className="sidebar-user-icon"
+                />
                 <Text>{user?.username}</Text>
               </Flex>
             </Button>

@@ -12,6 +12,7 @@ import {
   Box,
   Checkbox,
   Alert,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconExclamationMark } from "@tabler/icons-react";
@@ -20,11 +21,13 @@ import { useState } from "react";
 import { LoginUserRequest } from "@common/types/accounts";
 import { loginUser } from "../services/account.service";
 import { AxiosError } from "axios";
-import { useDispatch } from 'react-redux';
-import { setUser } from '../store/userSlice';
+import { useDispatch } from "react-redux";
+import { setUser } from "../store/userSlice";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { colorScheme } = useMantineColorScheme();
+  const isLight = colorScheme === "light";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const dispatch = useDispatch();
@@ -52,24 +55,22 @@ export default function LoginPage() {
       const res = await loginUser(values);
       console.log("Login success:", res);
       // TODO: store auth token (JWT) / redirect user to landing page
-      dispatch(setUser({
-      user: res.user,
-      accessToken: res.jwtToken,
-      refreshToken: res.jwtRefreshToken
-    }
-      ));
+      dispatch(
+        setUser({
+          user: res.user,
+          accessToken: res.jwtToken,
+          refreshToken: res.jwtRefreshToken,
+        }),
+      );
       setLoading(false);
-      navigate("/")
+      navigate("/");
     } catch (error) {
       console.error("Login Error: ", error);
-      if (error instanceof AxiosError){
-        const errorMessage =
-        error?.response?.data?.message ||
-        error?.message
+      if (error instanceof AxiosError) {
+        const errorMessage = error?.response?.data?.message || error?.message;
 
         setError(errorMessage);
-      }
-      else{
+      } else {
         setError("Login Failed. Internal Server Error");
       }
     } finally {
@@ -80,7 +81,14 @@ export default function LoginPage() {
   return (
     <BackgroundImage src="/paint.jpg" radius="xs" w="100vw" h="100vh">
       <Center w="100%" h="100%">
-        <Paper c="white" bg="#343434" p="40" w="500" radius="xl" shadow="xl">
+        <Paper
+          c={isLight ? "#0f1418" : "white"}
+          bg={isLight ? "#ffffff" : "#343434"}
+          p="40"
+          w="500"
+          radius="xl"
+          shadow="xl"
+        >
           <Stack gap="xl">
             <Text size="32px" fw={900} c="#50C878" ta="center">
               Welcome back
