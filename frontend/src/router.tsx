@@ -4,11 +4,9 @@ import SignUpPage from "./pages/SignUpPage";
 import { AppLayout } from "./components/layout/AppLayout";
 import LandingPage from "./pages/LandingPage";
 import DatasetUploadPage from "./pages/DatasetUploadPage";
-import SubsamplingPage from "./pages/SubsamplingPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
 import AnnotationPage from "./pages/AIAnnotationPage";
-import ManualAnnotationPage from "./pages/ManualAnnotationPage";
 
 export const router = createBrowserRouter([
   {
@@ -40,14 +38,6 @@ export const router = createBrowserRouter([
           {
             path: "/upload",
             element: <DatasetUploadPage />,
-          },
-          {
-            path: "/new-task/:taskId?",
-            element: <SubsamplingPage />,
-          },
-          {
-            path: "/manual-annotate/:taskId?",
-            element: <ManualAnnotationPage />,
           },
           {
             path: "/auto-annotate/:taskId?",

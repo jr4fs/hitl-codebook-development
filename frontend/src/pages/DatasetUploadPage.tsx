@@ -1,89 +1,73 @@
 import {
+  Alert,
   Badge,
   Box,
   Button,
-  Center,
+  Checkbox,
   Container,
+  Divider,
   Group,
   Modal,
+  Popover,
   Paper,
-  Pagination,
   Stack,
-  Table,
   Text,
   Title,
-  Checkbox,
+  useMantineColorScheme,
 } from "@mantine/core";
-import { Dropzone } from "@mantine/dropzone";
-import { useDisclosure } from "@mantine/hooks";
 import {
+  IconAlertCircle,
   IconArrowRight,
+  IconHelpCircle,
   IconUpload,
-  IconX,
-  IconFile,
-  IconSettings,
 } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getCsvData, uploadFile } from "../services/tasks.service";
-import AnonymizeConfigModal from "../components/anonymize/AnonymizeConfigModal";
 import StepTrackerBanner from "../components/StepTrackerBanner";
+import { uploadTaskBundle } from "../services/tasks.service";
+import { toast } from "../lib/toast";
 import styles from "./DatasetUploadPage.module.css";
-
-const MAX_ROWS_PER_PAGE = 50;
-
-interface CsvRow {
-  [key: string]: string;
-}
 
 export default function DatasetUploadPage() {
   const navigate = useNavigate();
-  const [csvData, setCsvData] = useState<CsvRow[]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [fileName, setFileName] = useState<string>("");
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const { colorScheme } = useMantineColorScheme();
+  const isLight = colorScheme === "light";
+  const [dValFile, setDValFile] = useState<File | null>(null);
+  const [dAllFile, setDAllFile] = useState<File | null>(null);
+  const [taskJsonFile, setTaskJsonFile] = useState<File | null>(null);
+  const [labelsJsonFile, setLabelsJsonFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [introOpen, setIntroOpen] = useState(false);
   const [introDontShow, setIntroDontShow] = useState(false);
   const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
-  const [
-    configModalOpened,
-    { open: openConfigModal, close: closeConfigModal },
-  ] = useDisclosure(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
 
-  const totalPages = Math.ceil(csvData.length / MAX_ROWS_PER_PAGE);
-  const startIndex = (currentPage - 1) * MAX_ROWS_PER_PAGE;
-  const endIndex = startIndex + MAX_ROWS_PER_PAGE;
-  const paginatedData = csvData.slice(startIndex, endIndex);
+  const labeledRef = useRef<HTMLDivElement | null>(null);
+  const unlabeledRef = useRef<HTMLDivElement | null>(null);
+  const taskJsonRef = useRef<HTMLDivElement | null>(null);
+  const labelsJsonRef = useRef<HTMLDivElement | null>(null);
+  const submitRef = useRef<HTMLDivElement | null>(null);
 
-  const handleFileUpload = async (files: File[]) => {
-    const inputFile = files[0];
-    if (inputFile) {
-      console.log("Selected file:", inputFile);
-      const response = await uploadFile(inputFile);
-      if (response.success) {
-        const uploadedFileName = response.filePath ?? "";
-        setFileName(uploadedFileName);
-        const csvResponse = await getCsvData(uploadedFileName);
-        setCsvData((csvResponse.data || []) as CsvRow[]);
-        setHeaders(csvResponse.headers || []);
-        setCurrentPage(1);
-      } else {
-        console.log("Error uploading csv: ", response.errors);
-      }
-    }
-  };
+  const isReady = Boolean(
+    dValFile && dAllFile && taskJsonFile && labelsJsonFile,
+  );
 
   useEffect(() => {
-    const hideIntro = localStorage.getItem("hideStep12Intro") === "true";
+    const hideIntro = localStorage.getItem("hideStep1Intro") === "true";
+    const hideTour = localStorage.getItem("hideStep1Tour") === "true";
     if (!hideIntro) {
       setIntroShowCheckbox(true);
       setIntroOpen(true);
+    } else if (!hideTour) {
+      setTourOpen(true);
     }
   }, []);
 
   const handleCloseIntro = () => {
     if (introShowCheckbox && introDontShow) {
-      localStorage.setItem("hideStep12Intro", "true");
+      localStorage.setItem("hideStep1Intro", "true");
     }
     setIntroOpen(false);
   };
@@ -93,35 +77,214 @@ export default function DatasetUploadPage() {
     setIntroOpen(true);
   };
 
-  if (csvData.length === 0) {
-    return (
-      <Box className={styles.page}>
-        <div className={styles.orbOne} />
+  const startTour = () => {
+    setTourStep(0);
+    setTourOpen(true);
+  };
+
+  const endTour = (hideFuture: boolean) => {
+    if (hideFuture) {
+      localStorage.setItem("hideStep1Tour", "true");
+    }
+    setTourOpen(false);
+  };
+
+  const tourSteps = useMemo(
+    () => [
+      {
+        title: "Upload labeled data",
+        description:
+          'A subset of the dataset with labels. It should include "text" and "task_label" columns.',
+        ref: labeledRef,
+      },
+      {
+        title: "Upload unlabeled data",
+        description:
+          'The remaining dataset without labels. It should include a "text".',
+        ref: unlabeledRef,
+      },
+      {
+        title: "Task details",
+        description: "Provide the task name and description in JSON.",
+        ref: taskJsonRef,
+      },
+      {
+        title: "Labels JSON",
+        description:
+          "Provide the label list with name, description, keywords, and guidelines.",
+        ref: labelsJsonRef,
+      },
+      {
+        title: "Start the upload",
+        description: "When all files are selected, upload to continue.",
+        ref: submitRef,
+      },
+    ],
+    [],
+  );
+
+  useEffect(() => {
+    if (!tourOpen) return;
+    const currentStep = tourSteps[tourStep];
+    const target = currentStep?.ref?.current;
+    if (!target) return;
+
+    const rect = target.getBoundingClientRect();
+    const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
+    if (inView) return;
+
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [tourOpen, tourStep, tourSteps]);
+
+  const downloadTemplate = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const taskTemplate = JSON.stringify(
+    {
+      taskname: "INSERT_TASK_NAME_HERE",
+      description:
+        "Provide clear, step-by-step instructions explaining how to perform this task. Write the description as if you are teaching someone for the first time. Include the objective, and any necessary context, this will go straight into the prompt of the language model",
+    },
+    null,
+    2,
+  );
+
+  const labelsTemplate = JSON.stringify(
+    {
+      labels: [
+        {
+          name: "positive",
+          description: "INSERT DEFINITION",
+          keywords: ["INSERT YOUR KEYWORDS"],
+          guidelines: [
+            "Any initial guidelines you have created for annotating this label",
+          ],
+        },
+        {
+          name: "negative",
+          description: "INSERT DEFINITION",
+          keywords: ["INSERT YOUR KEYWORDS"],
+          guidelines: [
+            "Any initial guidelines you have created for annotating this label",
+          ],
+        },
+        {
+          name: "neutral",
+          description: "INSERT DEFINITION",
+          keywords: ["INSERT YOUR KEYWORDS"],
+          guidelines: [
+            "Any initial guidelines you have created for annotating this label",
+          ],
+        },
+      ],
+    },
+    null,
+    2,
+  );
+
+  const introModalStyles = {
+    content: {
+      backgroundColor: isLight ? "#ffffff" : "rgba(20, 28, 34, 0.98)",
+      border: isLight
+        ? "1px solid rgba(15, 20, 24, 0.12)"
+        : "1px solid rgba(124, 231, 225, 0.25)",
+      boxShadow: isLight
+        ? "0 24px 60px rgba(0, 0, 0, 0.15)"
+        : "0 24px 60px rgba(0, 0, 0, 0.35)",
+      color: isLight ? "#0f1418" : "#e8eef1",
+    },
+    header: { backgroundColor: "transparent" },
+    title: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+    close: { color: isLight ? "#0f1418" : "#e8eef1" },
+  } as const;
+
+  const introOverlayColor = isLight ? "#f7fafb" : "#11171c";
+  const dividerColor = isLight
+    ? "rgba(15, 20, 24, 0.12)"
+    : "rgba(255, 255, 255, 0.08)";
+  const handleUpload = async () => {
+    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile) {
+      setError("Please provide all four files before continuing.");
+      return;
+    }
+
+    setError(null);
+    setIsUploading(true);
+
+    try {
+      const response = await uploadTaskBundle({
+        dValFile,
+        dAllFile,
+        taskJsonFile,
+        labelsJsonFile,
+      });
+
+      if (!response.success || !response.taskId) {
+        throw new Error(response.message || "Upload failed.");
+      }
+
+      if (response.valSummary && response.restSummary) {
+        toast.success(
+          `Upload complete. Labeled rows: ${response.valSummary.rows}. Unlabeled rows: ${response.restSummary.rows}.`,
+        );
+      } else {
+        toast.success("Upload complete. Opening AI review...");
+      }
+      navigate(`/auto-annotate/${response.taskId}`, {
+        state: {
+          task: response.task,
+          fileName: response.fileName,
+        },
+      });
+    } catch (err: any) {
+      setError(err?.message || "Failed to upload files.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <Box className={styles.page}>
+      <div className={styles.orbOne} />
+      <Container fluid className={styles.hero}>
+        <Badge className={styles.kicker} variant="light" color="gray">
+          New Task Setup
+        </Badge>
+        <Title className={styles.title}>Upload Your Task Files</Title>
+        <Text className={styles.subtitle}>
+          Upload your labeled examples, the remaining unlabeled data, and the
+          task definition files to get started.
+        </Text>
+      </Container>
+      <Container fluid className={styles.tableSection}>
+        <StepTrackerBanner currentStep={1} onHelp={handleHelp} />
         <Modal
           opened={introOpen}
           onClose={handleCloseIntro}
           centered
-          title="Steps 1-2: Anonymization and upload"
-          overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
-          styles={{
-            content: {
-              backgroundColor: "rgba(20, 28, 34, 0.98)",
-              border: "1px solid rgba(124, 231, 225, 0.25)",
-              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
-              color: "#e8eef1",
-            },
-            header: { backgroundColor: "transparent" },
-            title: { color: "#e8eef1", fontWeight: 600 },
-            close: { color: "#e8eef1" },
-          }}
+          title="Step 1: Upload your task files"
+          overlayProps={{ blur: 2, opacity: 0.5, color: introOverlayColor }}
+          styles={introModalStyles}
         >
           <Stack gap="sm">
             <Text>
-              Configure anonymization rules, then upload your CSV so the dataset
-              is ready for task definition.
+              Upload the labeled dataset, the unlabeled dataset, and the two
+              JSON files. We will validate and move you to AI review.
             </Text>
             {introShowCheckbox && (
               <Checkbox
+                className={styles.introCheckbox}
                 label="Don't show again"
                 checked={introDontShow}
                 onChange={(event) =>
@@ -129,182 +292,432 @@ export default function DatasetUploadPage() {
                 }
               />
             )}
-            <Group justify="flex-end">
-              <Button onClick={handleCloseIntro}>Got it</Button>
+            <Group justify="space-between" mt={10}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  handleCloseIntro();
+                  endTour(true);
+                }}
+              >
+                Skip tour
+              </Button>
+              <Button
+                variant="light"
+                leftSection={<IconHelpCircle size={16} />}
+                onClick={() => {
+                  handleCloseIntro();
+                  startTour();
+                }}
+              >
+                Start tour
+              </Button>
             </Group>
           </Stack>
         </Modal>
-        <Container fluid className={styles.hero}>
-          <StepTrackerBanner
-            currentStep={2}
-            activeSteps={[1, 2]}
-            onHelp={handleHelp}
-            helpLabel="About steps 1 and 2"
-          />
-          <Badge className={styles.kicker} variant="light" color="gray">
-            Steps 1-2 of 6
-          </Badge>
-          <Title className={styles.title} mt="md">
-            Upload your CSV dataset
-          </Title>
-          <Text className={styles.subtitle} mt="sm">
-            Add the dataset you want to label so you can preview samples before
-            defining the task.
-          </Text>
+        <Group align="flex-start" wrap="wrap" gap="lg" grow>
+          <Paper className={styles.dropCard} radius="lg">
+            <Stack gap="md">
+              <Title order={4} className={styles.tableTitle}>
+                Required files
+              </Title>
+              <Text size="sm" className={styles.tableMeta}>
+                Please upload the CSV and JSON files required to start the
+                process.
+              </Text>
 
-          <Paper className={styles.dropCard} mt="lg">
-            <Dropzone
-              onDrop={handleFileUpload}
-              accept={["text/csv"]}
-              className={styles.dropzone}
-            >
-              <Stack align="center" h="100%" gap="sm">
-                <Dropzone.Accept>
-                  <IconFile
-                    size={40}
-                    stroke={1.5}
-                    className={styles.iconIdle}
-                  />
-                </Dropzone.Accept>
-                <Dropzone.Reject>
-                  <IconX size={40} stroke={1.5} className={styles.iconReject} />
-                </Dropzone.Reject>
-                <Dropzone.Idle>
-                  <IconUpload
-                    size={40}
-                    stroke={1.5}
-                    className={styles.iconIdle}
-                  />
-                </Dropzone.Idle>
-                <Text className={styles.dropTitle}>Drop CSV file here</Text>
-                <Text className={styles.dropHint}>or click to browse</Text>
-              </Stack>
-            </Dropzone>
+              <Popover
+                opened={tourOpen && tourStep === 0}
+                position="right"
+                withArrow
+                withinPortal
+                shadow="md"
+              >
+                <Popover.Target>
+                  <div
+                    ref={labeledRef}
+                    className={`${styles.fileRow} ${tourOpen && tourStep === 0 ? styles.tourHighlight : ""}`}
+                  >
+                    <input
+                      id="labeled-dataset"
+                      className={styles.fileInput}
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={(event) =>
+                        setDValFile(event.currentTarget.files?.[0] || null)
+                      }
+                    />
+                    <Group
+                      gap="sm"
+                      align="center"
+                      className={styles.fileActions}
+                    >
+                      <label
+                        htmlFor="labeled-dataset"
+                        className={styles.fileButton}
+                      >
+                        Choose labeled dataset (CSV)
+                      </label>
+                    </Group>
+                    <div className={styles.fileMeta}>
+                      <Group pl={5} pt={5}>
+                        <Text size="sm" className={styles.fileName}>
+                          {dValFile ? dValFile.name : "No file selected"}
+                        </Text>
+                        <Text size="sm" className={styles.fileSubtext}>
+                          Labeled dataset with text + task_label columns.
+                        </Text>
+                      </Group>
+                    </div>
+                  </div>
+                </Popover.Target>
+                <Popover.Dropdown className={styles.tourBubble}>
+                  <Stack gap="xs">
+                    <Text fw={600}>{tourSteps[0].title}</Text>
+                    <Text size="sm" c="dimmed">
+                      {tourSteps[0].description}
+                    </Text>
+                    <Group justify="space-between">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => endTour(true)}
+                      >
+                        Skip
+                      </Button>
+                      <Button size="xs" onClick={() => setTourStep(1)}>
+                        Next
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Popover.Dropdown>
+              </Popover>
+
+              <Popover
+                opened={tourOpen && tourStep === 1}
+                position="right"
+                withArrow
+                withinPortal
+                shadow="md"
+              >
+                <Popover.Target>
+                  <div
+                    ref={unlabeledRef}
+                    className={`${styles.fileRow} ${tourOpen && tourStep === 1 ? styles.tourHighlight : ""}`}
+                  >
+                    <input
+                      id="unlabeled-dataset"
+                      className={styles.fileInput}
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={(event) =>
+                        setDAllFile(event.currentTarget.files?.[0] || null)
+                      }
+                    />
+                    <Group
+                      gap="sm"
+                      align="center"
+                      className={styles.fileActions}
+                    >
+                      <label
+                        htmlFor="unlabeled-dataset"
+                        className={styles.fileButton}
+                      >
+                        Choose unlabeled dataset (CSV)
+                      </label>
+                    </Group>
+                    <div className={styles.fileMeta}>
+                      <Group pl={5} pt={5}>
+                        <Text size="sm" className={styles.fileName}>
+                          {dAllFile ? dAllFile.name : "No file selected"}
+                        </Text>
+                        <Text size="sm" className={styles.fileSubtext}>
+                          Unlabeled dataset with text only.
+                        </Text>
+                      </Group>
+                    </div>
+                  </div>
+                </Popover.Target>
+                <Popover.Dropdown className={styles.tourBubble}>
+                  <Stack gap="xs">
+                    <Text fw={600}>{tourSteps[1].title}</Text>
+                    <Text size="sm" c="dimmed">
+                      {tourSteps[1].description}
+                    </Text>
+                    <Group justify="space-between">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => endTour(true)}
+                      >
+                        Skip
+                      </Button>
+                      <Button size="xs" onClick={() => setTourStep(2)}>
+                        Next
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Popover.Dropdown>
+              </Popover>
+
+              <Divider my="sm" color={dividerColor} />
+
+              <Popover
+                opened={tourOpen && tourStep === 2}
+                position="right"
+                withArrow
+                withinPortal
+                shadow="md"
+              >
+                <Popover.Target>
+                  <div
+                    ref={taskJsonRef}
+                    className={`${styles.fileRow} ${tourOpen && tourStep === 2 ? styles.tourHighlight : ""}`}
+                  >
+                    <input
+                      id="task-json"
+                      className={styles.fileInput}
+                      type="file"
+                      accept=".json,application/json"
+                      onChange={(event) =>
+                        setTaskJsonFile(event.currentTarget.files?.[0] || null)
+                      }
+                    />
+                    <Group
+                      gap="sm"
+                      align="center"
+                      className={styles.fileActions}
+                    >
+                      <label htmlFor="task-json" className={styles.fileButton}>
+                        Choose task details (JSON)
+                      </label>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        className={styles.fileActionRight}
+                        onClick={() =>
+                          downloadTemplate("task.json", taskTemplate)
+                        }
+                      >
+                        Download template
+                      </Button>
+                    </Group>
+                    <div className={styles.fileMeta}>
+                      <Group pl={5} pt={5}>
+                        <Text size="sm" className={styles.fileName}>
+                          {taskJsonFile
+                            ? taskJsonFile.name
+                            : "No file selected"}
+                        </Text>
+                        <Text size="sm" className={styles.fileSubtext}>
+                          Task JSON with taskname and description.
+                        </Text>
+                      </Group>
+                    </div>
+                  </div>
+                </Popover.Target>
+                <Popover.Dropdown className={styles.tourBubble}>
+                  <Stack gap="xs">
+                    <Text fw={600}>{tourSteps[2].title}</Text>
+                    <Text size="sm" c="dimmed">
+                      {tourSteps[2].description}
+                    </Text>
+                    <Group justify="space-between">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => endTour(true)}
+                      >
+                        Skip
+                      </Button>
+                      <Button size="xs" onClick={() => setTourStep(3)}>
+                        Next
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Popover.Dropdown>
+              </Popover>
+
+              <Popover
+                opened={tourOpen && tourStep === 3}
+                position="right"
+                withArrow
+                withinPortal
+                shadow="md"
+              >
+                <Popover.Target>
+                  <div
+                    ref={labelsJsonRef}
+                    className={`${styles.fileRow} ${tourOpen && tourStep === 3 ? styles.tourHighlight : ""}`}
+                  >
+                    <input
+                      id="labels-json"
+                      className={styles.fileInput}
+                      type="file"
+                      accept=".json,application/json"
+                      onChange={(event) =>
+                        setLabelsJsonFile(
+                          event.currentTarget.files?.[0] || null,
+                        )
+                      }
+                    />
+                    <Group
+                      gap="sm"
+                      align="center"
+                      className={styles.fileActions}
+                    >
+                      <label
+                        htmlFor="labels-json"
+                        className={styles.fileButton}
+                      >
+                        Choose label set (JSON)
+                      </label>
+                      <Button
+                        size="xs"
+                        variant="light"
+                        className={styles.fileActionRight}
+                        onClick={() =>
+                          downloadTemplate("labels.json", labelsTemplate)
+                        }
+                      >
+                        Download template
+                      </Button>
+                    </Group>
+                    <div className={styles.fileMeta}>
+                      <Group pl={5} pt={5}>
+                        <Text size="sm" className={styles.fileName}>
+                          {labelsJsonFile
+                            ? labelsJsonFile.name
+                            : "No file selected"}
+                        </Text>
+                        <Text size="sm" className={styles.fileSubtext}>
+                          Labels array with name, description, keywords,
+                          guidelines.
+                        </Text>
+                      </Group>
+                    </div>
+                  </div>
+                </Popover.Target>
+                <Popover.Dropdown className={styles.tourBubble}>
+                  <Stack gap="xs">
+                    <Text fw={600}>{tourSteps[3].title}</Text>
+                    <Text size="sm" c="dimmed">
+                      {tourSteps[3].description}
+                    </Text>
+                    <Group justify="space-between">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => endTour(true)}
+                      >
+                        Skip
+                      </Button>
+                      <Button size="xs" onClick={() => setTourStep(4)}>
+                        Next
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Popover.Dropdown>
+              </Popover>
+
+              {error && (
+                <Alert
+                  icon={<IconAlertCircle size={16} />}
+                  color="red"
+                  variant="light"
+                >
+                  {error}
+                </Alert>
+              )}
+
+              <Popover
+                opened={tourOpen && tourStep === 4}
+                position="top"
+                withArrow
+                withinPortal
+                shadow="md"
+              >
+                <Popover.Target>
+                  <div
+                    ref={submitRef}
+                    className={
+                      tourOpen && tourStep === 4 ? styles.tourHighlight : ""
+                    }
+                  >
+                    <Group justify="space-between" mt="sm">
+                      <Button
+                        variant="light"
+                        className={styles.secondaryCta}
+                        onClick={() => navigate("/")}
+                      >
+                        Back to home
+                      </Button>
+                      <Button
+                        className={styles.primaryCta}
+                        leftSection={<IconUpload size={18} />}
+                        rightSection={<IconArrowRight size={16} />}
+                        loading={isUploading}
+                        disabled={!isReady}
+                        onClick={handleUpload}
+                      >
+                        Upload bundle
+                      </Button>
+                    </Group>
+                  </div>
+                </Popover.Target>
+                <Popover.Dropdown className={styles.tourBubble}>
+                  <Stack gap="xs">
+                    <Text fw={600}>{tourSteps[4].title}</Text>
+                    <Text size="sm" c="dimmed">
+                      {tourSteps[4].description}
+                    </Text>
+                    <Group justify="space-between">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => endTour(true)}
+                      >
+                        Skip
+                      </Button>
+                      <Button
+                        size="xs"
+                        onClick={() => {
+                          endTour(true);
+                        }}
+                      >
+                        Finish
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Popover.Dropdown>
+              </Popover>
+            </Stack>
           </Paper>
 
-          <Group mt="lg" gap="sm">
-            <Button
-              variant="light"
-              radius="xl"
-              className={styles.secondaryCta}
-              leftSection={<IconSettings size={18} />}
-              onClick={openConfigModal}
-            >
-              Configure anonymization
-            </Button>
-          </Group>
-        </Container>
-        <AnonymizeConfigModal
-          opened={configModalOpened}
-          onClose={closeConfigModal}
-        />
-      </Box>
-    );
-  }
-
-  return (
-    <Box className={styles.page}>
-      <div className={styles.orbOne} />
-      <Container fluid className={styles.tableSection}>
-        <StepTrackerBanner
-          currentStep={2}
-          activeSteps={[1, 2]}
-          onHelp={handleHelp}
-          helpLabel="About steps 1 and 2"
-        />
-        <Group justify="space-between" align="center" wrap="wrap" gap="md">
-          <div>
-            <Title className={styles.tableTitle}>
-              {fileName || "Dataset preview"}
-            </Title>
-            <Text className={styles.tableMeta}>{csvData.length} rows</Text>
-          </div>
-          <Button
-            variant="light"
-            radius="xl"
-            className={styles.secondaryCta}
-            leftSection={<IconSettings size={18} />}
-            onClick={openConfigModal}
-          >
-            Configure anonymization
-          </Button>
+          <Paper className={styles.dropCard} radius="lg">
+            <Stack gap="md">
+              <Title order={4} className={styles.tableTitle}>
+                What happens next
+              </Title>
+              <Text className={styles.tableMeta} size="sm">
+                We create the task, store your datasets, and seed the model with
+                your labeled examples. You will land directly in the AI review
+                step to provide feedback and generate the codebook.
+              </Text>
+              <Paper className={styles.infoCard} p="xl" radius="lg">
+                <Stack align="center" gap="xs">
+                  <IconUpload size={36} className={styles.iconIdle} />
+                  <Text className={styles.dropTitle}>4 files to upload</Text>
+                  <Text className={styles.dropHint}>
+                    We will validate the files and take you to review the AI
+                    annotations.
+                  </Text>
+                </Stack>
+              </Paper>
+            </Stack>
+          </Paper>
         </Group>
-
-        <Paper className={styles.tableCard} mt="lg">
-          <Table.ScrollContainer minWidth={500} h="100%">
-            <Table
-              withColumnBorders
-              withTableBorder
-              borderColor="rgba(232, 238, 241, 0.2)"
-            >
-              <Table.Thead>
-                <Table.Tr>
-                  {headers.map((header, index) => (
-                    <Table.Th key={index} className={styles.tableHeader}>
-                      {header}
-                    </Table.Th>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {paginatedData.map((row, rowIndex) => (
-                  <Table.Tr key={rowIndex}>
-                    {headers.map((header, cellIndex) => (
-                      <Table.Td key={cellIndex} className={styles.tableCell}>
-                        <div className={styles.tableCellContent}>
-                          {row[header]}
-                        </div>
-                      </Table.Td>
-                    ))}
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        </Paper>
-
-        <Group justify="center" mt="lg">
-          <Pagination
-            total={totalPages}
-            value={currentPage}
-            onChange={setCurrentPage}
-            color="gray"
-            withEdges
-            styles={{
-              control: {
-                backgroundColor: "#1a232b",
-                border: "none",
-                color: "#e8eef1",
-              },
-              dots: {
-                color: "#e8eef1",
-              },
-            }}
-          />
-        </Group>
-        <Center w="100%" mt="md">
-          <Button
-            className={styles.primaryCta}
-            radius="xl"
-            rightSection={<IconArrowRight size={18} />}
-            onClick={() => {
-              navigate("/new-task", {
-                state: {
-                  csvData,
-                  headers,
-                  fileName,
-                },
-              });
-            }}
-          >
-            Continue to task definition
-          </Button>
-        </Center>
       </Container>
-      <AnonymizeConfigModal
-        opened={configModalOpened}
-        onClose={closeConfigModal}
-      />
     </Box>
   );
 }

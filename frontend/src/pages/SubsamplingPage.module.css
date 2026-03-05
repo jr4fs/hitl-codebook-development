@@ -11,6 +11,26 @@
     ),
     linear-gradient(180deg, #11171c 0%, #080c10 100%);
   color: #e8eef1;
+  :global([data-mantine-color-scheme="light"]) .page {
+    background: linear-gradient(180deg, #f7fafb 0%, #eef3f5 100%);
+    color: #0f1418;
+  }
+
+  :global([data-mantine-color-scheme="light"]) .sidePanel,
+  :global([data-mantine-color-scheme="light"]) .tablePanel,
+  :global([data-mantine-color-scheme="light"]) .tableCard {
+    background: #ffffff;
+    border-color: rgba(15, 20, 24, 0.08);
+  }
+
+  :global([data-mantine-color-scheme="light"]) .panelTitle {
+    color: #0f1418;
+  }
+
+  :global([data-mantine-color-scheme="light"]) .panelMeta,
+  :global([data-mantine-color-scheme="light"]) .emptyState {
+    color: rgba(15, 20, 24, 0.65);
+  }
   overflow: hidden;
   font-family: "Space Grotesk", system-ui, sans-serif;
 }
