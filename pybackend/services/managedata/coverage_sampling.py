@@ -90,24 +90,32 @@ class CoverageBasedSampling:
         return np.array(coverage_scores)
 
 
-    def sample(self, text_col: str, n: int = 1) -> pd.DataFrame:
-        """
-        Selects n samples from candidate_df with LEAST coverage relative to guide_df.
-        """
+    def sample(self, n: int = 150, text_col: str = "text_combined") -> pd.DataFrame:
         if self.rep_sample_df.empty:
-            # If nothing in guide, fallback to random sampling
-            return self.candidate_df.sample(n=min(n, len(self.candidate_df)))
+            return self.candidate_df.sample(n=min(n, len(self.rep_sample_df)))
 
-        candidate_texts = self.candidate_df[text_col].tolist()
-        guide_texts = self.rep_sample_df[text_col].tolist()
+        # Step 1: seed with 1 random sample
+        seed = self.rep_sample_df.sample(n=1, random_state=42)
+        self.candidate_df = seed.copy()
+        self.rep_sample_df = self.rep_sample_df.drop(index=seed.index).reset_index(drop=True)
 
-        scores = self.calculate_coverage(candidate_texts, guide_texts)
-        
-        # Add scores to dataframe for sorting
-        temp_df = self.candidate_df.copy()
-        temp_df["coverage_score"] = scores
-        
-        # Select least coverage (most diverse)
-        diverse_samples = temp_df.sort_values("coverage_score", ascending=True).head(n)
-        
-        return diverse_samples.drop(columns=["coverage_score"])
+        # Step 2: iteratively add least similar samples
+        count = 1
+        while len(self.candidate_df) < n and not self.rep_sample_df.empty:
+            candidate_texts = self.candidate_df[text_col].tolist()
+            guide_texts = self.rep_sample_df[text_col].tolist()
+
+            # score all remaining rep_sample rows against current candidate set
+            scores = self.calculate_coverage(guide_texts, candidate_texts)
+
+            # pick the least similar (lowest coverage score)
+            best_idx = np.argmin(scores)
+            best_row = self.rep_sample_df.iloc[[best_idx]]
+
+            # move it from rep_sample_df to candidate_df
+            self.candidate_df = pd.concat([self.candidate_df, best_row], ignore_index=True)
+            self.rep_sample_df = self.rep_sample_df.drop(index=self.rep_sample_df.index[best_idx]).reset_index(drop=True)
+            count += 1
+            print("Picked: ",count)
+
+        return self.candidate_df

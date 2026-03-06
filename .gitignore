@@ -6,4 +6,5 @@ __pycache__/
 shared_uploads/
 val_datasets/
 rest_datasets
+guide_datasets/
 venv

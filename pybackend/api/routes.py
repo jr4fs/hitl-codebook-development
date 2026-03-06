@@ -14,7 +14,7 @@ import asyncio
 
 from models.embedding_schemas import EmbedDatasetRequest, EmbedDatasetResponse
 from models.rule_synthesis_schema import RuleSynthesisRequest, RuleSynthesisResponse
-from services.embedding_service import EmbeddingService
+#from services.embedding_service import EmbeddingService
 from services.anonymizer.service import anonymize_csv_bytes, get_config_defaults
 from models.ollama_adapter import InferenceRequest, InferenceResponse, BatchInferenceRequest, BatchInferenceResponse, BatchInferenceSummary
 from services.chat.chat_service import ChatService
@@ -26,38 +26,38 @@ chat_router = APIRouter(prefix="/inference", tags=["inference"])
 anonymize_router = APIRouter(prefix="/anonymize", tags=["anonymize"])
 
 
-@embedding_router.post("/run", response_model=EmbedDatasetResponse)
-async def run_embedding(request: EmbedDatasetRequest):
-    """
-    Perform the embedding for the input dataset
+# @embedding_router.post("/run", response_model=EmbedDatasetResponse)
+# async def run_embedding(request: EmbedDatasetRequest):
+#     """
+#     Perform the embedding for the input dataset
 
-    Returns:
-        success: True/False determines df_val and df_rest file creation status
-    """
-    try:
-        print(
-            f"Request payload: file_path={request.file_path}, text_col={request.text_col}, labels={len(request.labels)}"
-        )
+#     Returns:
+#         success: True/False determines df_val and df_rest file creation status
+#     """
+#     try:
+#         print(
+#             f"Request payload: file_path={request.file_path}, text_col={request.text_col}, labels={len(request.labels)}"
+#         )
 
-        embedding_service_obj = EmbeddingService(request)
-        # df_val = embedding_service_obj.run()
-        val_data = embedding_service_obj.run()
-        # val_data = df_val.to_dict(orient='records')
-        project_root = Path(__file__).parent.parent.parent
-        val_file_path = project_root / "val_datasets" / request.file_path
-        rest_file_path = project_root / "rest_datasets" / request.file_path
-        return EmbedDatasetResponse(
-            success=True,
-            val_created=val_file_path.is_file(),
-            rest_created=rest_file_path.is_file(),
-            file_name=request.file_path,
-            val_data=val_data,
-        )
-    except Exception as e:
-        print(f"Error in run_embedding endpoint: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Error processing embedding request: {str(e)}"
-        )
+#         embedding_service_obj = EmbeddingService(request)
+#         # df_val = embedding_service_obj.run()
+#         val_data = embedding_service_obj.run()
+#         # val_data = df_val.to_dict(orient='records')
+#         project_root = Path(__file__).parent.parent.parent
+#         val_file_path = project_root / "val_datasets" / request.file_path
+#         rest_file_path = project_root / "rest_datasets" / request.file_path
+#         return EmbedDatasetResponse(
+#             success=True,
+#             val_created=val_file_path.is_file(),
+#             rest_created=rest_file_path.is_file(),
+#             file_name=request.file_path,
+#             val_data=val_data,
+#         )
+#     except Exception as e:
+#         print(f"Error in run_embedding endpoint: {str(e)}")
+#         raise HTTPException(
+#             status_code=500, detail=f"Error processing embedding request: {str(e)}"
+#         )
 
 
 @anonymize_router.post("/csv")
@@ -239,4 +239,29 @@ async def run_rule_synthesis(request: RuleSynthesisRequest):
 
     except Exception as e:
         print("[Rule synthesis] Error while running rule synthesis : ", e)
+        raise HTTPException(status_code=500, detail=str(e))
+from services.managedata.data_manager_service import DataManagerService
+
+@embedding_router.post("/representative")
+async def representative_sampling(request: EmbedDatasetRequest):
+    """
+    Perform representative sampling (keyword-based)
+    """
+    try:
+        service = DataManagerService(request)
+        service.upsample()
+        return {"success": True, "message": "Representative sampling completed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@embedding_router.post("/coverage")
+async def coverage_sampling(request: EmbedDatasetRequest):
+    """
+    Perform coverage-based sampling (diversity-maximized)
+    """
+    try:
+        service = DataManagerService(request)
+        service.coverage_sample()
+        return {"success": True, "message": "Coverage sampling completed"}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -88,7 +88,7 @@ class LabelSampling:
             if use_cosine:
                 faiss.normalize_L2(q_vec) 
 
-            distances, ann = index.search(q_vec, len(database_df))
+            distances, ann = index.search(q_vec, 500)
             distances = distances[0]
             ann = ann[0]
 
