@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 from models.embedding_schemas import EmbedDatasetRequest
 from services.dbembed_service import DatasetEmbeddingService
-from services.faiss_service import FAISSService
+from services.faiss_service import FAISSIndexing
 from services.label_service import LabelService
 import os
 from pathlib import Path
@@ -36,7 +36,7 @@ class EmbeddingService:
 
         print("Compelted embedding the dataset")
         print("Beginning to build the FAISS index")
-        faiss_service_obj = FAISSService(
+        faiss_service_obj = FAISSIndexing(
             df=database_df,
             vector_col="vector",
             use_cosine=True

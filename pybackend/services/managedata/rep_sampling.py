@@ -7,7 +7,6 @@ from .label_sampling import LabelSampling
 class RepresentativeSampling:
 
    def run(self):
-
       # dataset embedding step (creating vectors of the text samples)
       dbembed_service_obj = DatasetEmbeddingService(
                d_all = self.df,
