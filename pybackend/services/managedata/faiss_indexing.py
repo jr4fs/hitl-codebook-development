@@ -6,7 +6,7 @@ import pandas as pd
 from typing import List, Tuple
 
 
-class FAISSService:
+class FAISSIndexing:
     def __init__(self, df, vector_col, use_cosine=True):
         """ 
         Parameters
