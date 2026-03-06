@@ -16,6 +16,7 @@ import {
   Textarea,
   ActionIcon,
   Divider,
+  useMantineColorScheme,
 } from "@mantine/core";
 import {
   IconInfoCircle,
@@ -38,6 +39,8 @@ import { saveTaskCodebook } from "../services/tasks.service";
 
 export default function ManualAnnotationPage() {
   const navigate = useNavigate();
+  const { colorScheme } = useMantineColorScheme();
+  const isLight = colorScheme === "light";
   const { loading, subsampledData, task, annotations } = useTaskData();
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -144,7 +147,6 @@ export default function ManualAnnotationPage() {
     }
   }, [isCompleted, isReviewing, totalSamples]);
 
-
   useEffect(() => {
     const hideIntro = localStorage.getItem("hideStep4Intro") === "true";
     if (!hideIntro) {
@@ -245,10 +247,12 @@ export default function ManualAnnotationPage() {
 
   if (loading) {
     return (
-      <Center h="100vh" bg="#0f1418">
+      <Center h="100vh" bg={isLight ? "#f7fafb" : "#0f1418"}>
         <Stack align="center" gap="md">
           <LoadingOverlay visible={true} overlayProps={{ blur: 2 }} />
-          <Text c="white">Loading annotation data...</Text>
+          <Text c={isLight ? "#0f1418" : "white"}>
+            Loading annotation data...
+          </Text>
         </Stack>
       </Center>
     );
@@ -256,9 +260,11 @@ export default function ManualAnnotationPage() {
 
   if (!task || !subsampledData || subsampledData.length === 0) {
     return (
-      <Center h="100vh" bg="#0f1418">
+      <Center h="100vh" bg={isLight ? "#f7fafb" : "#0f1418"}>
         <Stack align="center" gap="md">
-          <Text c="white">No data available for annotation</Text>
+          <Text c={isLight ? "#0f1418" : "white"}>
+            No data available for annotation
+          </Text>
           <Button onClick={() => navigate("/")}>Go Home</Button>
         </Stack>
       </Center>
@@ -426,24 +432,37 @@ export default function ManualAnnotationPage() {
   };
 
   return (
-    <Paper mih="100vh" bg="#0f1418" c="#D8D8D8" p="lg">
+    <Paper
+      mih="100vh"
+      bg={isLight ? "#f7fafb" : "#0f1418"}
+      c={isLight ? "#0f1418" : "#D8D8D8"}
+      p="lg"
+    >
       <Stack align="center" justify="center" gap="md" maw={900} mx="auto">
         <Modal
           opened={introOpen}
           onClose={handleCloseIntro}
           centered
           title="Step 4: Manual seed annotation"
-          overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
+          overlayProps={{
+            blur: 2,
+            opacity: 0.5,
+            color: isLight ? "#f7fafb" : "#11171c",
+          }}
           styles={{
             content: {
-              backgroundColor: "rgba(20, 28, 34, 0.98)",
-              border: "1px solid rgba(124, 231, 225, 0.25)",
-              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
-              color: "#e8eef1",
+              backgroundColor: isLight ? "#ffffff" : "rgba(20, 28, 34, 0.98)",
+              border: isLight
+                ? "1px solid rgba(15, 20, 24, 0.12)"
+                : "1px solid rgba(124, 231, 225, 0.25)",
+              boxShadow: isLight
+                ? "0 24px 60px rgba(0, 0, 0, 0.15)"
+                : "0 24px 60px rgba(0, 0, 0, 0.35)",
+              color: isLight ? "#0f1418" : "#e8eef1",
             },
             header: { backgroundColor: "transparent" },
-            title: { color: "#e8eef1", fontWeight: 600 },
-            close: { color: "#e8eef1" },
+            title: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+            close: { color: isLight ? "#0f1418" : "#e8eef1" },
           }}
         >
           <Stack gap="sm">
@@ -468,7 +487,7 @@ export default function ManualAnnotationPage() {
         </Modal>
         <StepTrackerBanner currentStep={4} onHelp={handleHelp} />
         <Group justify="space-between" w="100%">
-          <Title order={3} c="white">
+          <Title order={3} c={isLight ? "#0f1418" : "white"}>
             Manual Annotation
           </Title>
           <Text size="sm" c="dimmed">
@@ -481,12 +500,16 @@ export default function ManualAnnotationPage() {
         <Paper
           w="100%"
           p="md"
-          bg="#1b242b"
+          bg={isLight ? "#ffffff" : "#1b242b"}
           radius="md"
-          style={{ border: "1px solid #2c3a45" }}
+          style={{
+            border: isLight
+              ? "1px solid rgba(15, 20, 24, 0.12)"
+              : "1px solid #2c3a45",
+          }}
         >
           <Group justify="space-between" align="center">
-            <Text fw={600} c="white">
+            <Text fw={600} c={isLight ? "#0f1418" : "white"}>
               Label distribution
             </Text>
             <Switch
@@ -546,12 +569,16 @@ export default function ManualAnnotationPage() {
         <Paper
           w="100%"
           p="md"
-          bg="#1b242b"
+          bg={isLight ? "#ffffff" : "#1b242b"}
           radius="md"
-          style={{ border: "1px solid #2c3a45" }}
+          style={{
+            border: isLight
+              ? "1px solid rgba(15, 20, 24, 0.12)"
+              : "1px solid #2c3a45",
+          }}
         >
           <Group justify="space-between" align="center">
-            <Text fw={600} c="white">
+            <Text fw={600} c={isLight ? "#0f1418" : "white"}>
               Seed Codebook Rules
             </Text>
             <Text size="xs" c="dimmed">
@@ -562,7 +589,10 @@ export default function ManualAnnotationPage() {
             Add your labeling intuition here. These rules seed the live codebook
             in step 5.
           </Text>
-          <Divider my="sm" color="#2b3944" />
+          <Divider
+            my="sm"
+            color={isLight ? "rgba(15, 20, 24, 0.12)" : "#2b3944"}
+          />
           <Stack gap="sm">
             {manualRules.length === 0 ? (
               <Text size="sm" c="dimmed">
@@ -573,9 +603,13 @@ export default function ManualAnnotationPage() {
                 <Paper
                   key={`${idx}-${rule.slice(0, 12)}`}
                   p="sm"
-                  bg="#1c242b"
+                  bg={isLight ? "#f4f7f9" : "#1c242b"}
                   radius="sm"
-                  style={{ border: "1px solid #2b3944" }}
+                  style={{
+                    border: isLight
+                      ? "1px solid rgba(15, 20, 24, 0.12)"
+                      : "1px solid #2b3944",
+                  }}
                 >
                   {editingRuleIndex === idx ? (
                     <Stack gap="xs">
@@ -695,9 +729,14 @@ export default function ManualAnnotationPage() {
         <Box w="100%">
           <ScrollArea
             h={300}
-            bg="#1c242b"
+            bg={isLight ? "#ffffff" : "#1c242b"}
             p="md"
-            style={{ borderRadius: "8px", border: "1px solid #2b3944" }}
+            style={{
+              borderRadius: "8px",
+              border: isLight
+                ? "1px solid rgba(15, 20, 24, 0.12)"
+                : "1px solid #2b3944",
+            }}
           >
             {showCompletion ? (
               <Center h={250}>

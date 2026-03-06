@@ -12,6 +12,7 @@ import {
   Box,
   Checkbox,
   Alert,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconExclamationMark } from "@tabler/icons-react";
@@ -48,6 +49,8 @@ const getPasswordErrors = (password: string) => {
 
 export default function SignUpPage() {
   const navigate = useNavigate();
+  const { colorScheme } = useMantineColorScheme();
+  const isLight = colorScheme === "light";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const dispatch = useDispatch();
@@ -127,7 +130,14 @@ export default function SignUpPage() {
   return (
     <BackgroundImage src="/paint.jpg" radius="xs" w="100vw" h="100vh">
       <Center w="100%" h="100%">
-        <Paper c="white" bg="#343434" p="40" w="500" radius="xl" shadow="xl">
+        <Paper
+          c={isLight ? "#0f1418" : "white"}
+          bg={isLight ? "#ffffff" : "#343434"}
+          p="40"
+          w="500"
+          radius="xl"
+          shadow="xl"
+        >
           <Stack gap="xl">
             <Text size="32px" fw={900} c="#50C878" ta="center">
               Welcome to the Annotation Tool

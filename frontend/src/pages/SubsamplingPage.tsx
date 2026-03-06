@@ -22,6 +22,7 @@ import {
   TagsInput,
   Button,
   LoadingOverlay,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { IconTrash, IconPlus, IconInfoCircle } from "@tabler/icons-react";
 import { useState, useEffect, useMemo } from "react";
@@ -46,6 +47,8 @@ type TaskType = "Multiclass" | "Single-class";
 
 export default function SubsamplingPage() {
   const navigate = useNavigate();
+  const { colorScheme } = useMantineColorScheme();
+  const isLight = colorScheme === "light";
   const { loading, csvData, subsampledData, headers, fileName, task } =
     useTaskData();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -466,17 +469,25 @@ export default function SubsamplingPage() {
         onClose={handleCloseIntro}
         centered
         title="Step 3: Task definition"
-        overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
+        overlayProps={{
+          blur: 2,
+          opacity: 0.5,
+          color: isLight ? "#f7fafb" : "#11171c",
+        }}
         styles={{
           content: {
-            backgroundColor: "rgba(20, 28, 34, 0.98)",
-            border: "1px solid rgba(124, 231, 225, 0.25)",
-            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
-            color: "#e8eef1",
+            backgroundColor: isLight ? "#ffffff" : "rgba(20, 28, 34, 0.98)",
+            border: isLight
+              ? "1px solid rgba(15, 20, 24, 0.12)"
+              : "1px solid rgba(124, 231, 225, 0.25)",
+            boxShadow: isLight
+              ? "0 24px 60px rgba(0, 0, 0, 0.15)"
+              : "0 24px 60px rgba(0, 0, 0, 0.35)",
+            color: isLight ? "#0f1418" : "#e8eef1",
           },
           header: { backgroundColor: "transparent" },
-          title: { color: "#e8eef1", fontWeight: 600 },
-          close: { color: "#e8eef1" },
+          title: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+          close: { color: isLight ? "#0f1418" : "#e8eef1" },
         }}
       >
         <Stack gap="sm">
@@ -503,17 +514,25 @@ export default function SubsamplingPage() {
         onClose={() => setCodebookModalOpen(false)}
         centered
         title="Apply Existing Codebook"
-        overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
+        overlayProps={{
+          blur: 2,
+          opacity: 0.5,
+          color: isLight ? "#f7fafb" : "#11171c",
+        }}
         styles={{
           content: {
-            backgroundColor: "rgba(20, 28, 34, 0.98)",
-            border: "1px solid rgba(124, 231, 225, 0.25)",
-            boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
-            color: "#e8eef1",
+            backgroundColor: isLight ? "#ffffff" : "rgba(20, 28, 34, 0.98)",
+            border: isLight
+              ? "1px solid rgba(15, 20, 24, 0.12)"
+              : "1px solid rgba(124, 231, 225, 0.25)",
+            boxShadow: isLight
+              ? "0 24px 60px rgba(0, 0, 0, 0.15)"
+              : "0 24px 60px rgba(0, 0, 0, 0.35)",
+            color: isLight ? "#0f1418" : "#e8eef1",
           },
           header: { backgroundColor: "transparent" },
-          title: { color: "#e8eef1", fontWeight: 600 },
-          close: { color: "#e8eef1" },
+          title: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+          close: { color: isLight ? "#0f1418" : "#e8eef1" },
         }}
       >
         <Stack gap="sm">
@@ -531,9 +550,13 @@ export default function SubsamplingPage() {
                   key={book._id || book.name}
                   p="sm"
                   radius="md"
-                  bg="rgba(12, 18, 23, 0.9)"
+                  bg={isLight ? "#f4f7f9" : "rgba(12, 18, 23, 0.9)"}
                   withBorder
-                  style={{ borderColor: "rgba(255, 255, 255, 0.08)" }}
+                  style={{
+                    borderColor: isLight
+                      ? "rgba(15, 20, 24, 0.12)"
+                      : "rgba(255, 255, 255, 0.08)",
+                  }}
                 >
                   <Group justify="space-between" align="center">
                     <Stack gap={2}>
@@ -574,119 +597,131 @@ export default function SubsamplingPage() {
               justify="flex-start"
               className={pageStyles.sideStack}
             >
-              <Button
-                variant="outline"
-                color="gray"
-                radius="xl"
-                size="sm"
-                onClick={handleOpenCodebooks}
-              >
-                Apply Existing Codebook
-              </Button>
-              {appliedCodebook.length > 0 && (
-                <Text size="xs" c="dimmed" ml="xs">
-                  Using codebook: {appliedCodebookSource?.name || "Custom"}
-                </Text>
-              )}
-              <MultiSelect
-                ml="15"
-                mr="15"
-                variant="filled"
-                fz="lg"
-                label={infoLabel(
-                  "Select columns to use for annotation",
-                  "These columns are used for labeling, embeddings, and subsampling.",
-                )}
-                placeholder="Select columns"
-                clearable
-                searchable
-                nothingFoundMessage="Column does not exist"
-                limit={5}
-                data={headers}
-                value={chosenCol}
-                onChange={setChosenCol}
-                comboboxProps={{
-                  transitionProps: { transition: "pop", duration: 200 },
-                }}
-                classNames={{
-                  input: styles.input,
-                  dropdown: styles.dropdown,
-                  option: styles.option,
-                }}
-              ></MultiSelect>
-              <Title order={4} c="#D8D8D8" ml="15" mr="15">
-                Task Definition
-              </Title>
-              <TextInput
-                ml="15"
-                mr="15"
-                variant="filled"
-                label={infoLabel(
-                  "Task name",
-                  "Shown in the task list and used to organize your work.",
-                )}
-                placeholder="Enter task name"
-                value={taskName}
-                onChange={(event) => setTaskName(event.currentTarget.value)}
-                classNames={{
-                  input: styles.input,
-                }}
-              />
-              <Textarea
-                ml="15"
-                mr="15"
-                variant="filled"
-                label={infoLabel(
-                  "Task description",
-                  "Defines what should be labeled and guides the model later.",
-                )}
-                placeholder="Enter task description"
-                value={taskDesc}
-                onChange={(event) => setTaskDesc(event.currentTarget.value)}
-                classNames={{
-                  input: styles.input,
-                }}
-              />
-              <Select
-                ml="15"
-                mr="15"
-                variant="filled"
-                label={infoLabel(
-                  "Select task type",
-                  "Single-class selects one label per sample; Multiclass allows multiple.",
-                )}
-                placeholder="Pick value"
-                data={["Multiclass", "Single-class"]}
-                value={taskType}
-                onChange={(_value) =>
-                  setTaskType(_value as "Multiclass" | "Single-class")
-                }
-                classNames={{
-                  input: styles.input,
-                  dropdown: styles.dropdown,
-                  option: styles.option,
-                }}
-              />
               <ScrollArea
-                ml="15"
-                mr="15"
                 offsetScrollbars
                 scrollbarSize={6}
                 type="hover"
                 className={pageStyles.labelScroll}
               >
-                <Stack gap="md" pb="sm">
+                <Stack gap="md" px="15" pt="sm" pb="sm">
+                  <Button
+                    variant="outline"
+                    color="gray"
+                    radius="xl"
+                    size="sm"
+                    onClick={handleOpenCodebooks}
+                  >
+                    Apply Existing Codebook
+                  </Button>
+                  {appliedCodebook.length > 0 && (
+                    <Text size="xs" c="dimmed" ml="xs">
+                      Using codebook: {appliedCodebookSource?.name || "Custom"}
+                    </Text>
+                  )}
+                  <MultiSelect
+                    ml="15"
+                    mr="15"
+                    variant="filled"
+                    fz="lg"
+                    label={infoLabel(
+                      "Select columns to use for annotation",
+                      "These columns are used for labeling, embeddings, and subsampling.",
+                    )}
+                    placeholder="Select columns"
+                    clearable
+                    searchable
+                    nothingFoundMessage="Column does not exist"
+                    limit={5}
+                    data={headers}
+                    value={chosenCol}
+                    onChange={setChosenCol}
+                    comboboxProps={{
+                      transitionProps: { transition: "pop", duration: 200 },
+                    }}
+                    classNames={{
+                      input: styles.input,
+                      dropdown: styles.dropdown,
+                      option: styles.option,
+                    }}
+                  ></MultiSelect>
+                  <Title
+                    order={4}
+                    c={isLight ? "#0f1418" : "#D8D8D8"}
+                    ml="15"
+                    mr="15"
+                  >
+                    Task Definition
+                  </Title>
+                  <TextInput
+                    ml="15"
+                    mr="15"
+                    variant="filled"
+                    label={infoLabel(
+                      "Task name",
+                      "Shown in the task list and used to organize your work.",
+                    )}
+                    placeholder="Enter task name"
+                    value={taskName}
+                    onChange={(event) => setTaskName(event.currentTarget.value)}
+                    classNames={{
+                      input: styles.input,
+                    }}
+                  />
+                  <Textarea
+                    ml="15"
+                    mr="15"
+                    variant="filled"
+                    label={infoLabel(
+                      "Task description",
+                      "Defines what should be labeled and guides the model later.",
+                    )}
+                    placeholder="Enter task description"
+                    value={taskDesc}
+                    onChange={(event) => setTaskDesc(event.currentTarget.value)}
+                    classNames={{
+                      input: styles.input,
+                    }}
+                  />
+                  <Select
+                    ml="15"
+                    mr="15"
+                    variant="filled"
+                    label={infoLabel(
+                      "Select task type",
+                      "Single-class selects one label per sample; Multiclass allows multiple.",
+                    )}
+                    placeholder="Pick value"
+                    data={["Multiclass", "Single-class"]}
+                    value={taskType}
+                    onChange={(_value) =>
+                      setTaskType(_value as "Multiclass" | "Single-class")
+                    }
+                    classNames={{
+                      input: styles.input,
+                      dropdown: styles.dropdown,
+                      option: styles.option,
+                    }}
+                  />
+
+                  <Title order={5} c={isLight ? "#0f1418" : "#D8D8D8"} mt="sm">
+                    Task Labels
+                  </Title>
+
                   {taskLabels.map((label, idx) => (
                     <Paper
                       key={idx}
                       p="sm"
                       radius="md"
-                      bg="rgba(12, 18, 23, 0.9)"
+                      bg={isLight ? "#f4f7f9" : "rgba(12, 18, 23, 0.9)"}
                       withBorder
-                      style={{ borderColor: "rgba(255, 255, 255, 0.08)" }}
+                      style={{
+                        borderColor: isLight
+                          ? "rgba(15, 20, 24, 0.12)"
+                          : "rgba(255, 255, 255, 0.08)",
+                      }}
                     >
                       <Group justify="space-between" align="center" mb="xs">
-                        <Text fw={600} c="#D8D8D8">
+                        <Text fw={600} c={isLight ? "#0f1418" : "#D8D8D8"}>
                           Label {idx + 1}
                         </Text>
 
@@ -825,7 +860,10 @@ export default function SubsamplingPage() {
               visible={isLoading}
               zIndex={1000}
               overlayProps={{ radius: "sm", blur: 2 }}
-              loaderProps={{ color: "white", type: "bars" }}
+              loaderProps={{
+                color: isLight ? "#0f1418" : "white",
+                type: "bars",
+              }}
             />
             <Stack h="100%" gap="md">
               <div>
@@ -841,7 +879,11 @@ export default function SubsamplingPage() {
                   <Table
                     withColumnBorders
                     withTableBorder
-                    borderColor="rgba(232, 238, 241, 0.2)"
+                    borderColor={
+                      isLight
+                        ? "rgba(15, 20, 24, 0.12)"
+                        : "rgba(232, 238, 241, 0.2)"
+                    }
                   >
                     <Table.Thead>
                       <Table.Tr>
@@ -883,12 +925,12 @@ export default function SubsamplingPage() {
                   withEdges
                   styles={{
                     control: {
-                      backgroundColor: "#1a232b",
+                      backgroundColor: isLight ? "#ffffff" : "#1a232b",
                       border: "none",
-                      color: "#e8eef1",
+                      color: isLight ? "#0f1418" : "#e8eef1",
                     },
                     dots: {
-                      color: "#e8eef1",
+                      color: isLight ? "#0f1418" : "#e8eef1",
                     },
                   }}
                 />

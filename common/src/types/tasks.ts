@@ -2,6 +2,7 @@ export interface LabelItem {
   name: string;
   definition: string;
   keywords: string[];
+  guidelines?: string;
 }
 
 export interface Task {
@@ -16,6 +17,8 @@ export interface Task {
   userID: string;
   columns: string[];
   file: string; // filename stored in /backend/uploads
+  restFile?: string;
+  valFile?: string;
   createdAt: string; // ISO 8601 timestamp
   updatedAt?: string; // ISO 8601 timestamp
 }
@@ -30,6 +33,8 @@ export interface CreateTaskRequest {
   codebookSourceTaskName?: string;
   columns: string[];
   file: string; // filename from upload endpoint
+  restFile?: string;
+  valFile?: string;
   userID: string;
 }
 

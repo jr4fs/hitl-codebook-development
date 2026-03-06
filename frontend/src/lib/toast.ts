@@ -6,7 +6,7 @@ export const toast = {
       title: "Success",
       message,
       color: "green",
-      autoClose: 3000,
+      autoClose: 9000,
     });
   },
 
