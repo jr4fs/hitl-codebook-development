@@ -15,6 +15,8 @@ class RepresentativeSampling:
 
     def run(self):
         # dataset embedding step (creating vectors of the text samples)
+        print(self.request.file_path)
+        print(self.df.columns)
         dbembed_service_obj = DatasetEmbedding(
             d_all=self.df,
             text_cols=self.request.text_col,

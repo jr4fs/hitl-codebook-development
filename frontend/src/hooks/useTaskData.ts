@@ -17,6 +17,7 @@ interface NavProps {
   task?: Task;
   subsampledCsv?: CsvRow[];
   restData?: CsvRow[];
+  guideData?: CsvRow[];
   annotations?: AnnotationItem[];
 }
 
@@ -29,6 +30,7 @@ export const useTaskData = () => {
   const [csvData, setCsvData] = useState<CsvRow[]>([]);
   const [subsampledData, setSubsampledData] = useState<CsvRow[]>([]);
   const [restData, setRestData] = useState<CsvRow[]>([]);
+  const [guideData, setGuideData] = useState<CsvRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
   const [task, setTask] = useState<Task | null>(null);
@@ -43,6 +45,7 @@ export const useTaskData = () => {
         navProps?.task ||
         navProps?.subsampledCsv ||
         navProps?.restData ||
+        navProps?.guideData ||
         navProps?.annotations,
       );
 
@@ -62,6 +65,9 @@ export const useTaskData = () => {
         }
         if (navProps?.restData) {
           setRestData(navProps.restData);
+        }
+        if (navProps?.guideData) {
+          setGuideData(navProps.guideData);
         }
         if (navProps?.task) {
           setTask(navProps.task);
@@ -109,6 +115,9 @@ export const useTaskData = () => {
           setRestData((prev) =>
             prev.length ? prev : csvResponse.rest_data || [],
           );
+          setGuideData((prev) =>
+            prev.length ? prev : csvResponse.guide_data || [],
+          );
           setHeaders((prev) =>
             prev.length ? prev : csvResponse.headers || [],
           );
@@ -136,6 +145,7 @@ export const useTaskData = () => {
     csvData,
     subsampledData,
     restData,
+    guideData,
     headers,
     fileName,
     task,

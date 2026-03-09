@@ -25,8 +25,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import { uploadTaskBundle } from "../services/tasks.service";
+import { representativeSampling, coverageSampling } from "../services/embedding.service";
 import { toast } from "../lib/toast";
 import styles from "./DatasetUploadPage.module.css";
+import { EmbedDatasetRequest } from "@common/types/embedding";
 
 export default function DatasetUploadPage() {
   const navigate = useNavigate();
@@ -238,8 +240,25 @@ export default function DatasetUploadPage() {
         toast.success(
           `Upload complete. Labeled rows: ${response.valSummary.rows}. Unlabeled rows: ${response.restSummary.rows}.`,
         );
+        const samplingPayload: EmbedDatasetRequest = {
+          file_path: response.restFileName ?? "",
+          text_col: ["translated_text"],
+          labels: response.task?.labels ?? []
+        }
+        try {
+          const repSamplingResponse = await representativeSampling(samplingPayload)
+          console.log("repSamplingResponse: ", repSamplingResponse)
+        } catch (error: any) {
+          console.error(`[representative sampling] ${error}`)
+        }
+        try {
+          const coverageSamplingResponse = await coverageSampling(samplingPayload)
+          console.log("coverageSamplingResponse: ", coverageSamplingResponse)
+        } catch (error: any) {
+          console.error(`[coverage sampling] ${error}`)
+        }
       } else {
-        toast.success("Upload complete. Opening AI review...");
+        toast.success("Upload complete. Opening AI review..."); // possibly remove, message does not state the failure branch
       }
       navigate(`/auto-annotate/${response.taskId}`, {
         state: {

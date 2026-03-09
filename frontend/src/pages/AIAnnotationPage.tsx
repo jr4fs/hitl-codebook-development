@@ -39,6 +39,8 @@ import {
   IconTrash,
   IconInfoCircle,
   IconPencil,
+  IconThumbUp,
+  IconThumbDown
 } from "@tabler/icons-react";
 import {
   InferenceRequest,
@@ -49,6 +51,11 @@ import {
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import { saveTaskCodebook } from "../services/tasks.service";
 import { toast } from "../lib/toast";
+import { v4 as uuidv4 } from 'uuid';
+
+interface CsvRow {
+  [key: string]: string;
+}
 
 export default function AnnotationPage() {
   const navigate = useNavigate();
@@ -63,8 +70,8 @@ export default function AnnotationPage() {
   const borderStrong = isLight
     ? "rgba(15, 20, 24, 0.18)"
     : "var(--app-border-strong)";
-  const { loading, task, annotations, restData } = useTaskData();
-
+  const { loading, task, guideData } = useTaskData();
+  console.log("guidedata length: ", guideData.length)
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [generatedLabels, setGeneratedLabels] = useState<string[]>([
     "Click next to generate this content",
@@ -77,8 +84,9 @@ export default function AnnotationPage() {
   );
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   //const [currentBatchIndex, setCurrentBatchIndex] = useState<number>(0);
-  const batchSize = 1;
+  const batchSize = 5;
   const currentBatchIndex = Math.floor(currentIndex / batchSize);
+  const [currentBatchUUID, setCurrentBatchUUID] = useState<string>("");
 
   // Performance Metrics State
   const [totalCorrect, setTotalCorrect] = useState<number>(0);
@@ -97,12 +105,21 @@ export default function AnnotationPage() {
   const [codebook, setCodebook] = useState<string[]>([]);
   const [newRule, setNewRule] = useState("");
 
+  // generated span text feedback
+  const [spanTextFeedback, setSpanTextFeedback] = useState<boolean>();
+  // generated reasoning  text feedback
+  const [reasoningFeedback, setReasoningFeedback] = useState<boolean>();
+
   interface AIAssisted {
+    taskID: string | null;
+    batchID: string | null;
     label: string[];
     reason: string;
     span_text: string;
     isCorrect: boolean | null;
     feedback: string;
+    spanFeedback: boolean | null;
+    reasoningFeedback: boolean | null;
   }
 
   // Annotation States for current batch
@@ -110,97 +127,80 @@ export default function AnnotationPage() {
     {},
   );
 
-  const datasetShuffler = (dataset: AnnotationItem[], ratio: number) => {
-    const n = dataset.length;
-    const shuffled = [...dataset];
-    for (let i = n - 1; i > 0; i--) {
-      const randIndex = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[randIndex]] = [shuffled[randIndex], shuffled[i]];
-    }
-    // Ensure at least one sample in the split if the dataset is not empty
-    const splitIndex = n > 0 ? Math.max(1, Math.floor(n * ratio)) : 0;
-    return {
-      tenPercent: shuffled.slice(0, splitIndex),
-      ninetyPercent: shuffled.slice(splitIndex),
-    };
-  };
+  // const [fallbackAnnotations, setFallbackAnnotations] = useState<
+  //   AnnotationItem[]
+  // >([]);
 
-  const [workingSamples, setWorkingSamples] = useState<{
-    tenPercent: AnnotationItem[];
-    ninetyPercent: AnnotationItem[];
-  } | null>(null);
-  const [fallbackAnnotations, setFallbackAnnotations] = useState<
-    AnnotationItem[]
-  >([]);
+  // useEffect(() => {
+  //   if (annotations && annotations.length > 0) {
+  //     setFallbackAnnotations([]);
+  //     return;
+  //   }
 
-  useEffect(() => {
-    setWorkingSamples(null);
-  }, [task?._id]);
+  //   if (!task?._id || !guideData || guideData.length === 0) {
+  //     return;
+  //   }
 
-  useEffect(() => {
-    if (annotations && annotations.length > 0) {
-      setFallbackAnnotations([]);
-      return;
-    }
+  //   if (fallbackAnnotations.length > 0) {
+  //     return;
+  //   }
 
-    if (!task?._id || !restData || restData.length === 0) {
-      return;
-    }
+  //   const sample = guideData.slice(0, Math.min(20, guideData.length));
+  //   const generated = sample.map((row, idx) => {
+  //     const textValue = String(row.text || "");
+  //     return {
+  //       taskId: task._id as string,
+  //       sampleId: idx + 1,
+  //       sampleContent: {
+  //         ...row,
+  //         text_combined: textValue,
+  //       } as Record<string, string>,
+  //       labels: [],
+  //       createdBy: "system",
+  //       createdAt: new Date().toISOString(),
+  //     } as AnnotationItem;
+  //   });
 
-    if (fallbackAnnotations.length > 0) {
-      return;
-    }
-
-    const shuffled = [...restData].sort(() => Math.random() - 0.5);
-    const sample = shuffled.slice(0, Math.min(20, shuffled.length));
-    const generated = sample.map((row, idx) => {
-      const textValue = String(row.text || "");
-      return {
-        taskId: task._id as string,
-        sampleId: idx + 1,
-        sampleContent: {
-          ...row,
-          text_combined: textValue,
-        } as Record<string, string>,
-        labels: [],
-        createdBy: "system",
-        createdAt: new Date().toISOString(),
-      } as AnnotationItem;
-    });
-
-    setFallbackAnnotations(generated);
-  }, [annotations, restData, task?._id, fallbackAnnotations.length]);
+  //   setFallbackAnnotations(generated);
+  // }, [annotations, guideData, task?._id, fallbackAnnotations.length]);
 
   const annotationsForReview =
-    annotations && annotations.length > 0 ? annotations : fallbackAnnotations;
+    guideData && guideData.length > 0 ? guideData : [];
 
   // Persist the 10/90 split in localStorage so a page refresh restores the same
   // partition. Keyed by taskId to avoid cross-task collisions.
+  // useEffect(() => {
+  //   if (!annotationsForReview.length || !task?._id || workingSamples) return;
+
+  //   if (annotations && annotations.length > 0) {
+  //     const storageKey = `workingSamples_${task._id}`;
+  //     const stored = localStorage.getItem(storageKey);
+
+  //     if (stored) {
+  //       try {
+  //         setWorkingSamples(JSON.parse(stored));
+  //         return;
+  //       } catch {
+  //         localStorage.removeItem(storageKey);
+  //       }
+  //     }
+
+  //     setWorkingSamples(null);
+  //     return;
+  //   }
+
+  //   setWorkingSamples(null);
+  // }, [annotations, annotationsForReview, task, workingSamples]);
+
+  const generateBatchUUID = () => {
+    const UUID: string = uuidv4();
+    console.log(`batch number:${currentBatchIndex}, assigned UUID: ${UUID}`);
+    return UUID;
+  }
+
   useEffect(() => {
-    if (!annotationsForReview.length || !task?._id || workingSamples) return;
-
-    if (annotations && annotations.length > 0) {
-      const storageKey = `workingSamples_${task._id}`;
-      const stored = localStorage.getItem(storageKey);
-
-      if (stored) {
-        try {
-          setWorkingSamples(JSON.parse(stored));
-          return;
-        } catch {
-          localStorage.removeItem(storageKey);
-        }
-      }
-
-      const split = datasetShuffler(annotations as any, 0.1);
-      localStorage.setItem(storageKey, JSON.stringify(split));
-      setWorkingSamples(split);
-      return;
-    }
-
-    const split = datasetShuffler(annotationsForReview as any, 0.1);
-    setWorkingSamples(split);
-  }, [annotations, annotationsForReview, task, workingSamples]);
+    setCurrentBatchUUID(generateBatchUUID());
+  }, [currentBatchIndex]);
 
   useEffect(() => {
     if (task?.codebook && task.codebook.length > 0 && codebook.length === 0) {
@@ -208,13 +208,13 @@ export default function AnnotationPage() {
     }
   }, [task, codebook.length]);
 
-  const getSampleText = (sample?: AnnotationItem | null) => {
-    if (!sample?.sampleContent) return "";
-    const combined = sample.sampleContent["text_combined"];
+  const getSampleText = (sample?: CsvRow | null) => {
+    if (!sample) return "";
+    const combined = sample["text_combined"];
     if (typeof combined === "string" && combined.trim()) {
       return combined.trim();
     }
-    const rawText = sample.sampleContent["text"];
+    const rawText = sample["text"];
     if (typeof rawText === "string") {
       return rawText.trim();
     }
@@ -237,32 +237,38 @@ export default function AnnotationPage() {
       task_type: "annotation",
       user_input: codebook.join("\n"), // Rules synthesized by an LLM and the user's rules
     };
+
+    // setting llm responses (predicted labels, span text and reasoning)
     const response: InferenceResponse = await inference(payload);
     if (response) {
-      console.log("MODEL RESPONSE: ", response);
+      console.log("Annotation Response: ", response);
       setBatchResults((sample: Record<number, AIAssisted>) => ({
         ...sample,
         [currentIndex]: {
+          taskID: task?._id ?? null,
+          batchID: currentBatchUUID,
           label: response.label,
           reason: response.reason,
           span_text: response.span_text,
           isCorrect: sample[currentIndex]?.isCorrect ?? null,
           feedback: sample[currentIndex]?.feedback ?? "",
+          spanFeedback: spanTextFeedback ?? null,
+          reasoningFeedback: reasoningFeedback ?? null
         },
       }));
       setGeneratedLabels(response.label);
       setGeneratedSpanText(response.span_text);
       setGeneratedReasoning(response.reason);
     }
-    console.log(response);
     setIsLoading(false);
   };
+
   // Trigger inference whenever the index changes or when samples first become available.
   useEffect(() => {
-    if (!workingSamples || currentIndex >= workingSamples.tenPercent.length)
+    if (!guideData || currentIndex >= guideData.length)
       return;
     handleClickAnnotation();
-  }, [currentIndex, workingSamples]);
+  }, [currentIndex, guideData]);
 
   useEffect(() => {
     const hideIntro = localStorage.getItem("hideStep5Intro") === "true";
@@ -292,11 +298,11 @@ export default function AnnotationPage() {
     </Tooltip>
   );
 
-  const currentSample =
-    workingSamples && currentIndex > -1
-      ? workingSamples?.tenPercent[currentIndex]
-      : null;
-  const totalSamples = workingSamples?.tenPercent.length || 0;
+  const currentSample = guideData && currentIndex > -1
+    ? guideData[currentIndex]
+    : null;
+
+  const totalSamples = guideData.length;
 
   const actualBatchSize = Math.min(
     batchSize,
@@ -396,14 +402,14 @@ export default function AnnotationPage() {
         .filter(([_, result]) => result.isCorrect === false) // Only pick incorrect annotations
         .map(([idx, result]) => {
           const i = parseInt(idx);
-          const sample = workingSamples?.tenPercent[i];
+          const sample = guideData[i];
           // Create rule synthesis item
           return {
-            sample_text: sample?.sampleContent["text_combined"] || "",
+            sample_text: getSampleText(sample),
             ai_labels: result.label,
             ai_reasoning: result.reason,
             ai_span_text: result.span_text,
-            ground_truth_labels: sample?.labels || [],
+            ground_truth_labels: task.labels.map(item => item.name),
             user_feedback: result.feedback, // The actual string from the textarea
           };
         });
@@ -429,37 +435,37 @@ export default function AnnotationPage() {
     }
   };
 
-  const handleBatchInferenceClick = async () => {
-    if (!workingSamples?.ninetyPercent.length || !task) return;
-    //setIsLoading(true);
-    try {
-      const payload: BatchInferenceRequest[] = workingSamples.ninetyPercent.map(
-        (sample) => ({
-          labels: task.labels,
-          task_definition: task.description || "",
-          case_notes: getSampleText(sample),
-          model_name: "mistral:7b",
-          task_type: "annotation",
-          user_input: codebook.join("\n"),
-          ground_truth_labels: (sample.labels || []).map((labelName) => {
-            const taskLabel = task.labels.find((l) => l.name === labelName);
-            return (
-              taskLabel || { name: labelName, definition: "", keywords: [] }
-            );
-          }),
-        }),
-      );
+  // const handleBatchInferenceClick = async () => {
+  //   if (!workingSamples?.ninetyPercent.length || !task) return;
+  //   //setIsLoading(true);
+  //   try {
+  //     const payload: BatchInferenceRequest[] = workingSamples.ninetyPercent.map(
+  //       (sample) => ({
+  //         labels: task.labels,
+  //         task_definition: task.description || "",
+  //         case_notes: getSampleText(sample),
+  //         model_name: "mistral:7b",
+  //         task_type: "annotation",
+  //         user_input: codebook.join("\n"),
+  //         ground_truth_labels: (sample.labels || []).map((labelName) => {
+  //           const taskLabel = task.labels.find((l) => l.name === labelName);
+  //           return (
+  //             taskLabel || { name: labelName, definition: "", keywords: [] }
+  //           );
+  //         }),
+  //       }),
+  //     );
 
-      const summary = await batchInference(payload);
-      if (summary) {
-        setPredictedAccuracy(summary.accuracy);
-      }
-    } catch (error) {
-      console.error("Batch evaluation failed:", error);
-    } finally {
-      //setIsLoading(false);
-    }
-  };
+  //     const summary = await batchInference(payload);
+  //     if (summary) {
+  //       setPredictedAccuracy(summary.accuracy);
+  //     }
+  //   } catch (error) {
+  //     console.error("Batch evaluation failed:", error);
+  //   } finally {
+  //     //setIsLoading(false);
+  //   }
+  // };
 
   const handleSaveCodebook = async () => {
     if (!task?._id || isSavingCodebook) return;
@@ -700,14 +706,34 @@ export default function AnnotationPage() {
                         "Key text span the model used to justify the label.",
                       )}
                     </Group>
-                    <Text
-                      size="sm"
-                      bg={isLight ? "#e6ecf0" : "var(--app-chip)"}
-                      p="xs"
-                      style={{ borderRadius: "4px" }}
-                    >
-                      {generatedSpanText || "..."}
-                    </Text>
+                    <Group gap="sm" align="flex-start" wrap="nowrap" w="100%">
+                      <Text
+                        size="sm"
+                        bg={isLight ? "#e6ecf0" : "var(--app-chip)"}
+                        p="xs"
+                        style={{ flex: 1, borderRadius: "4px" }}
+                      >
+                        {generatedSpanText || "..."}
+                      </Text>
+                      <Group gap="xs" style={{ flexShrink: 0 }}>
+                        <ActionIcon
+                          size="md"
+                          variant={spanTextFeedback === true ? "filled" : "light"}
+                          color="green"
+                          onClick={() => setSpanTextFeedback(true)}
+                        >
+                          <IconThumbUp size={18} />
+                        </ActionIcon>
+                        <ActionIcon
+                          size="md"
+                          variant={spanTextFeedback === false ? "filled" : "light"}
+                          color="red"
+                          onClick={() => setSpanTextFeedback(false)}
+                        >
+                          <IconThumbDown size={18} />
+                        </ActionIcon>
+                      </Group>
+                    </Group>
                   </Stack>
 
                   <Stack gap={4}>
@@ -717,9 +743,29 @@ export default function AnnotationPage() {
                       </Text>
                       {infoIcon("Short explanation produced by the model.")}
                     </Group>
-                    <Text size="sm" fs="italic" c={mutedColor}>
-                      {generatedReasoning || "Generating reasoning..."}
-                    </Text>
+                    <Group gap="sm" align="flex-start" wrap="nowrap" w="100%">
+                      <Text size="sm" fs="italic" c={mutedColor} style={{ flex: 1 }}>
+                        {generatedReasoning || "Generating reasoning..."}
+                      </Text>
+                      <Group gap="xs" style={{ flexShrink: 0 }}>
+                        <ActionIcon
+                          size="md"
+                          variant={reasoningFeedback === true ? "filled" : "light"}
+                          color="green"
+                          onClick={() => setReasoningFeedback(true)}
+                        >
+                          <IconThumbUp size={18} />
+                        </ActionIcon>
+                        <ActionIcon
+                          size="md"
+                          variant={reasoningFeedback === false ? "filled" : "light"}
+                          color="red"
+                          onClick={() => setReasoningFeedback(false)}
+                        >
+                          <IconThumbDown size={18} />
+                        </ActionIcon>
+                      </Group>
+                    </Group>
                   </Stack>
                 </Stack>
               </Paper>
@@ -776,21 +822,21 @@ export default function AnnotationPage() {
                     <Stack gap="xs">
                       <Group gap="xs" align="center">
                         <Text size="sm" fw={600}>
-                          Ground Truth Labels:
+                          Task Labels:
                         </Text>
                         {infoIcon(
-                          "Labels from your uploaded D_val seed set, when available.",
+                          "Labels defined in the task definition stage",
                         )}
                         <Group gap={4}>
-                          {currentSample?.labels?.length ? (
-                            currentSample.labels.map((l) => (
-                              <Badge key={l} variant="light" color="gray">
-                                {l}
+                          {task?.labels?.length ? (
+                            task.labels.map((l) => (
+                              <Badge key={l.name} variant="light" color="gray">
+                                {l.name}
                               </Badge>
                             ))
                           ) : (
                             <Text size="xs" c={mutedColor}>
-                              No ground truth labels available.
+                              Error retrieving task labels.
                             </Text>
                           )}
                         </Group>
@@ -831,16 +877,6 @@ export default function AnnotationPage() {
                     >
                       Previous
                     </Button>
-
-                    {codebook.length > 0 && (
-                      <Button
-                        variant="filled"
-                        color="green"
-                        onClick={() => handleBatchInferenceClick()}
-                      >
-                        Evaluate
-                      </Button>
-                    )}
 
                     <Button
                       rightSection={
