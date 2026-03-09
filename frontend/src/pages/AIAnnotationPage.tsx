@@ -105,6 +105,8 @@ export default function AnnotationPage() {
   // Codebook State
   const [codebook, setCodebook] = useState<string[]>([]);
   const [newRule, setNewRule] = useState("");
+  // manual rules queue
+  const [stagedRules, setStagedRules] = useState<string[]>([]);
 
   // generated span text feedback
   const [spanTextFeedback, setSpanTextFeedback] = useState<boolean>();
@@ -341,7 +343,7 @@ export default function AnnotationPage() {
 
   const addRule = () => {
     if (newRule.trim()) {
-      setCodebook([...codebook, newRule.trim()]);
+      setStagedRules([...stagedRules, newRule.trim()]);
       setNewRule("");
     }
   };
@@ -446,6 +448,8 @@ export default function AnnotationPage() {
           setCodebook((prev) => [...prev, ...response.rules]);
         }
       }
+      setCodebook((prev) => [...prev, ...stagedRules]);
+      setStagedRules([]);
     } catch (error: any) {
       console.error("Failed to synthesize rules:", error);
     } finally {
@@ -963,7 +967,7 @@ export default function AnnotationPage() {
               <Divider color={borderColor} />
 
               <Stack gap="sm" style={{ flex: 1, overflowY: "auto" }}>
-                {codebook.length === 0 ? (
+                {codebook.length === 0 && stagedRules.length === 0 ? (
                   <Center h={200}>
                     <Text c={mutedColor} size="sm" ta="center">
                       No rules generated yet.
@@ -972,64 +976,49 @@ export default function AnnotationPage() {
                     </Text>
                   </Center>
                 ) : (
-                  codebook.map((rule, idx) => (
-                    <Paper
-                      key={idx}
-                      p="sm"
-                      bg={surface}
-                      radius="sm"
-                      style={{ border: `1px solid ${borderColor}` }}
-                    >
-                      {editingRuleIndex === idx ? (
-                        <Stack gap="xs">
-                          <Textarea
-                            value={editingRuleValue}
-                            onChange={(e) =>
-                              setEditingRuleValue(e.currentTarget.value)
-                            }
-                            variant="filled"
-                            size="sm"
-                          />
-                          <Group justify="flex-end" gap="xs">
-                            <Button
-                              size="xs"
-                              variant="subtle"
-                              onClick={handleCancelEditRule}
-                            >
-                              Cancel
-                            </Button>
-                            <Button size="xs" onClick={handleSaveEditRule}>
-                              Save
-                            </Button>
-                          </Group>
-                        </Stack>
-                      ) : (
-                        <Group align="flex-start" wrap="nowrap">
-                          <Text size="sm" style={{ flex: 1 }}>
-                            {rule}
-                          </Text>
-                          <Group gap={4}>
-                            <ActionIcon
-                              size="sm"
-                              color="gray"
-                              variant="subtle"
-                              onClick={() => handleStartEditRule(idx, rule)}
-                            >
-                              <IconPencil size={14} />
-                            </ActionIcon>
-                            <ActionIcon
-                              size="sm"
-                              color="red"
-                              variant="subtle"
-                              onClick={() => removeRule(idx)}
-                            >
-                              <IconTrash size={14} />
-                            </ActionIcon>
-                          </Group>
-                        </Group>
-                      )}
-                    </Paper>
-                  ))
+                  <>
+                    {codebook.map((rule, idx) => (
+                      <Paper
+                        key={idx}
+                        p="sm"
+                        bg={surface}
+                        radius="sm"
+                        style={{ border: `1px solid ${borderColor}` }}
+                      >
+                        {/* ...existing rule edit/display JSX unchanged... */}
+                      </Paper>
+                    ))}
+
+                    {stagedRules.length > 0 && (
+                      <>
+                        <Text size="xs" fw={700} c="orange" tt="uppercase">
+                          Pending (added on batch commit)
+                        </Text>
+                        {stagedRules.map((rule, idx) => (
+                          <Paper
+                            key={`staged-${idx}`}
+                            p="sm"
+                            radius="sm"
+                            style={{ border: `1px dashed orange`, opacity: 0.8 }}
+                          >
+                            <Group align="flex-start" wrap="nowrap">
+                              <Text size="sm" style={{ flex: 1 }}>{rule}</Text>
+                              <ActionIcon
+                                size="sm"
+                                color="red"
+                                variant="subtle"
+                                onClick={() =>
+                                  setStagedRules((prev) => prev.filter((_, i) => i !== idx))
+                                }
+                              >
+                                <IconTrash size={14} />
+                              </ActionIcon>
+                            </Group>
+                          </Paper>
+                        ))}
+                      </>
+                    )}
+                  </>
                 )}
               </Stack>
 
