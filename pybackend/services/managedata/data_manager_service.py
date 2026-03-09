@@ -9,6 +9,8 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Optional, Tuple
 from .rep_sampling import RepresentativeSampling
 from .coverage_sampling import CoverageBasedSampling
+from ..database.database_service import get_collection
+from datetime import datetime, timezone
 
 class DataManagerService:
     def __init__(self, request: EmbedDatasetRequest):
@@ -39,3 +41,34 @@ class DataManagerService:
 
         coverage_sampling_results = obj.sample(text_col="text_combined")
         coverage_sampling_results.to_csv(self.guide_file_path)
+
+        # Push the guide dataset into MongoDB AnnotationDetails
+        if self.request.taskId and self.request.userId:
+            try:
+                # We need to drop NaN values and ensure it's a dict of strings/primitives
+                records = coverage_sampling_results.replace({np.nan: None}).to_dict(orient='records')
+                
+                annotations_to_insert = []
+                for idx, row in enumerate(records):
+                    # Remove None values
+                    clean_row = {str(k): str(v) for k, v in row.items() if v is not None}
+                    
+                    annotation = {
+                        "taskId": self.request.taskId,
+                        "sampleId": idx + 1,
+                        "sampleContent": clean_row,
+                        "labels": [],
+                        "source": "guide",
+                        "aiAnnotation": None,
+                        "createdBy": self.request.userId,
+                        "createdAt": datetime.now(timezone.utc).isoformat()
+                    }
+                    annotations_to_insert.append(annotation)
+                
+                if annotations_to_insert:
+                    collection = get_collection("AnnotationDetails")
+                    collection.insert_many(annotations_to_insert)
+                    print(f"Successfully inserted {len(annotations_to_insert)} guide annotations into MongoDB.")
+            except Exception as e:
+                print(f"Failed to insert guide annotations to MongoDB: {e}")
+

@@ -586,18 +586,18 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       });
     }
 
-    // 1. Parse Task JSON
-    console.log("[uploadTaskBundle] Step 1: Parsing task_json...");
+    // Parse Task JSON
+    console.log("[uploadTaskBundle] Parsing task_json...");
     const taskInfo = parseTaskJson(taskJsonFile.buffer);
     console.log("[uploadTaskBundle] Task Info parsed:", taskInfo.name);
 
-    // 2. Parse Labels JSON
-    console.log("[uploadTaskBundle] Step 2: Parsing labels_json...");
+    // Parse Labels JSON
+    console.log("[uploadTaskBundle] Parsing labels_json...");
     const labels = parseLabelsJson(labelsJsonFile.buffer);
     console.log("[uploadTaskBundle] Labels parsed, count:", labels.length);
 
-    // 3. Parse CSVs
-    console.log("[uploadTaskBundle] Step 3: Parsing CSV files...");
+    // Parse CSVs
+    console.log("[uploadTaskBundle] Parsing CSV files...");
     const valRows = parseCsvBuffer(dValFile.buffer) as Array<
       Record<string, unknown>
     >;
@@ -608,8 +608,8 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       `[uploadTaskBundle] CSVs parsed. Val rows: ${valRows.length}, Rest rows: ${restRows.length}`,
     );
 
-    // 4. Validate Columns
-    console.log("[uploadTaskBundle] Step 4: Validating columns...");
+    // Validate Columns
+    console.log("[uploadTaskBundle] Validating columns...");
     const valColumns = getColumnsFromRows(valRows);
     const restColumns = getColumnsFromRows(restRows);
 
@@ -634,7 +634,7 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       });
     }
 
-    // 5. Ensure Directories and Write Files
+    // Ensure Directories and Write Files
     console.log("[uploadTaskBundle] Step 5: Saving files to disk...");
     ensureRestDatasetsDir();
     ensureValDatasetsDir();
@@ -649,8 +649,8 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     console.log(`[uploadTaskBundle] Writing val file to ${valPath}`);
     await fs.writeFile(valPath, dValFile.buffer, "utf-8");
 
-    // 6. DB: Create Task
-    console.log("[uploadTaskBundle] Step 6: Creating task in MongoDB...");
+    // DB: Create Task
+    console.log("[uploadTaskBundle] Creating task in MongoDB...");
     const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
     const taskData: Omit<Task, "_id"> = {
       name: taskInfo.name,
@@ -670,8 +670,8 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const taskId = insertResult.insertedId.toString();
     console.log("[uploadTaskBundle] Task created with ID:", taskId);
 
-    // 7. Seed Annotations
-    console.log("[uploadTaskBundle] Step 7: Seeding annotations from D_val...");
+    // seed annotations
+    console.log("[uploadTaskBundle] Seeding annotations from D_val...");
     const annotations: AnnotationItem[] = valRows
       .map((row, idx) => {
         const rawLabel = row.task_label ?? row.taskLabel ?? "";
@@ -696,6 +696,8 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
           sampleId: idx + 1,
           sampleContent,
           labels,
+          source: "val",
+          aiAnnotation: null,
           createdBy: userID,
           createdAt: new Date().toISOString(),
         } as AnnotationItem;

@@ -13,6 +13,8 @@ class EmbedDatasetRequest(BaseModel):
     id_col: Optional[str] = None
     split_to_sentences: Optional[bool] = True
     labels: List[Label]
+    taskId: Optional[str] = None
+    userId: Optional[str] = None
 
 class EmbedDatasetResponse(BaseModel):
     success: bool

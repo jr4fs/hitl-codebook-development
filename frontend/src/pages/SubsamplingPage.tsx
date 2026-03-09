@@ -290,7 +290,7 @@ export default function SubsamplingPage() {
         JSON.stringify(task.labels) !== JSON.stringify(taskLabels) ||
         task.type !== taskType ||
         JSON.stringify(task.codebook || []) !==
-          JSON.stringify(appliedCodebook || []) ||
+        JSON.stringify(appliedCodebook || []) ||
         task.codebookSourceTaskId !== appliedCodebookSource?.id ||
         task.codebookSourceTaskName !== appliedCodebookSource?.name;
 
@@ -402,6 +402,8 @@ export default function SubsamplingPage() {
       const payload: EmbedDatasetRequest = {
         file_path: fileName,
         text_col: chosenCol,
+        taskId: task?._id,
+        userId: user?.id || "00000",
         labels: taskLabels.filter(
           (label) =>
             label.name?.trim() &&
@@ -836,12 +838,12 @@ export default function SubsamplingPage() {
                         subsampledCsv,
                         task: task
                           ? {
-                              ...task,
-                              codebook: appliedCodebook,
-                              codebookSourceTaskId: appliedCodebookSource?.id,
-                              codebookSourceTaskName:
-                                appliedCodebookSource?.name,
-                            }
+                            ...task,
+                            codebook: appliedCodebook,
+                            codebookSourceTaskId: appliedCodebookSource?.id,
+                            codebookSourceTaskName:
+                              appliedCodebookSource?.name,
+                          }
                           : task,
                       },
                     });

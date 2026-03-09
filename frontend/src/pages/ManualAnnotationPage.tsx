@@ -32,7 +32,7 @@ import { useTaskData } from "../hooks/useTaskData";
 import { AnnotationItem } from "@common/types/annotations";
 import {
   addAnnotation,
-  updateAnnotation,
+  updateValAnnotation,
 } from "../services/annotations.service";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import { saveTaskCodebook } from "../services/tasks.service";
@@ -296,7 +296,7 @@ export default function ManualAnnotationPage() {
 
       if (existingAnnotation?._id) {
         // Update existing annotation
-        response = await updateAnnotation({
+        response = await updateValAnnotation({
           annotationId: existingAnnotation._id,
           labels: currentLabels,
         });
@@ -324,11 +324,13 @@ export default function ManualAnnotationPage() {
           setLocalAnnotations((prev) => [
             ...prev,
             {
-              _id: response.annotationId,
-              taskId: task._id,
+              _id: (response as any).annotationId,
+              taskId: task._id as string,
               sampleId,
               sampleContent: currentSample as Record<string, string>,
               labels: currentLabels,
+              source: "val",
+              aiAnnotation: null,
               createdBy: "",
               createdAt: new Date().toISOString(),
             },
@@ -424,11 +426,6 @@ export default function ManualAnnotationPage() {
 
     setIsReviewing(true);
     setCurrentIndex(reviewIndices[reviewIndices.length - 1]);
-  };
-
-  const handleExitReview = () => {
-    setIsReviewing(false);
-    setCurrentIndex(totalSamples);
   };
 
   return (

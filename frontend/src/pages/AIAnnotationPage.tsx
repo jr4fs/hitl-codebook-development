@@ -49,6 +49,7 @@ import {
   BatchInferenceSummary,
 } from "@common/types/inference";
 import StepTrackerBanner from "../components/StepTrackerBanner";
+import { updateGuideAnnotation } from "../services/annotations.service";
 import { saveTaskCodebook } from "../services/tasks.service";
 import { toast } from "../lib/toast";
 import { v4 as uuidv4 } from 'uuid';
@@ -370,7 +371,24 @@ export default function AnnotationPage() {
     setEditingRuleValue("");
   };
 
-  const handleNextClick = () => {
+  const handleNextClick = async () => {
+    try {
+      const currentAIResult = batchResults[currentIndex];
+      if (currentAIResult && task?._id && currentSample) {
+        await updateGuideAnnotation({
+          taskId: task._id,
+          sampleId: currentIndex + 1,
+          sampleContent: currentSample as Record<string, string>,
+          source: "guide",
+          labels: currentAIResult.label,
+          aiAnnotation: currentAIResult
+        });
+      }
+    } catch (error) {
+      console.error("Failed to update guide annotation:", error);
+      toast.error("Failed to save annotation feedback.");
+    }
+
     if (currentIndex < totalSamples - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {

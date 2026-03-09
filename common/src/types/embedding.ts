@@ -7,7 +7,9 @@ export interface EmbedDatasetRequest {
     split_to_sentences?: boolean;
     model_name?: string;
     device?: string;
-    labels: LabelItem[]
+    labels: LabelItem[];
+    taskId: string;
+    userId: string;
 }
 
 export interface EmbedDatasetResponse {

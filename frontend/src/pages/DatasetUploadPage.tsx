@@ -243,7 +243,9 @@ export default function DatasetUploadPage() {
         const samplingPayload: EmbedDatasetRequest = {
           file_path: response.restFileName ?? "",
           text_col: ["translated_text"],
-          labels: response.task?.labels ?? []
+          labels: response.task?.labels ?? [],
+          taskId: response.task?._id ?? "",
+          userId: response.task?.userID ?? ""
         }
         try {
           const repSamplingResponse = await representativeSampling(samplingPayload)

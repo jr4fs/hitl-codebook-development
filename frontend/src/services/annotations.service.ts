@@ -1,4 +1,4 @@
-import { AnnotationItem, AddAnnotationRequest, AddAnnotationResponse, GetTaskAnnotationsResponse, UpdateAnnotationRequest, UpdateAnnotationResponse } from "@common/types/annotations";
+import { AddAnnotationRequest, AddAnnotationResponse, GetTaskAnnotationsResponse, UpdateValAnnotationRequest, UpdateValAnnotationResponse, UpdateGuideAnnotationRequest, UpdateGuideAnnotationResponse } from "@common/types/annotations";
 import { apiClient } from "../lib/apiClient";
 
 export async function addAnnotation(
@@ -11,11 +11,21 @@ export async function addAnnotation(
     return data;
 }
 
-export async function updateAnnotation(
-    payload: UpdateAnnotationRequest
-): Promise<UpdateAnnotationResponse> {
-    const { data } = await apiClient.put<UpdateAnnotationResponse>(
-        "/api/annotate/update",
+export async function updateValAnnotation(
+    payload: UpdateValAnnotationRequest
+): Promise<UpdateValAnnotationResponse> {
+    const { data } = await apiClient.put<UpdateValAnnotationResponse>(
+        "/api/annotate/update-val",
+        payload
+    );
+    return data;
+}
+
+export async function updateGuideAnnotation(
+    payload: UpdateGuideAnnotationRequest
+): Promise<UpdateGuideAnnotationResponse> {
+    const { data } = await apiClient.post<UpdateGuideAnnotationResponse>(
+        "/api/annotate/update-guide",
         payload
     );
     return data;
