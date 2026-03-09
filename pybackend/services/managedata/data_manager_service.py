@@ -25,7 +25,8 @@ class DataManagerService:
             text_col = self.request.text_col,
             id_col = self.request.id_col,
             split_to_sentences = self.request.split_to_sentences,
-            labels = self.request.labels
+            labels = self.request.labels,
+            label_col = self.request.label_col,
         )
         print(self.rest_file_path)
         obj = RepresentativeSampling(upsampling_payload)

@@ -234,7 +234,7 @@ export default function AnnotationPage() {
       labels: task?.labels || [],
       task_definition: task?.description || "",
       case_notes: finalText,
-      model_name: "mistral:7b",
+      model_name: task?.modelName || "mistral:7b",
       task_type: "annotation",
       user_input: codebook.join("\n"), // Rules synthesized by an LLM and the user's rules
     };
@@ -437,7 +437,7 @@ export default function AnnotationPage() {
         const request: RuleSynthesisRequest = {
           payload: rule_synthesis_items,
           task_type: "rule_synthesis",
-          model_name: "mistral:7b",
+          model_name: task.modelName || "mistral:7b",
         };
         const response = await ruleSynthesis(request);
 

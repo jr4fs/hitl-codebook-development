@@ -10,10 +10,13 @@ import {
   Modal,
   Popover,
   Paper,
+  Select,
   Stack,
   Text,
+  TextInput,
   Title,
   useMantineColorScheme,
+  ScrollArea,
 } from "@mantine/core";
 import {
   IconAlertCircle,
@@ -38,6 +41,9 @@ export default function DatasetUploadPage() {
   const [dAllFile, setDAllFile] = useState<File | null>(null);
   const [taskJsonFile, setTaskJsonFile] = useState<File | null>(null);
   const [labelsJsonFile, setLabelsJsonFile] = useState<File | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string | null>("gpt-4o");
+  const [textColumn, setTextColumn] = useState("");
+  const [labelColumn, setLabelColumn] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [introOpen, setIntroOpen] = useState(false);
@@ -216,8 +222,8 @@ export default function DatasetUploadPage() {
     ? "rgba(15, 20, 24, 0.12)"
     : "rgba(255, 255, 255, 0.08)";
   const handleUpload = async () => {
-    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile) {
-      setError("Please provide all four files before continuing.");
+    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile || !labelColumn || !selectedModel) {
+      setError("Please provide all four files and label column as well as preferred model before continuing.");
       return;
     }
 
@@ -230,6 +236,9 @@ export default function DatasetUploadPage() {
         dAllFile,
         taskJsonFile,
         labelsJsonFile,
+        textColumn,
+        labelColumn,
+        modelName: selectedModel ?? ""
       });
 
       if (!response.success || !response.taskId) {
@@ -242,7 +251,9 @@ export default function DatasetUploadPage() {
         );
         const samplingPayload: EmbedDatasetRequest = {
           file_path: response.restFileName ?? "",
-          text_col: ["translated_text"],
+          text_col: [textColumn],
+          label_col: labelColumn,
+          model_name: selectedModel || "",
           labels: response.task?.labels ?? [],
           taskId: response.task?._id ?? "",
           userId: response.task?.userID ?? ""
@@ -640,6 +651,86 @@ export default function DatasetUploadPage() {
                   </Stack>
                 </Popover.Dropdown>
               </Popover>
+
+              <Divider my="sm" color={dividerColor} />
+
+              {/* Model selector + text column */}
+              <Stack gap="sm">
+                <Select
+                  label="Model"
+                  description="Choose the model to use for AI annotation."
+                  placeholder="Select a model…"
+                  value={selectedModel}
+                  onChange={setSelectedModel}
+                  data={[
+                    { value: "gemma3:1b", label: "Gemma3-1B" },
+                    { value: "qwen3.5:2b", label: "Qwen3.5-2B" },
+                    { value: "mistral:7b", label: "Mistral-7B" },
+                    { value: "qwen:32b", label: "Qwen-32B" },
+                    { value: "llama3.3:70b", label: "Llama3.3-70B" },
+                  ]}
+                  styles={{
+                    label: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+                    description: { color: isLight ? "rgba(15,20,24,0.6)" : "rgba(232,238,241,0.6)" },
+                    input: {
+                      background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
+                      border: isLight
+                        ? "1px solid rgba(124, 231, 225, 0.55)"
+                        : "1px solid rgba(124, 231, 225, 0.3)",
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                      borderRadius: 10,
+                    },
+                    dropdown: {
+                      background: isLight ? "#ffffff" : "rgba(18, 24, 29, 0.98)",
+                      border: isLight
+                        ? "1px solid rgba(124, 231, 225, 0.4)"
+                        : "1px solid rgba(124, 231, 225, 0.3)",
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                    },
+                  }}
+                />
+                <TextInput
+                  label="Text column name"
+                  description="The column in your CSV that contains the text to annotate."
+                  placeholder="e.g. text, translated_text, content…"
+                  value={textColumn}
+                  onChange={(e) => setTextColumn(e.currentTarget.value)}
+                  styles={{
+                    label: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+                    description: { color: isLight ? "rgba(15,20,24,0.6)" : "rgba(232,238,241,0.6)" },
+                    input: {
+                      background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
+                      border: isLight
+                        ? "1px solid rgba(124, 231, 225, 0.55)"
+                        : "1px solid rgba(124, 231, 225, 0.3)",
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                      borderRadius: 10,
+                    },
+                  }}
+                />
+                <TextInput
+                  label="Label column name"
+                  description="The column in your CSV that contains the human-annotated labels."
+                  placeholder="e.g. annotations, final label, labels"
+                  value={labelColumn}
+                  onChange={(e) => setLabelColumn(e.currentTarget.value)}
+                  styles={{
+                    label: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+                    description: { color: isLight ? "rgba(15,20,24,0.6)" : "rgba(232,238,241,0.6)" },
+                    input: {
+                      background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
+                      border: isLight
+                        ? "1px solid rgba(124, 231, 225, 0.55)"
+                        : "1px solid rgba(124, 231, 225, 0.3)",
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                      borderRadius: 10,
+                    },
+                  }}
+                />
+              </Stack>
+
+              <Divider my="sm" color={dividerColor} />
+
 
               {error && (
                 <Alert

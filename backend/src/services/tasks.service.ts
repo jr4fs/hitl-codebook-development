@@ -292,6 +292,8 @@ export async function createTask(req: AuthRequest, res: Response) {
       file: payload.file,
       columns: payload.columns,
       userID: userID,
+      labelColumn: "",
+      modelName: "",
       createdAt: req.body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -572,17 +574,21 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const dAllFile = files?.d_all?.[0];
     const taskJsonFile = files?.task_json?.[0];
     const labelsJsonFile = files?.labels_json?.[0];
+    const textColumn = req.body.text_column as string | undefined;
+    const labelColumn = req.body.label_column as string | undefined;
+    const modelName = req.body.model_name as string | undefined;
 
-    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile) {
+    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile || !labelColumn) {
       console.error("[uploadTaskBundle] Missing files:", {
         d_val: !!dValFile,
         d_all: !!dAllFile,
         task_json: !!taskJsonFile,
         labels_json: !!labelsJsonFile,
+        labelColumn: !!labelColumn
       });
       return res.status(400).json({
         success: false,
-        message: "Missing files. Expected d_val, d_all, task_json, labels_json.",
+        message: "Missing files. Expected d_val, d_all, task_json, labels_json and label column",
       });
     }
 
@@ -613,25 +619,27 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const valColumns = getColumnsFromRows(valRows);
     const restColumns = getColumnsFromRows(restRows);
 
-    const hasValText = valColumns.includes("translated_text");
-    const hasValLabel =
-      valColumns.includes("Final Label") || valColumns.includes("taskLabel");
-    const hasRestText = restColumns.includes("translated_text");
+    if (textColumn) {
+      const hasValText = valColumns.includes(textColumn);
+      const hasValLabel =
+        valColumns.includes(labelColumn) || valColumns.includes("taskLabel");
+      const hasRestText = restColumns.includes(textColumn);
 
-    if (!hasValText || !hasValLabel) {
-      console.error("[uploadTaskBundle] Column validation failed for val data:", valColumns, hasValText, hasValLabel);
-      return res.status(400).json({
-        success: false,
-        message: "The labeled dataset must include text and task_label columns.",
-      });
-    }
+      if (!hasValText || !hasValLabel) {
+        console.error("[uploadTaskBundle] Column validation failed for val data:", valColumns, hasValText, hasValLabel);
+        return res.status(400).json({
+          success: false,
+          message: "The labeled dataset must include text and task_label columns.",
+        });
+      }
 
-    if (!hasRestText) {
-      console.error("[uploadTaskBundle] Column validation failed for rest data:", restColumns);
-      return res.status(400).json({
-        success: false,
-        message: "The unlabeled dataset must include a text column.",
-      });
+      if (!hasRestText) {
+        console.error("[uploadTaskBundle] Column validation failed for rest data:", restColumns);
+        return res.status(400).json({
+          success: false,
+          message: "The unlabeled dataset must include a text column.",
+        });
+      }
     }
 
     // Ensure Directories and Write Files
@@ -660,8 +668,10 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       file: uploadFilename,
       restFile: uploadFilename,
       valFile: valFilename,
-      columns: ["text"],
+      columns: textColumn ? [textColumn] : ["text"],
       userID: userID,
+      labelColumn: labelColumn,
+      modelName: modelName ?? "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -674,13 +684,15 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     console.log("[uploadTaskBundle] Seeding annotations from D_val...");
     const annotations: AnnotationItem[] = valRows
       .map((row, idx) => {
-        const rawLabel = row.task_label ?? row.taskLabel ?? "";
+        const rawLabel = labelColumn ? (row[labelColumn] ?? "") : (row.task_label ?? row.taskLabel ?? "");
         const labels = String(rawLabel)
           .split(",")
           .map((label: string) => label.trim())
           .filter(Boolean);
 
-        const textValue = getRowTextValue(row);
+        const textValue = textColumn
+          ? (typeof row[textColumn] === "string" ? (row[textColumn] as string).trim() : "")
+          : getRowTextValue(row);
 
         if (!textValue || labels.length === 0) {
           return null;

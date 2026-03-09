@@ -402,7 +402,7 @@ export default function SubsamplingPage() {
       const payload: EmbedDatasetRequest = {
         file_path: fileName,
         text_col: chosenCol,
-        taskId: task?._id,
+        taskId: task?._id ?? "",
         userId: user?.id || "00000",
         labels: taskLabels.filter(
           (label) =>

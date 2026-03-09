@@ -53,6 +53,9 @@ export async function uploadTaskBundle(params: {
   dAllFile: File;
   taskJsonFile: File;
   labelsJsonFile: File;
+  textColumn: string;
+  labelColumn: string;
+  modelName: string;
 }): Promise<{
   success: boolean;
   message?: string;
@@ -75,6 +78,9 @@ export async function uploadTaskBundle(params: {
   formData.append("d_all", params.dAllFile);
   formData.append("task_json", params.taskJsonFile);
   formData.append("labels_json", params.labelsJsonFile);
+  formData.append("text_column", String(params.textColumn));
+  formData.append("label_column", String(params.labelColumn));
+  formData.append("model_name", String(params.modelName));
 
   const { data } = await apiClient.post("/api/tasks/upload-bundle", formData, {
     headers: {

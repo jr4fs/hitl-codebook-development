@@ -10,6 +10,7 @@ export interface EmbedDatasetRequest {
     labels: LabelItem[];
     taskId: string;
     userId: string;
+    label_col: string;
 }
 
 export interface EmbedDatasetResponse {
