@@ -15,13 +15,13 @@ from datetime import datetime, timezone
 class DataManagerService:
     def __init__(self, request: EmbedDatasetRequest):
         self.request: EmbedDatasetRequest = request
-        self.project_root = Path(__file__).parent.parent.parent
-        self.rest_file_path = "/Users/swaminathanchellappa/Desktop/Swaminathan_Chellappa_Stuff/Research/annotation_tool/rest_datasets/"+request.file_path#self.project_root / 'rest_datasets' /  request.file_path
-        self.guide_file_path = "/Users/swaminathanchellappa/Desktop/Swaminathan_Chellappa_Stuff/Research/annotation_tool/guide_datasets/"+request.file_path#self.project_root / 'guide_datasets' /  request.file_path
+        self.project_root = Path(__file__).resolve().parents[3]
+        self.rest_file_path = str(self.project_root / 'rest_datasets' / request.file_path)
+        self.guide_file_path = str(self.project_root / 'guide_datasets' / request.file_path)
     
     def upsample(self):
         upsampling_payload = EmbedDatasetRequest(
-            file_path = "/Users/swaminathanchellappa/Desktop/Swaminathan_Chellappa_Stuff/Research/annotation_tool/shared_uploads/"+self.request.file_path,
+            file_path = str(self.project_root / 'shared_uploads' / self.request.file_path),
             text_col = self.request.text_col,
             id_col = self.request.id_col,
             split_to_sentences = self.request.split_to_sentences,
