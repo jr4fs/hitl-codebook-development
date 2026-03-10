@@ -55,11 +55,27 @@ class BatchInferenceSummary(BaseModel):
 
 
 registry = {
-    "mistral:7b": OllamaAdapter(model="mistral:7b")
+    "mistral:7b": OllamaAdapter(model="mistral:7b"),
+    "gemma3:1b": OllamaAdapter(model="gemma3:1b"),
+    "qwen3.5:2b": OllamaAdapter(model="qwen3.5:2b"),
+    "qwen:32b": OllamaAdapter(model="qwen:32b"),
+    "llama3.3:70b": OllamaAdapter(model="llama3.3:70b")
 }
 
 configs = {
     "mistral:7b": {
+        "temperature": 0.7,
+    },
+    "gemma3:1b": {
+        "temperature": 0.7,
+    },
+    "qwen3.5:2b": {
+        "temperature": 0.7,
+    },
+    "qwen:32b": {
+        "temperature": 0.7,
+    },
+    "llama3.3:70b": {
         "temperature": 0.7,
     }
 }

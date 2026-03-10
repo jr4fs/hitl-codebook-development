@@ -7,6 +7,7 @@ import {
   fileExists,
   restFileExists,
   valFileExists,
+  guideFileExists,
   ensureRestDatasetsDir,
   ensureValDatasetsDir,
   getRestDatasetPath,
@@ -58,18 +59,23 @@ async function getAnonymizeConfigFromDB(): Promise<AnonymizeConfig | null> {
 }
 
 function parseCsvBuffer(buffer: Buffer): any[] {
-  const csvText = buffer.toString("utf-8");
-  const parseResult = Papa.parse(csvText, {
-    header: true,
-    skipEmptyLines: true,
-    dynamicTyping: false,
-  });
+  try {
+    const csvText = buffer.toString("utf-8");
+    const parseResult = Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: true,
+      dynamicTyping: false,
+    });
 
-  if (parseResult.errors.length > 0) {
-    console.warn("CSV parsing warnings:", parseResult.errors);
+    if (parseResult.errors.length > 0) {
+      console.warn("CSV parsing warnings:", parseResult.errors);
+    }
+
+    return Array.isArray(parseResult.data) ? parseResult.data : [];
+  } catch (error) {
+    console.error("Error in parseCsvBuffer:", error);
+    throw error;
   }
-
-  return Array.isArray(parseResult.data) ? parseResult.data : [];
 }
 
 function parseTaskJson(buffer: Buffer): {
@@ -77,73 +83,83 @@ function parseTaskJson(buffer: Buffer): {
   description: string;
   type: Task["type"];
 } {
-  const raw = buffer.toString("utf-8");
-  const taskJson = JSON.parse(raw) as {
-    taskname?: string;
-    taskName?: string;
-    name?: string;
-    description?: string;
-    type?: string;
-  };
-
-  const name = taskJson.taskname || taskJson.taskName || taskJson.name || "";
-  const description = taskJson.description || "";
-  const type: Task["type"] =
-    taskJson.type === "Single-class" ? "Single-class" : "Multiclass";
-
-  if (!name.trim() || !description.trim()) {
-    throw new Error(
-      `Task JSON must include ${TASK_JSON_REQUIRED_KEYS.join(", ")}`,
-    );
-  }
-
-  return { name: name.trim(), description: description.trim(), type };
-}
-
-function parseLabelsJson(buffer: Buffer) {
-  const raw = buffer.toString("utf-8");
-  const labelsJson = JSON.parse(raw) as {
-    labels?: Array<{
+  try {
+    const raw = buffer.toString("utf-8");
+    const taskJson = JSON.parse(raw) as {
+      taskname?: string;
+      taskName?: string;
       name?: string;
       description?: string;
-      keywords?: string[];
-      guidelines?: unknown;
-    }>;
-  };
+      type?: string;
+    };
 
-  const labels = Array.isArray(labelsJson.labels) ? labelsJson.labels : [];
-  if (labels.length === 0) {
-    throw new Error("Labels JSON must include a non-empty labels array");
-  }
+    const name = taskJson.taskname || taskJson.taskName || taskJson.name || "";
+    const description = taskJson.description || "";
+    const type: Task["type"] =
+      taskJson.type === "Single-class" ? "Single-class" : "Multiclass";
 
-  return labels.map((label, idx) => {
-    const name = label.name?.trim() || "";
-    const definition = label.description?.trim() || "";
-    const keywords = Array.isArray(label.keywords)
-      ? label.keywords.map((kw) => kw.trim()).filter(Boolean)
-      : [];
-    const guidelines = Array.isArray(label.guidelines)
-      ? label.guidelines
-          .map((item) => (typeof item === "string" ? item.trim() : ""))
-          .filter(Boolean)
-          .join("\n")
-      : typeof label.guidelines === "string"
-        ? label.guidelines.trim()
-        : undefined;
-
-    if (!name || !definition || keywords.length === 0) {
+    if (!name.trim() || !description.trim()) {
       throw new Error(
-        `Label ${idx + 1} must include name, description, and keywords`,
+        `Task JSON must include ${TASK_JSON_REQUIRED_KEYS.join(", ")}`,
       );
     }
 
-    return {
-      name,
-      definition,
-      keywords,
-      ...(guidelines ? { guidelines } : {}),
+    return { name: name.trim(), description: description.trim(), type };
+  } catch (error) {
+    console.error("Error in parseTaskJson:", error);
+    throw error;
+  }
+}
+
+function parseLabelsJson(buffer: Buffer) {
+  try {
+    const raw = buffer.toString("utf-8");
+    const labelsJson = JSON.parse(raw) as {
+      labels?: Array<{
+        name?: string;
+        description?: string;
+        keywords?: string[];
+        guidelines?: unknown;
+      }>;
     };
-  });
+
+    const labels = Array.isArray(labelsJson.labels) ? labelsJson.labels : [];
+    if (labels.length === 0) {
+      throw new Error("Labels JSON must include a non-empty labels array");
+    }
+
+    return labels.map((label, idx) => {
+      const name = label.name?.trim() || "";
+      const definition = label.description?.trim() || "";
+      const keywords = Array.isArray(label.keywords)
+        ? label.keywords.map((kw) => kw.trim()).filter(Boolean)
+        : [];
+      const guidelines = Array.isArray(label.guidelines)
+        ? label.guidelines
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter(Boolean)
+          .join("\n")
+        : typeof label.guidelines === "string"
+          ? label.guidelines.trim()
+          : undefined;
+
+      if (!name || !definition || keywords.length === 0) {
+        throw new Error(
+          `Label ${idx + 1} must include name, description, and keywords`,
+        );
+      }
+
+      return {
+        name,
+        definition,
+        keywords,
+        ...(guidelines ? { guidelines } : {}),
+      };
+    });
+  } catch (error) {
+    console.error("Error in parseLabelsJson:", error);
+    throw error;
+  }
 }
 
 function getRowTextValue(row: Record<string, unknown>): string {
@@ -159,7 +175,8 @@ function getRowTextValue(row: Record<string, unknown>): string {
 
 function getColumnsFromRows(rows: Array<Record<string, unknown>>): string[] {
   if (rows.length === 0) return [];
-  return Object.keys(rows[0]);
+  const clean_cols = Object.keys(rows[0]).filter(key => String(key).trim() !== "");
+  return clean_cols;
 }
 
 // Validates task creation request payload
@@ -275,6 +292,8 @@ export async function createTask(req: AuthRequest, res: Response) {
       file: payload.file,
       columns: payload.columns,
       userID: userID,
+      labelColumn: "",
+      modelName: "",
       createdAt: req.body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -537,6 +556,7 @@ export async function uploadTaskFile(req: AuthRequest, res: Response) {
  */
 export async function uploadTaskBundle(req: AuthRequest, res: Response) {
   const userID = req.user?.userId;
+  console.log(`[uploadTaskBundle] Started by user: ${userID}`);
 
   if (!userID) {
     return res.status(401).json({
@@ -554,86 +574,125 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const dAllFile = files?.d_all?.[0];
     const taskJsonFile = files?.task_json?.[0];
     const labelsJsonFile = files?.labels_json?.[0];
+    const textColumn = req.body.text_column as string | undefined;
+    const labelColumn = req.body.label_column as string | undefined;
+    const modelName = req.body.model_name as string | undefined;
 
-    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile) {
+    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile || !labelColumn) {
+      console.error("[uploadTaskBundle] Missing files:", {
+        d_val: !!dValFile,
+        d_all: !!dAllFile,
+        task_json: !!taskJsonFile,
+        labels_json: !!labelsJsonFile,
+        labelColumn: !!labelColumn
+      });
       return res.status(400).json({
         success: false,
-        message:
-          "Missing files. Expected d_val, d_all, task_json, labels_json.",
+        message: "Missing files. Expected d_val, d_all, task_json, labels_json and label column",
       });
     }
 
+    // Parse Task JSON
+    console.log("[uploadTaskBundle] Parsing task_json...");
     const taskInfo = parseTaskJson(taskJsonFile.buffer);
-    const labels = parseLabelsJson(labelsJsonFile.buffer);
+    console.log("[uploadTaskBundle] Task Info parsed:", taskInfo.name);
 
+    // Parse Labels JSON
+    console.log("[uploadTaskBundle] Parsing labels_json...");
+    const labels = parseLabelsJson(labelsJsonFile.buffer);
+    console.log("[uploadTaskBundle] Labels parsed, count:", labels.length);
+
+    // Parse CSVs
+    console.log("[uploadTaskBundle] Parsing CSV files...");
     const valRows = parseCsvBuffer(dValFile.buffer) as Array<
       Record<string, unknown>
     >;
     const restRows = parseCsvBuffer(dAllFile.buffer) as Array<
       Record<string, unknown>
     >;
+    console.log(
+      `[uploadTaskBundle] CSVs parsed. Val rows: ${valRows.length}, Rest rows: ${restRows.length}`,
+    );
 
+    // Validate Columns
+    console.log("[uploadTaskBundle] Validating columns...");
     const valColumns = getColumnsFromRows(valRows);
     const restColumns = getColumnsFromRows(restRows);
 
-    const hasValText = valColumns.includes("text");
-    const hasValLabel =
-      valColumns.includes("task_label") || valColumns.includes("taskLabel");
-    const hasRestText = restColumns.includes("text");
+    if (textColumn) {
+      const hasValText = valColumns.includes(textColumn);
+      const hasValLabel =
+        valColumns.includes(labelColumn) || valColumns.includes("taskLabel");
+      const hasRestText = restColumns.includes(textColumn);
 
-    if (!hasValText || !hasValLabel) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "The labeled dataset must include text and task_label columns.",
-      });
+      if (!hasValText || !hasValLabel) {
+        console.error("[uploadTaskBundle] Column validation failed for val data:", valColumns, hasValText, hasValLabel);
+        return res.status(400).json({
+          success: false,
+          message: "The labeled dataset must include text and task_label columns.",
+        });
+      }
+
+      if (!hasRestText) {
+        console.error("[uploadTaskBundle] Column validation failed for rest data:", restColumns);
+        return res.status(400).json({
+          success: false,
+          message: "The unlabeled dataset must include a text column.",
+        });
+      }
     }
 
-    if (!hasRestText) {
-      return res.status(400).json({
-        success: false,
-        message: "The unlabeled dataset must include a text column.",
-      });
-    }
-
+    // Ensure Directories and Write Files
+    console.log("[uploadTaskBundle] Step 5: Saving files to disk...");
     ensureRestDatasetsDir();
     ensureValDatasetsDir();
 
-    const restFilename = generateUploadFilename(dAllFile.originalname);
+    const uploadFilename = generateUploadFilename(dAllFile.originalname);
     const valFilename = generateUploadFilename(dValFile.originalname);
-    const restPath = getRestDatasetPath(restFilename);
+    const sharedUploadsPath = getUploadsPath(uploadFilename);
     const valPath = getValDatasetPath(valFilename);
 
-    await fs.writeFile(restPath, dAllFile.buffer, "utf-8");
+    console.log(`[uploadTaskBundle] Writing dall file to ${sharedUploadsPath}`);
+    await fs.writeFile(sharedUploadsPath, dAllFile.buffer, "utf-8");
+    console.log(`[uploadTaskBundle] Writing val file to ${valPath}`);
     await fs.writeFile(valPath, dValFile.buffer, "utf-8");
 
+    // DB: Create Task
+    console.log("[uploadTaskBundle] Creating task in MongoDB...");
     const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
     const taskData: Omit<Task, "_id"> = {
       name: taskInfo.name,
       description: taskInfo.description,
       type: taskInfo.type,
       labels,
-      file: restFilename,
-      restFile: restFilename,
+      file: uploadFilename,
+      restFile: uploadFilename,
       valFile: valFilename,
-      columns: ["text"],
+      columns: textColumn ? [textColumn] : ["text"],
       userID: userID,
+      labelColumn: labelColumn,
+      modelName: modelName ?? "",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
     const insertResult = await taskDetailsCollection.insertOne(taskData);
     const taskId = insertResult.insertedId.toString();
+    console.log("[uploadTaskBundle] Task created with ID:", taskId);
 
+    // seed annotations
+    console.log("[uploadTaskBundle] Seeding annotations from D_val...");
     const annotations: AnnotationItem[] = valRows
       .map((row, idx) => {
-        const rawLabel = row.task_label ?? row.taskLabel ?? "";
+        const rawLabel = labelColumn ? (row[labelColumn] ?? "") : (row.task_label ?? row.taskLabel ?? "");
         const labels = String(rawLabel)
           .split(",")
           .map((label: string) => label.trim())
           .filter(Boolean);
 
-        const textValue = getRowTextValue(row);
+        const textValue = textColumn
+          ? (typeof row[textColumn] === "string" ? (row[textColumn] as string).trim() : "")
+          : getRowTextValue(row);
 
         if (!textValue || labels.length === 0) {
           return null;
@@ -649,6 +708,8 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
           sampleId: idx + 1,
           sampleContent,
           labels,
+          source: "val",
+          aiAnnotation: null,
           createdBy: userID,
           createdAt: new Date().toISOString(),
         } as AnnotationItem;
@@ -656,18 +717,23 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       .filter((row): row is AnnotationItem => row !== null);
 
     if (annotations.length > 0) {
+      console.log(`[uploadTaskBundle] Inserting ${annotations.length} annotations...`);
       const annotationCollection = getCollection<AnnotationItem>(
         ANNOTATION_COLLECTION,
       );
       await annotationCollection.insertMany(annotations);
+      console.log("[uploadTaskBundle] Annotations inserted.");
+    } else {
+      console.warn("[uploadTaskBundle] No valid annotations found in D_val to seed.");
     }
 
+    console.log("[uploadTaskBundle] Bundle upload completed successfully.");
     return res.status(200).json({
       success: true,
       message: "Bundle uploaded successfully",
       taskId,
-      fileName: restFilename,
-      restFileName: restFilename,
+      fileName: uploadFilename,
+      restFileName: uploadFilename,
       valFileName: valFilename,
       valSummary: {
         rows: valRows.length,
@@ -683,7 +749,7 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       },
     });
   } catch (error: any) {
-    console.error("Error uploading bundle:", error);
+    console.error("[uploadTaskBundle] Unexpected error:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to upload bundle",
@@ -739,13 +805,15 @@ export async function getCsvData(req: AuthRequest, res: Response) {
       file: [] as any[],
       val_file: [] as any[],
       rest_file: [] as any[],
-      headers: [] as string[],
+      guide_file: [] as any[],
+      headers: [] as string[]
     };
 
     // Read all files using PapaParse
     const mainFile = fileExists(fileName);
     const valFile = valFileExists(valFileName);
     const restFile = restFileExists(fileName);
+    const guideFile = guideFileExists(fileName);
 
     if (mainFile.exists) {
       response.file = await readCsvFile(mainFile.path);
@@ -770,6 +838,14 @@ export async function getCsvData(req: AuthRequest, res: Response) {
       }
     }
 
+    if (guideFile.exists) {
+      response.guide_file = await readCsvFile(guideFile.path);
+      if (response.file.length === 0 && response.rest_file.length > 0) {
+        response.file = response.rest_file;
+        response.headers = Object.keys(response.rest_file[0]);
+      }
+    }
+
     if (response.file.length === 0) {
       return res.status(404).json({
         success: false,
@@ -782,6 +858,7 @@ export async function getCsvData(req: AuthRequest, res: Response) {
       data: response.file,
       val_data: response.val_file,
       rest_data: response.rest_file,
+      guide_data: response.guide_file,
       headers: response.headers,
       fileName: fileName,
     });

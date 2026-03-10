@@ -11,6 +11,8 @@ export interface Task {
   description: string;
   type: "Multiclass" | "Single-class";
   labels: LabelItem[];
+  labelColumn: string;
+  modelName: string;
   codebook?: string[];
   codebookSourceTaskId?: string;
   codebookSourceTaskName?: string;

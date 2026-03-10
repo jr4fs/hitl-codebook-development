@@ -4,8 +4,21 @@ export interface AnnotationItem {
     sampleId: number;
     sampleContent: Record<string, string>;
     labels: string[];
+    source: "val" | "guide";
+    aiAnnotation: AIAssisted | null;
     createdBy: string; //userId
     createdAt: string; //ISO string
+}
+
+export interface AIAssisted {
+    batchID: string | null;
+    label: string[];
+    reason: string;
+    span_text: string;
+    isCorrect: boolean | null;
+    feedback: string;
+    spanFeedback: boolean | null;
+    reasoningFeedback: boolean | null;
 }
 
 export interface AddAnnotationRequest {
@@ -21,14 +34,29 @@ export interface AddAnnotationResponse {
     annotationId: string;
 }
 
-export interface UpdateAnnotationRequest {
+export interface UpdateValAnnotationRequest {
     annotationId: string;
     labels: string[];
 }
 
-export interface UpdateAnnotationResponse {
+export interface UpdateValAnnotationResponse {
     success: boolean;
     message: string;
+}
+
+export interface UpdateGuideAnnotationRequest {
+    taskId: string;
+    sampleId: number;
+    sampleContent: Record<string, string>;
+    labels?: string[]; // user labels (optional if AI only initially)
+    source: "val" | "guide";
+    aiAnnotation: AIAssisted | null;
+}
+
+export interface UpdateGuideAnnotationResponse {
+    success: boolean;
+    message: string;
+    annotationId?: string;
 }
 
 export interface GetTaskAnnotationsResponse {

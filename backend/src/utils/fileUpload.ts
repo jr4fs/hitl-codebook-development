@@ -10,25 +10,44 @@ const PROJECT_ROOT = path.resolve(__dirname, "../../../");
 const UPLOADS_DIR = path.join(PROJECT_ROOT, "shared_uploads");
 const VAL_DATASETS_DIR = path.join(PROJECT_ROOT, "val_datasets");
 const REST_DATASETS_DIR = path.join(PROJECT_ROOT, "rest_datasets");
+const GUIDE_DATASETS_DIR = path.join(PROJECT_ROOT, "guide_datasets");
 
 /**
  * Ensures uploads directory exists
  */
 export function ensureUploadsDir(): void {
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(UPLOADS_DIR)) {
+      console.log(`[fileUpload] Creating directory: ${UPLOADS_DIR}`);
+      fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    }
+  } catch (error) {
+    console.error(`[fileUpload] Failed to ensure uploads directory (${UPLOADS_DIR}):`, error);
+    throw error;
   }
 }
 
 export function ensureValDatasetsDir(): void {
-  if (!fs.existsSync(VAL_DATASETS_DIR)) {
-    fs.mkdirSync(VAL_DATASETS_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(VAL_DATASETS_DIR)) {
+      console.log(`[fileUpload] Creating directory: ${VAL_DATASETS_DIR}`);
+      fs.mkdirSync(VAL_DATASETS_DIR, { recursive: true });
+    }
+  } catch (error) {
+    console.error(`[fileUpload] Failed to ensure val datasets directory (${VAL_DATASETS_DIR}):`, error);
+    throw error;
   }
 }
 
 export function ensureRestDatasetsDir(): void {
-  if (!fs.existsSync(REST_DATASETS_DIR)) {
-    fs.mkdirSync(REST_DATASETS_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(REST_DATASETS_DIR)) {
+      console.log(`[fileUpload] Creating directory: ${REST_DATASETS_DIR}`);
+      fs.mkdirSync(REST_DATASETS_DIR, { recursive: true });
+    }
+  } catch (error) {
+    console.error(`[fileUpload] Failed to ensure rest datasets directory (${REST_DATASETS_DIR}):`, error);
+    throw error;
   }
 }
 
@@ -37,12 +56,17 @@ export function ensureRestDatasetsDir(): void {
  * Generates filename with timestamp: originalname_YYYY-MM-DD_HHMMSS.csv
  */
 export function generateUploadFilename(originalname: string): string {
-  const now = new Date();
-  const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
-  const time = now.toTimeString().split(" ")[0].replace(/:/g, ""); // HHmmss
-  const basename = path.parse(originalname).name;
-  const extension = path.parse(originalname).ext;
-  return `${basename}_${date}_${time}${extension}`;
+  try {
+    const now = new Date();
+    const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
+    const time = now.toTimeString().split(" ")[0].replace(/:/g, ""); // HHmmss
+    const basename = path.parse(originalname).name;
+    const extension = path.parse(originalname).ext;
+    return `${basename}_${date}_${time}${extension}`;
+  } catch (error) {
+    console.error(`[fileUpload] Failed to generate filename for: ${originalname}`, error);
+    throw error;
+  }
 }
 
 const storage: StorageEngine = multer.diskStorage({
@@ -124,7 +148,7 @@ export const uploadBundle = multer({
   storage: multer.memoryStorage(),
   fileFilter: bundleFileFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024,
+    fileSize: 1000 * 2048 * 2048,
   },
 });
 
@@ -235,3 +259,12 @@ export function restFileExists(filename: string) {
     path: filepath,
   };
 }
+
+export function guideFileExists(filename: string) {
+  const filepath = path.join(GUIDE_DATASETS_DIR, filename);
+  return {
+    exists: fs.existsSync(filepath),
+    path: filepath,
+  };
+}
+

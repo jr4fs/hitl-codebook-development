@@ -12,9 +12,10 @@ class EmbedDatasetRequest(BaseModel):
     text_col: List[str] = Field(..., min_length=1)
     id_col: Optional[str] = None
     split_to_sentences: Optional[bool] = True
-    model_name: Optional[str] = None
-    device: Optional[str] = None
     labels: List[Label]
+    label_col: str = Field(..., min_length=1)
+    taskId: Optional[str] = None
+    userId: Optional[str] = None
 
 class EmbedDatasetResponse(BaseModel):
     success: bool
