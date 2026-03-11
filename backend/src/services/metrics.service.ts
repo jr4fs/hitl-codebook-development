@@ -135,6 +135,10 @@ function getValLabelDistribution(
 }
 
 function computeLabelMetrics(samples: AnnotationItem[], labelNames: string[]) {
+  // Compute per-label TP/FP/FN/TN across the guide batch by comparing
+  // model-predicted labels (aiAnnotation.label) vs. reviewer-confirmed labels (sample.labels).
+  // Each label is treated one-vs-rest ("label" vs "not label"), so a single sample can
+  // contribute FP for one label and FN for another if the predicted label differs from truth.
   const perLabel: Record<
     string,
     { tp: number; fp: number; fn: number; tn: number }
@@ -172,6 +176,7 @@ function computeLabelMetrics(samples: AnnotationItem[], labelNames: string[]) {
 
   for (const label of labelNames) {
     const { tp, fp, fn, tn } = perLabel[label];
+    // Standard precision/recall/F1 per label, plus FPR/FNR.
     const prec = tp + fp > 0 ? tp / (tp + fp) : 0;
     const rec = tp + fn > 0 ? tp / (tp + fn) : 0;
     const f1Val = prec + rec > 0 ? (2 * prec * rec) / (prec + rec) : 0;
@@ -193,6 +198,8 @@ function computeLabelMetrics(samples: AnnotationItem[], labelNames: string[]) {
 
   const microPrec = microTp + microFp > 0 ? microTp / (microTp + microFp) : 0;
   const microRec = microTp + microFn > 0 ? microTp / (microTp + microFn) : 0;
+  // Micro averages pool TP/FP/FN across all labels first (so frequent labels weigh more).
+  // Macro F1 is the simple mean of per-label F1 values (each label weighs equally).
   const microF1 =
     microPrec + microRec > 0
       ? (2 * microPrec * microRec) / (microPrec + microRec)
