@@ -306,7 +306,10 @@ export default function DatasetUploadPage() {
   };
 
   return (
-    <Box className={styles.page}>
+    <Box
+      className={styles.page}
+      style={{ minHeight: "100dvh", overflowX: "hidden", overflowY: "auto" }}
+    >
       <div className={styles.orbOne} />
       <Container fluid className={styles.hero}>
         <Badge className={styles.kicker} variant="light" color="gray">
@@ -318,7 +321,11 @@ export default function DatasetUploadPage() {
           task definition files to get started.
         </Text>
       </Container>
-      <Container fluid className={styles.tableSection}>
+      <Container
+        fluid
+        className={styles.tableSection}
+        style={{ height: "auto", overflow: "visible" }}
+      >
         <StepTrackerBanner currentStep={1} onHelp={handleHelp} />
         <Modal
           opened={introOpen}
