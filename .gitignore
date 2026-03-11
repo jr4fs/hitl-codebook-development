@@ -7,5 +7,6 @@ shared_uploads/
 val_datasets/
 rest_datasets
 guide_datasets/
+metrics/
 venv
 at_slurm_job.sh

@@ -17,17 +17,17 @@ import {
   Tooltip,
   Modal,
   Checkbox,
+  Select,
   useMantineColorScheme,
 } from "@mantine/core";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { inference, batchInference } from "../services/inference.service";
+import { inference } from "../services/inference.service";
 import {
   RuleSynthesisItem,
   RuleSynthesisRequest,
 } from "@common/types/ruleSynthesis";
 import { useTaskData } from "../hooks/useTaskData";
-import { AnnotationItem } from "@common/types/annotations";
 import { ruleSynthesis } from "../services/ruleSynthesis.service";
 import {
   IconCheck,
@@ -38,21 +38,21 @@ import {
   IconPlus,
   IconTrash,
   IconInfoCircle,
-  IconPencil,
   IconThumbUp,
-  IconThumbDown
+  IconThumbDown,
 } from "@tabler/icons-react";
-import {
-  InferenceRequest,
-  InferenceResponse,
-  BatchInferenceRequest,
-  BatchInferenceSummary,
-} from "@common/types/inference";
+import { InferenceRequest, InferenceResponse } from "@common/types/inference";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import { updateGuideAnnotation } from "../services/annotations.service";
 import { saveTaskCodebook } from "../services/tasks.service";
+import {
+  generateSampleMetrics,
+  generateMetadataMetrics,
+  generateBatchMetrics,
+  downloadMetricsFile,
+} from "../services/metrics.service";
 import { toast } from "../lib/toast";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 interface CsvRow {
   [key: string]: string;
@@ -72,7 +72,7 @@ export default function AnnotationPage() {
     ? "rgba(15, 20, 24, 0.18)"
     : "var(--app-border-strong)";
   const { loading, task, guideData } = useTaskData();
-  console.log("guidedata length: ", guideData.length)
+  console.log("guidedata length: ", guideData.length);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [generatedLabels, setGeneratedLabels] = useState<string[]>([
     "Click next to generate this content",
@@ -84,7 +84,6 @@ export default function AnnotationPage() {
     "Click next to generate this content",
   );
   const [currentIndex, setCurrentIndex] = useState<number>(0);
-  //const [currentBatchIndex, setCurrentBatchIndex] = useState<number>(0);
   const batchSize = 5;
   const currentBatchIndex = Math.floor(currentIndex / batchSize);
   const [currentBatchUUID, setCurrentBatchUUID] = useState<string>("");
@@ -92,15 +91,17 @@ export default function AnnotationPage() {
   // Performance Metrics State
   const [totalCorrect, setTotalCorrect] = useState<number>(0);
   const [totalAttempted, setTotalAttempted] = useState<number>(0);
-  const [predictedAccuracy, setPredictedAccuracy] = useState<number | null>(
-    null,
-  );
+  const [predictedAccuracy] = useState<number | null>(null);
   const [introOpen, setIntroOpen] = useState(false);
   const [introDontShow, setIntroDontShow] = useState(false);
   const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
   const [isSavingCodebook, setIsSavingCodebook] = useState(false);
-  const [editingRuleIndex, setEditingRuleIndex] = useState<number | null>(null);
-  const [editingRuleValue, setEditingRuleValue] = useState("");
+  const [metricsModalOpen, setMetricsModalOpen] = useState(false);
+  const [metricsFiles, setMetricsFiles] = useState<{
+    sample?: string;
+    metadata?: string;
+    batch?: string;
+  }>({});
 
   // Codebook State
   const [codebook, setCodebook] = useState<string[]>([]);
@@ -116,6 +117,7 @@ export default function AnnotationPage() {
   interface AIAssisted {
     taskID: string | null;
     batchID: string | null;
+    batchNum: number | null;
     label: string[];
     reason: string;
     span_text: string;
@@ -123,16 +125,22 @@ export default function AnnotationPage() {
     feedback: string;
     spanFeedback: boolean | null;
     reasoningFeedback: boolean | null;
+    correctLabel: string | null;
+    predictionRaw: string | null;
+    timeToCompleteMs: number | null;
+    codebookSnapshot: string[];
+    guidelinesAdded: string[];
+    guidelinesDeprecated: string[];
+    guidelinesRevised: Array<{ from: string; to: string }>;
   }
 
   // Annotation States for current batch
   const [batchResults, setBatchResults] = useState<Record<number, AIAssisted>>(
     {},
   );
-
-  // const [fallbackAnnotations, setFallbackAnnotations] = useState<
-  //   AnnotationItem[]
-  // >([]);
+  const sampleStartsRef = useRef<
+    Record<number, { startedAt: number; codebook: string[] }>
+  >({});
 
   // useEffect(() => {
   //   if (annotations && annotations.length > 0) {
@@ -199,7 +207,7 @@ export default function AnnotationPage() {
     const UUID: string = uuidv4();
     console.log(`batch number:${currentBatchIndex}, assigned UUID: ${UUID}`);
     return UUID;
-  }
+  };
 
   useEffect(() => {
     setCurrentBatchUUID(generateBatchUUID());
@@ -210,6 +218,21 @@ export default function AnnotationPage() {
       setCodebook(task.codebook);
     }
   }, [task, codebook.length]);
+
+  const getCodebookSnapshot = () => [...codebook, ...stagedRules];
+
+  const diffCodebook = (start: string[], end: string[]) => {
+    const added = end.filter((rule) => !start.includes(rule));
+    const deprecated = start.filter((rule) => !end.includes(rule));
+    const revised: Array<{ from: string; to: string }> = [];
+    const minLen = Math.min(start.length, end.length);
+    for (let i = 0; i < minLen; i += 1) {
+      if (start[i] && end[i] && start[i] !== end[i]) {
+        revised.push({ from: start[i], to: end[i] });
+      }
+    }
+    return { added, deprecated, revised };
+  };
 
   const getSampleText = (sample?: CsvRow | null) => {
     if (!sample) return "";
@@ -245,18 +268,31 @@ export default function AnnotationPage() {
     const response: InferenceResponse = await inference(payload);
     if (response) {
       console.log("Annotation Response: ", response);
+      sampleStartsRef.current[currentIndex] = {
+        startedAt: Date.now(),
+        codebook: getCodebookSnapshot(),
+      };
       setBatchResults((sample: Record<number, AIAssisted>) => ({
         ...sample,
         [currentIndex]: {
           taskID: task?._id ?? null,
           batchID: currentBatchUUID,
+          batchNum: currentBatchIndex + 1,
           label: response.label,
           reason: response.reason,
           span_text: response.span_text,
           isCorrect: sample[currentIndex]?.isCorrect ?? null,
           feedback: sample[currentIndex]?.feedback ?? "",
           spanFeedback: spanTextFeedback ?? null,
-          reasoningFeedback: reasoningFeedback ?? null
+          reasoningFeedback: reasoningFeedback ?? null,
+          correctLabel: sample[currentIndex]?.correctLabel ?? null,
+          predictionRaw: response.raw_response ?? null,
+          timeToCompleteMs: sample[currentIndex]?.timeToCompleteMs ?? null,
+          codebookSnapshot: sample[currentIndex]?.codebookSnapshot ?? [],
+          guidelinesAdded: sample[currentIndex]?.guidelinesAdded ?? [],
+          guidelinesDeprecated:
+            sample[currentIndex]?.guidelinesDeprecated ?? [],
+          guidelinesRevised: sample[currentIndex]?.guidelinesRevised ?? [],
         },
       }));
       setGeneratedLabels(response.label);
@@ -268,10 +304,16 @@ export default function AnnotationPage() {
 
   // Trigger inference whenever the index changes or when samples first become available.
   useEffect(() => {
-    if (!guideData || currentIndex >= guideData.length)
+    if (
+      !annotationsForReview.length ||
+      currentIndex >= annotationsForReview.length
+    ) {
       return;
+    }
+    setSpanTextFeedback(undefined);
+    setReasoningFeedback(undefined);
     handleClickAnnotation();
-  }, [currentIndex, guideData]);
+  }, [currentIndex, annotationsForReview.length]);
 
   useEffect(() => {
     const hideIntro = localStorage.getItem("hideStep5Intro") === "true";
@@ -293,6 +335,23 @@ export default function AnnotationPage() {
     setIntroOpen(true);
   };
 
+  const handleDownloadMetrics = async (filename?: string) => {
+    if (!filename) return;
+    try {
+      const blob = await downloadMetricsFile(filename);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Failed to download metrics file.");
+    }
+  };
+
   const infoIcon = (label: string) => (
     <Tooltip label={label} withArrow position="right">
       <ActionIcon size="xs" variant="subtle" color="gray" aria-label={label}>
@@ -301,11 +360,12 @@ export default function AnnotationPage() {
     </Tooltip>
   );
 
-  const currentSample = guideData && currentIndex > -1
-    ? guideData[currentIndex]
-    : null;
+  const currentSample =
+    annotationsForReview.length > 0 && currentIndex > -1
+      ? annotationsForReview[currentIndex]
+      : null;
 
-  const totalSamples = guideData.length;
+  const totalSamples = annotationsForReview.length;
 
   const actualBatchSize = Math.min(
     batchSize,
@@ -340,6 +400,9 @@ export default function AnnotationPage() {
 
   const totalBatches = Math.ceil(totalSamples / batchSize);
   const currentBatchProgress = (currentIndex % batchSize) + 1;
+  const isLastBatch =
+    currentBatchIndex === totalBatches - 1 &&
+    currentBatchProgress === actualBatchSize;
 
   const addRule = () => {
     if (newRule.trim()) {
@@ -348,42 +411,43 @@ export default function AnnotationPage() {
     }
   };
 
-  const removeRule = (index: number) => {
-    setCodebook(codebook.filter((_, i) => i !== index));
-  };
-
-  const handleStartEditRule = (index: number, value: string) => {
-    setEditingRuleIndex(index);
-    setEditingRuleValue(value);
-  };
-
-  const handleCancelEditRule = () => {
-    setEditingRuleIndex(null);
-    setEditingRuleValue("");
-  };
-
-  const handleSaveEditRule = () => {
-    if (editingRuleIndex === null) return;
-    const nextValue = editingRuleValue.trim();
-    if (!nextValue) return;
-    setCodebook((prev) =>
-      prev.map((rule, idx) => (idx === editingRuleIndex ? nextValue : rule)),
-    );
-    setEditingRuleIndex(null);
-    setEditingRuleValue("");
-  };
-
   const handleNextClick = async () => {
     try {
       const currentAIResult = batchResults[currentIndex];
       if (currentAIResult && task?._id && currentSample) {
+        const startSnapshot = sampleStartsRef.current[currentIndex];
+        const endCodebook = getCodebookSnapshot();
+        const { added, deprecated, revised } = diffCodebook(
+          startSnapshot?.codebook ?? [],
+          endCodebook,
+        );
+        const timeToCompleteMs = startSnapshot
+          ? Date.now() - startSnapshot.startedAt
+          : null;
+        const enrichedAIResult: AIAssisted = {
+          ...currentAIResult,
+          batchNum: currentAIResult.batchNum ?? currentBatchIndex + 1,
+          timeToCompleteMs,
+          codebookSnapshot: endCodebook,
+          guidelinesAdded: added,
+          guidelinesDeprecated: deprecated,
+          guidelinesRevised: revised,
+        };
+        const resolvedLabels =
+          enrichedAIResult.isCorrect === false && enrichedAIResult.correctLabel
+            ? [enrichedAIResult.correctLabel]
+            : enrichedAIResult.label;
+        setBatchResults((prev) => ({
+          ...prev,
+          [currentIndex]: enrichedAIResult,
+        }));
         await updateGuideAnnotation({
           taskId: task._id,
           sampleId: currentIndex + 1,
           sampleContent: currentSample as Record<string, string>,
           source: "guide",
-          labels: currentAIResult.label,
-          aiAnnotation: currentAIResult
+          labels: resolvedLabels,
+          aiAnnotation: enrichedAIResult,
         });
       }
     } catch (error) {
@@ -422,14 +486,16 @@ export default function AnnotationPage() {
         .filter(([_, result]) => result.isCorrect === false) // Only pick incorrect annotations
         .map(([idx, result]) => {
           const i = parseInt(idx);
-          const sample = guideData[i];
+          const sample = annotationsForReview[i];
           // Create rule synthesis item
           return {
             sample_text: getSampleText(sample),
             ai_labels: result.label,
             ai_reasoning: result.reason,
             ai_span_text: result.span_text,
-            ground_truth_labels: task.labels.map(item => item.name),
+            ground_truth_labels: result.correctLabel
+              ? [result.correctLabel]
+              : task.labels.map((item) => item.name),
             user_feedback: result.feedback, // The actual string from the textarea
           };
         });
@@ -509,11 +575,68 @@ export default function AnnotationPage() {
 
   return (
     <Box
-      h="100vh"
+      mih="100vh"
       bg={isLight ? "#f7fafb" : "var(--app-bg)"}
       c={isLight ? "#0f1418" : "var(--app-text)"}
     >
-      <Stack h="100%" gap="md" p="xl">
+      <Stack mih="100vh" gap="md" p="xl">
+        <Modal
+          opened={metricsModalOpen}
+          onClose={() => setMetricsModalOpen(false)}
+          centered
+          size="lg"
+          title="Review complete"
+          overlayProps={{
+            blur: 2,
+            opacity: 0.5,
+            color: isLight ? "#f7fafb" : "#11171c",
+          }}
+          styles={{
+            content: {
+              backgroundColor: isLight ? "#ffffff" : "rgba(20, 28, 34, 0.98)",
+              border: isLight
+                ? "1px solid rgba(15, 20, 24, 0.12)"
+                : "1px solid rgba(124, 231, 225, 0.25)",
+              boxShadow: isLight
+                ? "0 24px 60px rgba(0, 0, 0, 0.15)"
+                : "0 24px 60px rgba(0, 0, 0, 0.35)",
+              color: isLight ? "#0f1418" : "#e8eef1",
+            },
+            header: { backgroundColor: "transparent" },
+            title: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
+            close: { color: isLight ? "#0f1418" : "#e8eef1" },
+          }}
+        >
+          <Stack gap="sm">
+            <Text>
+              Review completed! You can download the captured metrics below.
+            </Text>
+            <Button
+              fullWidth
+              variant="light"
+              onClick={() => handleDownloadMetrics(metricsFiles.sample)}
+              disabled={!metricsFiles.sample}
+            >
+              Download sample metrics
+            </Button>
+            <Button
+              fullWidth
+              variant="light"
+              onClick={() => handleDownloadMetrics(metricsFiles.batch)}
+              disabled={!metricsFiles.batch}
+            >
+              Download batch metrics
+            </Button>
+            <Button
+              fullWidth
+              variant="light"
+              onClick={() => handleDownloadMetrics(metricsFiles.metadata)}
+              disabled={!metricsFiles.metadata}
+            >
+              Download metadata metrics
+            </Button>
+          </Stack>
+        </Modal>
         <Modal
           opened={introOpen}
           onClose={handleCloseIntro}
@@ -740,7 +863,9 @@ export default function AnnotationPage() {
                       <Group gap="xs" style={{ flexShrink: 0 }}>
                         <ActionIcon
                           size="md"
-                          variant={spanTextFeedback === true ? "filled" : "light"}
+                          variant={
+                            spanTextFeedback === true ? "filled" : "light"
+                          }
                           color="green"
                           onClick={() => setSpanTextFeedback(true)}
                         >
@@ -748,7 +873,9 @@ export default function AnnotationPage() {
                         </ActionIcon>
                         <ActionIcon
                           size="md"
-                          variant={spanTextFeedback === false ? "filled" : "light"}
+                          variant={
+                            spanTextFeedback === false ? "filled" : "light"
+                          }
                           color="red"
                           onClick={() => setSpanTextFeedback(false)}
                         >
@@ -766,13 +893,20 @@ export default function AnnotationPage() {
                       {infoIcon("Short explanation produced by the model.")}
                     </Group>
                     <Group gap="sm" align="flex-start" wrap="nowrap" w="100%">
-                      <Text size="sm" fs="italic" c={mutedColor} style={{ flex: 1 }}>
+                      <Text
+                        size="sm"
+                        fs="italic"
+                        c={mutedColor}
+                        style={{ flex: 1 }}
+                      >
                         {generatedReasoning || "Generating reasoning..."}
                       </Text>
                       <Group gap="xs" style={{ flexShrink: 0 }}>
                         <ActionIcon
                           size="md"
-                          variant={reasoningFeedback === true ? "filled" : "light"}
+                          variant={
+                            reasoningFeedback === true ? "filled" : "light"
+                          }
                           color="green"
                           onClick={() => setReasoningFeedback(true)}
                         >
@@ -780,7 +914,9 @@ export default function AnnotationPage() {
                         </ActionIcon>
                         <ActionIcon
                           size="md"
-                          variant={reasoningFeedback === false ? "filled" : "light"}
+                          variant={
+                            reasoningFeedback === false ? "filled" : "light"
+                          }
                           color="red"
                           onClick={() => setReasoningFeedback(false)}
                         >
@@ -863,11 +999,44 @@ export default function AnnotationPage() {
                           )}
                         </Group>
                       </Group>
+                      <Select
+                        label="Correct label"
+                        placeholder="Select the correct label"
+                        data={(task?.labels || []).map((l) => ({
+                          value: l.name,
+                          label: l.name,
+                        }))}
+                        value={batchResults[currentIndex]?.correctLabel ?? null}
+                        onChange={(value) =>
+                          setBatchResults(
+                            (sample: Record<number, AIAssisted>) => ({
+                              ...sample,
+                              [currentIndex]: {
+                                ...sample[currentIndex],
+                                correctLabel: value ?? null,
+                              },
+                            }),
+                          )
+                        }
+                        required
+                        allowDeselect={false}
+                        styles={{
+                          label: {
+                            color: isLight ? "#0f1418" : "var(--app-text)",
+                          },
+                          input: {
+                            background: surface2,
+                            color: isLight ? "#0f1418" : "var(--app-text)",
+                          },
+                        }}
+                      />
                       <Textarea
+                        label="Feedback"
+                        mt={4}
                         placeholder="Why was the AI wrong? (This will help the rule synthesizer)"
                         variant="filled"
                         size="sm"
-                        bg={surface2}
+                        required
                         styles={{
                           input: {
                             color: isLight ? "#0f1418" : "var(--app-text)",
@@ -916,14 +1085,30 @@ export default function AnnotationPage() {
                       disabled={
                         batchResults[currentIndex]?.isCorrect == null ||
                         (batchResults[currentIndex]?.isCorrect === false &&
-                          !batchResults[currentIndex]?.feedback?.trim())
+                          (!batchResults[currentIndex]?.feedback?.trim() ||
+                            !batchResults[currentIndex]?.correctLabel))
                       }
                       loading={isLoading}
                       onClick={async () => {
+                        const shouldGenerateMetrics = isLastBatch;
                         if (currentBatchProgress === actualBatchSize) {
                           await handleCommitBatch();
                         }
-                        handleNextClick();
+                        await handleNextClick();
+                        if (shouldGenerateMetrics && task?._id) {
+                          const [sampleRes, metadataRes, batchRes] =
+                            await Promise.all([
+                              generateSampleMetrics(task._id),
+                              generateMetadataMetrics(task._id),
+                              generateBatchMetrics(task._id),
+                            ]);
+                          setMetricsFiles({
+                            sample: sampleRes.filename,
+                            metadata: metadataRes.filename,
+                            batch: batchRes.filename,
+                          });
+                          setMetricsModalOpen(true);
+                        }
                       }}
                     >
                       {currentBatchProgress === actualBatchSize
@@ -985,7 +1170,7 @@ export default function AnnotationPage() {
                         radius="sm"
                         style={{ border: `1px solid ${borderColor}` }}
                       >
-                        {/* ...existing rule edit/display JSX unchanged... */}
+                        <Text size="sm">{rule}</Text>
                       </Paper>
                     ))}
 
@@ -999,16 +1184,23 @@ export default function AnnotationPage() {
                             key={`staged-${idx}`}
                             p="sm"
                             radius="sm"
-                            style={{ border: `1px dashed orange`, opacity: 0.8 }}
+                            style={{
+                              border: `1px dashed orange`,
+                              opacity: 0.8,
+                            }}
                           >
                             <Group align="flex-start" wrap="nowrap">
-                              <Text size="sm" style={{ flex: 1 }}>{rule}</Text>
+                              <Text size="sm" style={{ flex: 1 }}>
+                                {rule}
+                              </Text>
                               <ActionIcon
                                 size="sm"
                                 color="red"
                                 variant="subtle"
                                 onClick={() =>
-                                  setStagedRules((prev) => prev.filter((_, i) => i !== idx))
+                                  setStagedRules((prev) =>
+                                    prev.filter((_, i) => i !== idx),
+                                  )
                                 }
                               >
                                 <IconTrash size={14} />

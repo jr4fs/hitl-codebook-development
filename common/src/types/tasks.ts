@@ -16,6 +16,8 @@ export interface Task {
   codebook?: string[];
   codebookSourceTaskId?: string;
   codebookSourceTaskName?: string;
+  taskJsonRaw?: string;
+  labelsJsonRaw?: string;
   userID: string;
   columns: string[];
   file: string; // filename stored in /backend/uploads

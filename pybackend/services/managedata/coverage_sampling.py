@@ -90,7 +90,7 @@ class CoverageBasedSampling:
         return np.array(coverage_scores)
 
 
-    def sample(self, n: int = 5, text_col: str = "text_combined") -> pd.DataFrame:
+    def sample(self, n: int = 10, text_col: str = "text_combined") -> pd.DataFrame:
         if self.rep_sample_df.empty:
             return self.candidate_df.sample(n=min(n, len(self.rep_sample_df)))
 

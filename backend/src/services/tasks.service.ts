@@ -136,9 +136,9 @@ function parseLabelsJson(buffer: Buffer) {
         : [];
       const guidelines = Array.isArray(label.guidelines)
         ? label.guidelines
-          .map((item) => (typeof item === "string" ? item.trim() : ""))
-          .filter(Boolean)
-          .join("\n")
+            .map((item) => (typeof item === "string" ? item.trim() : ""))
+            .filter(Boolean)
+            .join("\n")
         : typeof label.guidelines === "string"
           ? label.guidelines.trim()
           : undefined;
@@ -175,7 +175,9 @@ function getRowTextValue(row: Record<string, unknown>): string {
 
 function getColumnsFromRows(rows: Array<Record<string, unknown>>): string[] {
   if (rows.length === 0) return [];
-  const clean_cols = Object.keys(rows[0]).filter(key => String(key).trim() !== "");
+  const clean_cols = Object.keys(rows[0]).filter(
+    (key) => String(key).trim() !== "",
+  );
   return clean_cols;
 }
 
@@ -578,27 +580,36 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const labelColumn = req.body.label_column as string | undefined;
     const modelName = req.body.model_name as string | undefined;
 
-    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile || !labelColumn) {
+    if (
+      !dValFile ||
+      !dAllFile ||
+      !taskJsonFile ||
+      !labelsJsonFile ||
+      !labelColumn
+    ) {
       console.error("[uploadTaskBundle] Missing files:", {
         d_val: !!dValFile,
         d_all: !!dAllFile,
         task_json: !!taskJsonFile,
         labels_json: !!labelsJsonFile,
-        labelColumn: !!labelColumn
+        labelColumn: !!labelColumn,
       });
       return res.status(400).json({
         success: false,
-        message: "Missing files. Expected d_val, d_all, task_json, labels_json and label column",
+        message:
+          "Missing files. Expected d_val, d_all, task_json, labels_json and label column",
       });
     }
 
     // Parse Task JSON
     console.log("[uploadTaskBundle] Parsing task_json...");
+    const taskJsonRaw = taskJsonFile.buffer.toString("utf-8");
     const taskInfo = parseTaskJson(taskJsonFile.buffer);
     console.log("[uploadTaskBundle] Task Info parsed:", taskInfo.name);
 
     // Parse Labels JSON
     console.log("[uploadTaskBundle] Parsing labels_json...");
+    const labelsJsonRaw = labelsJsonFile.buffer.toString("utf-8");
     const labels = parseLabelsJson(labelsJsonFile.buffer);
     console.log("[uploadTaskBundle] Labels parsed, count:", labels.length);
 
@@ -626,15 +637,24 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       const hasRestText = restColumns.includes(textColumn);
 
       if (!hasValText || !hasValLabel) {
-        console.error("[uploadTaskBundle] Column validation failed for val data:", valColumns, hasValText, hasValLabel);
+        console.error(
+          "[uploadTaskBundle] Column validation failed for val data:",
+          valColumns,
+          hasValText,
+          hasValLabel,
+        );
         return res.status(400).json({
           success: false,
-          message: "The labeled dataset must include text and task_label columns.",
+          message:
+            "The labeled dataset must include text and task_label columns.",
         });
       }
 
       if (!hasRestText) {
-        console.error("[uploadTaskBundle] Column validation failed for rest data:", restColumns);
+        console.error(
+          "[uploadTaskBundle] Column validation failed for rest data:",
+          restColumns,
+        );
         return res.status(400).json({
           success: false,
           message: "The unlabeled dataset must include a text column.",
@@ -665,6 +685,8 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       description: taskInfo.description,
       type: taskInfo.type,
       labels,
+      taskJsonRaw,
+      labelsJsonRaw,
       file: uploadFilename,
       restFile: uploadFilename,
       valFile: valFilename,
@@ -684,14 +706,18 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     console.log("[uploadTaskBundle] Seeding annotations from D_val...");
     const annotations: AnnotationItem[] = valRows
       .map((row, idx) => {
-        const rawLabel = labelColumn ? (row[labelColumn] ?? "") : (row.task_label ?? row.taskLabel ?? "");
+        const rawLabel = labelColumn
+          ? (row[labelColumn] ?? "")
+          : (row.task_label ?? row.taskLabel ?? "");
         const labels = String(rawLabel)
           .split(",")
           .map((label: string) => label.trim())
           .filter(Boolean);
 
         const textValue = textColumn
-          ? (typeof row[textColumn] === "string" ? (row[textColumn] as string).trim() : "")
+          ? typeof row[textColumn] === "string"
+            ? (row[textColumn] as string).trim()
+            : ""
           : getRowTextValue(row);
 
         if (!textValue || labels.length === 0) {
@@ -717,14 +743,18 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       .filter((row): row is AnnotationItem => row !== null);
 
     if (annotations.length > 0) {
-      console.log(`[uploadTaskBundle] Inserting ${annotations.length} annotations...`);
+      console.log(
+        `[uploadTaskBundle] Inserting ${annotations.length} annotations...`,
+      );
       const annotationCollection = getCollection<AnnotationItem>(
         ANNOTATION_COLLECTION,
       );
       await annotationCollection.insertMany(annotations);
       console.log("[uploadTaskBundle] Annotations inserted.");
     } else {
-      console.warn("[uploadTaskBundle] No valid annotations found in D_val to seed.");
+      console.warn(
+        "[uploadTaskBundle] No valid annotations found in D_val to seed.",
+      );
     }
 
     console.log("[uploadTaskBundle] Bundle upload completed successfully.");
@@ -806,7 +836,7 @@ export async function getCsvData(req: AuthRequest, res: Response) {
       val_file: [] as any[],
       rest_file: [] as any[],
       guide_file: [] as any[],
-      headers: [] as string[]
+      headers: [] as string[],
     };
 
     // Read all files using PapaParse

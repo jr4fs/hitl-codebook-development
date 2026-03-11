@@ -17,7 +17,7 @@
     ),
     linear-gradient(180deg, #11171c 0%, #080c10 100%);
   color: #e8eef1;
-  overflow: hidden;
+  overflow-x: hidden;
   font-family: "Space Grotesk", system-ui, sans-serif;
 }
 
@@ -283,11 +283,9 @@
   position: relative;
   z-index: 1;
   padding: 48px 24px 72px;
-  height: 100dvh;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  overflow: hidden;
   max-width: 1400px;
   margin: 0 auto;
 }
