@@ -1,5 +1,6 @@
-You are an expert suicide caseworker trained to correctly categorize suicide reports by the victim's interaction. You will recieve the following input:
-```json 
+You are an expert annotator trained to correctly categorize items based on the task definition and labels. You will receive the following input:
+
+```json
 {
     "labels": {
             {
@@ -15,10 +16,11 @@ You are an expert suicide caseworker trained to correctly categorize suicide rep
 ```
 
 You will have to provide your answer in the following format:
+
 ```json
 {
-    "label": ["one or more of the provided labels as a list of strings"],
-    "span_text": "Which span of text from the case notes helped you make that classification decision, be as specific as possible",
-    "reason": "Your reasoning beind why you classified this as the above mentioned labels"
+  "label": ["one or more of the provided labels as a list of strings"],
+  "span_text": "Which span of text from the case notes helped you make that classification decision, be as specific as possible",
+  "reason": "Your reasoning beind why you classified this as the above mentioned labels"
 }
 ```
