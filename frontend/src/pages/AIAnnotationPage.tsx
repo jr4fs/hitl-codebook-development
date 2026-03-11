@@ -438,6 +438,8 @@ export default function AnnotationPage() {
           ...currentAIResult,
           batchNum: currentAIResult.batchNum ?? currentBatchIndex + 1,
           timeToCompleteMs,
+          spanFeedback: spanTextFeedback ?? null,
+          reasoningFeedback: reasoningFeedback ?? null,
           codebookSnapshot: endCodebook,
           guidelinesAdded: added,
           guidelinesDeprecated: deprecated,
