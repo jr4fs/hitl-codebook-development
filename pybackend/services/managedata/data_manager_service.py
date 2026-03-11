@@ -16,8 +16,12 @@ class DataManagerService:
     def __init__(self, request: EmbedDatasetRequest):
         self.request: EmbedDatasetRequest = request
         self.project_root = Path(__file__).resolve().parents[3]
-        self.rest_file_path = str(self.project_root / 'rest_datasets' / request.file_path)
-        self.guide_file_path = str(self.project_root / 'guide_datasets' / request.file_path)
+        rest_dir = self.project_root / 'rest_datasets'
+        guide_dir = self.project_root / 'guide_datasets'
+        rest_dir.mkdir(parents=True, exist_ok=True)
+        guide_dir.mkdir(parents=True, exist_ok=True)
+        self.rest_file_path = str(rest_dir / request.file_path)
+        self.guide_file_path = str(guide_dir / request.file_path)
     
     def upsample(self):
         upsampling_payload = EmbedDatasetRequest(

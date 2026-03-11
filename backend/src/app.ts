@@ -4,6 +4,7 @@ import accountRouter from "./routes/accounts";
 import tasksRouter from "./routes/tasks";
 // import anonymizeRouter from "./routes/anonymize";
 import annotationsRouter from "./routes/annotations";
+import metricsRouter from "./routes/metrics";
 
 export const app = express();
 
@@ -36,3 +37,4 @@ app.use("/api/tasks", tasksRouter);
 // Anonymization is temporarily disabled in the new flow.
 // app.use("/api/anonymize", anonymizeRouter);
 app.use("/api/annotate", annotationsRouter);
+app.use("/api/metrics", metricsRouter);
