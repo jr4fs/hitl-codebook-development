@@ -86,15 +86,27 @@ function toJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function getTextData(sample?: Record<string, string>): string {
+function getTextData(
+  sample?: Record<string, string>,
+  preferredCol?: string,
+): string {
   if (!sample) return "";
   const combined = sample["text_combined"];
   if (typeof combined === "string" && combined.trim()) {
     return combined.trim();
   }
+  if (preferredCol && typeof sample[preferredCol] === "string") {
+    const preferredText = sample[preferredCol].trim();
+    if (preferredText) return preferredText;
+  }
   const raw = sample["text"];
   if (typeof raw === "string") {
     return raw.trim();
+  }
+  for (const value of Object.values(sample)) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
   }
   return "";
 }
@@ -243,6 +255,19 @@ export async function generateSampleMetrics(req: AuthRequest, res: Response) {
       .sort({ sampleId: 1 })
       .toArray();
 
+    const taskCollection = getCollection<Task>(
+      process.env.TASKS_COLLECTION_NAME || "TaskDetails",
+    );
+    let taskQueryId: ObjectId | string = taskId;
+    if (ObjectId.isValid(taskId)) {
+      taskQueryId = new ObjectId(taskId);
+    }
+    const task = await taskCollection.findOne({
+      _id: taskQueryId as any,
+      userID: userId,
+    });
+    const preferredTextCol = task?.columns?.[0];
+
     ensureMetricsDir();
     const timestamp = new Date().toISOString().replace(/[:.]/g, "");
     const filename = `sample_metrics_${taskId}_${timestamp}.csv`;
@@ -260,7 +285,7 @@ export async function generateSampleMetrics(req: AuthRequest, res: Response) {
             : "";
 
       return {
-        "text data": getTextData(annotation.sampleContent),
+        "text data": getTextData(annotation.sampleContent, preferredTextCol),
         batch_id: ai?.batchID ?? "",
         batch_num: ai?.batchNum ?? "",
         LM_prediction_raw: ai?.predictionRaw ?? "",
