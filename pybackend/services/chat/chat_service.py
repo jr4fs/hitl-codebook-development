@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Optional
 from models.ollama_adapter import OllamaAdapter, registry, configs
 import json
 import logging
+import re
 
 from models.embedding_schemas import Label
 
@@ -60,8 +61,10 @@ class ChatService:
         try:
             model_output = json.loads(raw_content)
         except json.JSONDecodeError:
-            self.logger.error("ollama response not json: %s", raw_content)
-            raise ValueError("Model response was not valid JSON")
+            model_output = self._extract_json(raw_content)
+            if model_output is None:
+                self.logger.error("ollama response not json: %s", raw_content)
+                raise ValueError("Model response was not valid JSON")
 
         label = model_output.get("label", [])
         span_text = model_output.get("span_text", "")
@@ -82,3 +85,14 @@ class ChatService:
             "tokens": total_tokens,
             "time": (duration_ns / 1e9) if duration_ns else 0.0,
         }
+
+    def _extract_json(self, content: str) -> Optional[Dict[str, Any]]:
+        if not content:
+            return None
+        match = re.search(r"\{[\s\S]*\}", content)
+        if not match:
+            return None
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return None

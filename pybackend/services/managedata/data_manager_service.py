@@ -57,7 +57,8 @@ class DataManagerService:
                 text_col = self.request.text_col[0]
             else:
                 text_col = "text"
-        coverage_sampling_results = obj.sample(text_col=text_col)
+        coverage_n = self.request.coverage_n or 150
+        coverage_sampling_results = obj.sample(n=coverage_n, text_col=text_col)
         coverage_sampling_results.to_csv(self.guide_file_path)
 
         # Push the guide dataset into MongoDB AnnotationDetails

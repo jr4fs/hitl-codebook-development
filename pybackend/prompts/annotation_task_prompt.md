@@ -1,4 +1,6 @@
-You are an expert annotator trained to correctly categorize items based on the task definition and labels. You will receive the following input:
+You are an expert annotator trained to correctly categorize items based on the task definition and labels.
+Return JSON only. No prose, no Markdown, no code fences, no extra keys.
+You will receive the following input:
 
 ```json
 {
@@ -15,7 +17,7 @@ You are an expert annotator trained to correctly categorize items based on the t
 }
 ```
 
-You will have to provide your answer in the following format:
+You will have to provide your answer in the following JSON format:
 
 ```json
 {

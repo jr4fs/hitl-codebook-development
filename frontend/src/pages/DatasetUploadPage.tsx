@@ -8,6 +8,7 @@ import {
   Divider,
   Group,
   Modal,
+  NumberInput,
   Popover,
   Paper,
   Select,
@@ -17,7 +18,6 @@ import {
   TextInput,
   Title,
   useMantineColorScheme,
-  ScrollArea,
 } from "@mantine/core";
 import {
   IconAlertCircle,
@@ -48,6 +48,9 @@ export default function DatasetUploadPage() {
   const [selectedModel, setSelectedModel] = useState<string | null>("gpt-4o");
   const [textColumn, setTextColumn] = useState("");
   const [labelColumn, setLabelColumn] = useState("");
+  const [coverageSampleSize, setCoverageSampleSize] = useState<number | "">(
+    150,
+  );
   const [useRepresentativeSampling, setUseRepresentativeSampling] =
     useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -272,6 +275,8 @@ export default function DatasetUploadPage() {
           labels: response.task?.labels ?? [],
           taskId: response.task?._id ?? "",
           userId: response.task?.userID ?? "",
+          coverage_n:
+            typeof coverageSampleSize === "number" ? coverageSampleSize : 150,
         };
         if (useRepresentativeSampling) {
           try {
@@ -682,6 +687,36 @@ export default function DatasetUploadPage() {
 
               {/* Model selector + text column */}
               <Stack gap="sm">
+                <NumberInput
+                  label="Coverage sample size"
+                  description="How many samples to include in the guide set. 150 by default."
+                  value={coverageSampleSize}
+                  min={1}
+                  onChange={(value) =>
+                    setCoverageSampleSize(
+                      typeof value === "number" ? value : "",
+                    )
+                  }
+                  styles={{
+                    label: {
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                      fontWeight: 600,
+                    },
+                    description: {
+                      color: isLight
+                        ? "rgba(15,20,24,0.6)"
+                        : "rgba(232,238,241,0.6)",
+                    },
+                    input: {
+                      background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
+                      border: isLight
+                        ? "1px solid rgba(124, 231, 225, 0.55)"
+                        : "1px solid rgba(124, 231, 225, 0.3)",
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                      borderRadius: 10,
+                    },
+                  }}
+                />
                 <Switch
                   label="Enable representative sampling"
                   description="Off by default for this pilot. When enabled, we run representative sampling before coverage."

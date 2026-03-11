@@ -16,6 +16,7 @@ class EmbedDatasetRequest(BaseModel):
     label_col: str = Field(..., min_length=1)
     taskId: Optional[str] = None
     userId: Optional[str] = None
+    coverage_n: Optional[int] = Field(None, ge=1)
 
 class EmbedDatasetResponse(BaseModel):
     success: bool
