@@ -38,13 +38,26 @@ class DataManagerService:
         upsampled_result.to_csv(self.rest_file_path)
     
     def coverage_sample(self):
+        rest_path = Path(self.rest_file_path)
+        source_path = rest_path
+        if not rest_path.exists():
+            source_path = self.project_root / 'shared_uploads' / self.request.file_path
+        df = pd.read_csv(source_path)
+        if not rest_path.exists():
+            df.to_csv(rest_path)
         obj = CoverageBasedSampling(
-            df = pd.read_csv(self.rest_file_path),
+            df = df,
             model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
         )
         
 
-        coverage_sampling_results = obj.sample(text_col="text_combined")
+        text_col = "text_combined"
+        if text_col not in df.columns:
+            if self.request.text_col:
+                text_col = self.request.text_col[0]
+            else:
+                text_col = "text"
+        coverage_sampling_results = obj.sample(text_col=text_col)
         coverage_sampling_results.to_csv(self.guide_file_path)
 
         # Push the guide dataset into MongoDB AnnotationDetails

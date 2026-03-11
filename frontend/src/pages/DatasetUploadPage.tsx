@@ -12,6 +12,7 @@ import {
   Paper,
   Select,
   Stack,
+  Switch,
   Text,
   TextInput,
   Title,
@@ -28,7 +29,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import { uploadTaskBundle } from "../services/tasks.service";
-import { representativeSampling, coverageSampling } from "../services/embedding.service";
+import {
+  representativeSampling,
+  coverageSampling,
+} from "../services/embedding.service";
 import { toast } from "../lib/toast";
 import styles from "./DatasetUploadPage.module.css";
 import { EmbedDatasetRequest } from "@common/types/embedding";
@@ -44,6 +48,8 @@ export default function DatasetUploadPage() {
   const [selectedModel, setSelectedModel] = useState<string | null>("gpt-4o");
   const [textColumn, setTextColumn] = useState("");
   const [labelColumn, setLabelColumn] = useState("");
+  const [useRepresentativeSampling, setUseRepresentativeSampling] =
+    useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [introOpen, setIntroOpen] = useState(false);
@@ -222,8 +228,17 @@ export default function DatasetUploadPage() {
     ? "rgba(15, 20, 24, 0.12)"
     : "rgba(255, 255, 255, 0.08)";
   const handleUpload = async () => {
-    if (!dValFile || !dAllFile || !taskJsonFile || !labelsJsonFile || !labelColumn || !selectedModel) {
-      setError("Please provide all four files and label column as well as preferred model before continuing.");
+    if (
+      !dValFile ||
+      !dAllFile ||
+      !taskJsonFile ||
+      !labelsJsonFile ||
+      !labelColumn ||
+      !selectedModel
+    ) {
+      setError(
+        "Please provide all four files and label column as well as preferred model before continuing.",
+      );
       return;
     }
 
@@ -238,7 +253,7 @@ export default function DatasetUploadPage() {
         labelsJsonFile,
         textColumn,
         labelColumn,
-        modelName: selectedModel ?? ""
+        modelName: selectedModel ?? "",
       });
 
       if (!response.success || !response.taskId) {
@@ -256,19 +271,23 @@ export default function DatasetUploadPage() {
           model_name: selectedModel || "",
           labels: response.task?.labels ?? [],
           taskId: response.task?._id ?? "",
-          userId: response.task?.userID ?? ""
+          userId: response.task?.userID ?? "",
+        };
+        if (useRepresentativeSampling) {
+          try {
+            const repSamplingResponse =
+              await representativeSampling(samplingPayload);
+            console.log("repSamplingResponse: ", repSamplingResponse);
+          } catch (error: any) {
+            console.error(`[representative sampling] ${error}`);
+          }
         }
         try {
-          const repSamplingResponse = await representativeSampling(samplingPayload)
-          console.log("repSamplingResponse: ", repSamplingResponse)
+          const coverageSamplingResponse =
+            await coverageSampling(samplingPayload);
+          console.log("coverageSamplingResponse: ", coverageSamplingResponse);
         } catch (error: any) {
-          console.error(`[representative sampling] ${error}`)
-        }
-        try {
-          const coverageSamplingResponse = await coverageSampling(samplingPayload)
-          console.log("coverageSamplingResponse: ", coverageSamplingResponse)
-        } catch (error: any) {
-          console.error(`[coverage sampling] ${error}`)
+          console.error(`[coverage sampling] ${error}`);
         }
       } else {
         toast.success("Upload complete. Opening AI review..."); // possibly remove, message does not state the failure branch
@@ -656,6 +675,25 @@ export default function DatasetUploadPage() {
 
               {/* Model selector + text column */}
               <Stack gap="sm">
+                <Switch
+                  label="Enable representative sampling"
+                  description="Off by default for this pilot. When enabled, we run representative sampling before coverage."
+                  checked={useRepresentativeSampling}
+                  onChange={(event) =>
+                    setUseRepresentativeSampling(event.currentTarget.checked)
+                  }
+                  styles={{
+                    label: {
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                      fontWeight: 600,
+                    },
+                    description: {
+                      color: isLight
+                        ? "rgba(15,20,24,0.6)"
+                        : "rgba(232,238,241,0.6)",
+                    },
+                  }}
+                />
                 <Select
                   label="Model"
                   description="Choose the model to use for AI annotation."
@@ -670,8 +708,15 @@ export default function DatasetUploadPage() {
                     { value: "llama3.3:70b", label: "Llama3.3-70B" },
                   ]}
                   styles={{
-                    label: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
-                    description: { color: isLight ? "rgba(15,20,24,0.6)" : "rgba(232,238,241,0.6)" },
+                    label: {
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                      fontWeight: 600,
+                    },
+                    description: {
+                      color: isLight
+                        ? "rgba(15,20,24,0.6)"
+                        : "rgba(232,238,241,0.6)",
+                    },
                     input: {
                       background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
                       border: isLight
@@ -681,7 +726,9 @@ export default function DatasetUploadPage() {
                       borderRadius: 10,
                     },
                     dropdown: {
-                      background: isLight ? "#ffffff" : "rgba(18, 24, 29, 0.98)",
+                      background: isLight
+                        ? "#ffffff"
+                        : "rgba(18, 24, 29, 0.98)",
                       border: isLight
                         ? "1px solid rgba(124, 231, 225, 0.4)"
                         : "1px solid rgba(124, 231, 225, 0.3)",
@@ -696,8 +743,15 @@ export default function DatasetUploadPage() {
                   value={textColumn}
                   onChange={(e) => setTextColumn(e.currentTarget.value)}
                   styles={{
-                    label: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
-                    description: { color: isLight ? "rgba(15,20,24,0.6)" : "rgba(232,238,241,0.6)" },
+                    label: {
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                      fontWeight: 600,
+                    },
+                    description: {
+                      color: isLight
+                        ? "rgba(15,20,24,0.6)"
+                        : "rgba(232,238,241,0.6)",
+                    },
                     input: {
                       background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
                       border: isLight
@@ -715,8 +769,15 @@ export default function DatasetUploadPage() {
                   value={labelColumn}
                   onChange={(e) => setLabelColumn(e.currentTarget.value)}
                   styles={{
-                    label: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
-                    description: { color: isLight ? "rgba(15,20,24,0.6)" : "rgba(232,238,241,0.6)" },
+                    label: {
+                      color: isLight ? "#0f1418" : "#e8eef1",
+                      fontWeight: 600,
+                    },
+                    description: {
+                      color: isLight
+                        ? "rgba(15,20,24,0.6)"
+                        : "rgba(232,238,241,0.6)",
+                    },
                     input: {
                       background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
                       border: isLight
@@ -730,7 +791,6 @@ export default function DatasetUploadPage() {
               </Stack>
 
               <Divider my="sm" color={dividerColor} />
-
 
               {error && (
                 <Alert

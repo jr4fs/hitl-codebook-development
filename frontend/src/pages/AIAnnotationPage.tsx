@@ -240,9 +240,19 @@ export default function AnnotationPage() {
     if (typeof combined === "string" && combined.trim()) {
       return combined.trim();
     }
+    const preferredCol = task?.columns?.[0];
+    if (preferredCol && typeof sample[preferredCol] === "string") {
+      const preferredText = sample[preferredCol].trim();
+      if (preferredText) return preferredText;
+    }
     const rawText = sample["text"];
     if (typeof rawText === "string") {
       return rawText.trim();
+    }
+    for (const value of Object.values(sample)) {
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
     }
     return "";
   };
