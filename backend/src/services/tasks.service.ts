@@ -19,6 +19,7 @@ import {
 import { ObjectId } from "mongodb";
 import Papa from "papaparse";
 import fs from "fs/promises";
+import path from "path";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -42,6 +43,15 @@ const ANNOTATION_COLLECTION =
   process.env.ANNOTATION_COLLECTION_NAME || "AnnotationDetails";
 
 const TASK_JSON_REQUIRED_KEYS = ["taskname", "description"];
+const GENERATED_CODEBOOKS_DIR = "generated_codebooks";
+
+function toSafeFilename(value: string): string {
+  return value
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
 
 /**
  * Fetches the global anonymize config from DB (or returns null if none exists)
@@ -505,6 +515,91 @@ export async function saveTaskCodebook(req: AuthRequest, res: Response) {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to save codebook",
+    });
+  }
+}
+
+export async function exportCodebookSnapshot(req: AuthRequest, res: Response) {
+  try {
+    const userID = req.user?.userId;
+    const { taskId, codebook, lastPrompt } = req.body as {
+      taskId?: string;
+      codebook?: unknown;
+      lastPrompt?: unknown;
+    };
+
+    if (!userID) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - user not authenticated",
+      });
+    }
+
+    if (!taskId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid - No task ID found",
+      });
+    }
+
+    if (!Array.isArray(codebook)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid codebook payload",
+      });
+    }
+
+    if (lastPrompt != null && typeof lastPrompt !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid last prompt payload",
+      });
+    }
+
+    const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
+    const task = await taskDetailsCollection.findOne({
+      _id: new ObjectId(taskId) as any,
+      userID: userID,
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found or you don't have permission to update it",
+      });
+    }
+
+    const projectRoot = path.resolve(__dirname, "../../../");
+    const outputDir = path.join(projectRoot, GENERATED_CODEBOOKS_DIR);
+    await fs.mkdir(outputDir, { recursive: true });
+
+    const safeName = toSafeFilename(task.name || "task") || "task";
+    const filename = `${safeName}_codebook_and_prompt.txt`;
+    const filePath = path.join(outputDir, filename);
+
+    const codebookText = (codebook as string[])
+      .map((rule) => `- ${rule}`)
+      .join("\n");
+    const content = [
+      "## CODEBOOK ##",
+      codebookText,
+      "",
+      "## LAST PROMPT ##",
+      typeof lastPrompt === "string" ? lastPrompt : "",
+      "",
+    ].join("\n");
+
+    await fs.writeFile(filePath, content, "utf-8");
+
+    return res.status(200).json({
+      success: true,
+      filename,
+    });
+  } catch (error: any) {
+    console.error("Error exporting codebook snapshot:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to export codebook",
     });
   }
 }

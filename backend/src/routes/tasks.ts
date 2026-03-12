@@ -7,6 +7,7 @@ import {
   getCsvData,
   checkValFileExists,
   saveTaskCodebook,
+  exportCodebookSnapshot,
   uploadTaskBundle,
 } from "../services/tasks.service";
 import { uploadCSV, uploadBundle } from "../utils/fileUpload";
@@ -38,6 +39,8 @@ router.post("/createTask", createTask);
 
 // Save codebook for a task
 router.post("/saveCodebook", saveTaskCodebook);
+// Export codebook + last prompt to server filesystem
+router.post("/exportCodebook", exportCodebookSnapshot);
 
 // Get all tasks for a user
 router.get("/getTasks", getUserTasks);

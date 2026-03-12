@@ -45,9 +45,11 @@ export default function DatasetUploadPage() {
   const [dAllFile, setDAllFile] = useState<File | null>(null);
   const [taskJsonFile, setTaskJsonFile] = useState<File | null>(null);
   const [labelsJsonFile, setLabelsJsonFile] = useState<File | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string | null>("gpt-4o");
-  const [textColumn, setTextColumn] = useState("");
-  const [labelColumn, setLabelColumn] = useState("");
+  const [selectedModel, setSelectedModel] = useState<string | null>(
+    "mistral:7b",
+  );
+  const [textColumn, setTextColumn] = useState("translated_text");
+  const [labelColumn, setLabelColumn] = useState("Final Label");
   const [coverageSampleSize, setCoverageSampleSize] = useState<number | "">(
     150,
   );

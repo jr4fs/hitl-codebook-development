@@ -15,6 +15,8 @@ export interface InferenceResponse {
   span_text: string;
   reason: string;
   raw_response?: string;
+  system_prompt?: string;
+  user_prompt?: string;
   task_type: string;
   tokens: number;
   time: number;
