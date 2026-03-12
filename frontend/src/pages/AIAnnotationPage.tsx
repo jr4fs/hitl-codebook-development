@@ -146,6 +146,7 @@ export default function AnnotationPage() {
   const sampleStartsRef = useRef<
     Record<number, { startedAt: number; codebook: string[] }>
   >({});
+  const skipInferenceRef = useRef(false);
 
   // useEffect(() => {
   //   if (annotations && annotations.length > 0) {
@@ -295,12 +296,12 @@ export default function AnnotationPage() {
     return "";
   };
 
-  const handleClickAnnotation = async () => {
-    if (!currentSample) return;
+  const handleClickAnnotation = async (): Promise<boolean> => {
+    if (!currentSample) return false;
     const finalText = getSampleText(currentSample);
     if (!finalText) {
       console.warn("No text available for inference.");
-      return;
+      return false;
     }
     setIsLoading(true);
     const payload: InferenceRequest = {
@@ -313,46 +314,56 @@ export default function AnnotationPage() {
     };
 
     // setting llm responses (predicted labels, span text and reasoning)
-    const response: InferenceResponse = await inference(payload);
-    if (response) {
-      console.log("Annotation Response: ", response);
-      sampleStartsRef.current[currentIndex] = {
-        startedAt: Date.now(),
-        codebook: getCodebookSnapshot(),
-      };
-      setBatchResults((sample: Record<number, AIAssisted>) => ({
-        ...sample,
-        [currentIndex]: {
-          taskID: task?._id ?? null,
-          batchID: currentBatchUUID,
-          batchNum: currentBatchIndex + 1,
-          label: response.label,
-          reason: response.reason,
-          span_text: response.span_text,
-          isCorrect: sample[currentIndex]?.isCorrect ?? null,
-          feedback: sample[currentIndex]?.feedback ?? "",
-          spanFeedback: spanTextFeedback ?? null,
-          reasoningFeedback: reasoningFeedback ?? null,
-          correctLabel: sample[currentIndex]?.correctLabel ?? null,
-          predictionRaw: response.raw_response ?? null,
-          timeToCompleteMs: sample[currentIndex]?.timeToCompleteMs ?? null,
-          codebookSnapshot: sample[currentIndex]?.codebookSnapshot ?? [],
-          guidelinesAdded: sample[currentIndex]?.guidelinesAdded ?? [],
-          guidelinesDeprecated:
-            sample[currentIndex]?.guidelinesDeprecated ?? [],
-          guidelinesRevised: sample[currentIndex]?.guidelinesRevised ?? [],
-        },
-      }));
-      setGeneratedLabels(response.label);
-      setGeneratedSpanText(response.span_text);
-      setGeneratedReasoning(response.reason);
-      if (response.system_prompt || response.user_prompt) {
-        const systemPrompt = response.system_prompt || "";
-        const userPrompt = response.user_prompt || "";
-        setLastPromptUsed(`${systemPrompt}\n\n${userPrompt}`.trim());
+    try {
+      const response: InferenceResponse = await inference(payload);
+      if (response) {
+        console.log("Annotation Response: ", response);
+        sampleStartsRef.current[currentIndex] = {
+          startedAt: Date.now(),
+          codebook: getCodebookSnapshot(),
+        };
+        setBatchResults((sample: Record<number, AIAssisted>) => ({
+          ...sample,
+          [currentIndex]: {
+            taskID: task?._id ?? null,
+            batchID: currentBatchUUID,
+            batchNum: currentBatchIndex + 1,
+            label: response.label,
+            reason: response.reason,
+            span_text: response.span_text,
+            isCorrect: sample[currentIndex]?.isCorrect ?? null,
+            feedback: sample[currentIndex]?.feedback ?? "",
+            spanFeedback: spanTextFeedback ?? null,
+            reasoningFeedback: reasoningFeedback ?? null,
+            correctLabel: sample[currentIndex]?.correctLabel ?? null,
+            predictionRaw: response.raw_response ?? null,
+            timeToCompleteMs: sample[currentIndex]?.timeToCompleteMs ?? null,
+            codebookSnapshot: sample[currentIndex]?.codebookSnapshot ?? [],
+            guidelinesAdded: sample[currentIndex]?.guidelinesAdded ?? [],
+            guidelinesDeprecated:
+              sample[currentIndex]?.guidelinesDeprecated ?? [],
+            guidelinesRevised: sample[currentIndex]?.guidelinesRevised ?? [],
+          },
+        }));
+        setGeneratedLabels(response.label);
+        setGeneratedSpanText(response.span_text);
+        setGeneratedReasoning(response.reason);
+        if (response.system_prompt || response.user_prompt) {
+          const systemPrompt = response.system_prompt || "";
+          const userPrompt = response.user_prompt || "";
+          setLastPromptUsed(`${systemPrompt}\n\n${userPrompt}`.trim());
+        }
+        return true;
       }
+      toast.error("Something went wrong, please try again");
+      return false;
+    } catch (error) {
+      console.error("Inference failed:", error);
+      toast.error("Something went wrong, please try again");
+      return false;
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   // Trigger inference whenever the index changes or when samples first become available.
@@ -363,9 +374,20 @@ export default function AnnotationPage() {
     ) {
       return;
     }
+    if (skipInferenceRef.current) {
+      skipInferenceRef.current = false;
+      return;
+    }
     setSpanTextFeedback(undefined);
     setReasoningFeedback(undefined);
-    handleClickAnnotation();
+    const runInference = async () => {
+      const ok = await handleClickAnnotation();
+      if (!ok && currentIndex > 0) {
+        skipInferenceRef.current = true;
+        setCurrentIndex((prev) => Math.max(prev - 1, 0));
+      }
+    };
+    runInference();
   }, [currentIndex, annotationsForReview.length]);
 
   useEffect(() => {
@@ -577,6 +599,7 @@ export default function AnnotationPage() {
       committedCodebook = nextCodebook;
     } catch (error: any) {
       console.error("Failed to synthesize rules:", error);
+      toast.error("Failed to synthesize new rules for this batch");
     } finally {
       setIsLoading(false);
     }

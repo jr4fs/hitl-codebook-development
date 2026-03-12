@@ -15,7 +15,7 @@ export const toast = {
       title: "Error",
       message,
       color: "red",
-      autoClose: 5000,
+      autoClose: 7000,
     });
   },
 
