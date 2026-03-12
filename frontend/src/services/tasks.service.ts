@@ -32,6 +32,18 @@ export async function saveTaskCodebook(taskId: string, codebook: string[]) {
   return data;
 }
 
+export async function exportCodebookSnapshot(
+  taskId: string,
+  codebook: string[],
+  lastPrompt: string,
+) {
+  const { data } = await apiClient.post<{ success: boolean; message?: string }>(
+    "/api/tasks/exportCodebook",
+    { taskId, codebook, lastPrompt },
+  );
+  return data;
+}
+
 export async function uploadFile(file: File): Promise<UploadFileResponse> {
   const formData = new FormData();
   formData.append("file", file);

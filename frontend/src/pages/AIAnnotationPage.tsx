@@ -44,7 +44,10 @@ import {
 import { InferenceRequest, InferenceResponse } from "@common/types/inference";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import { updateGuideAnnotation } from "../services/annotations.service";
-import { saveTaskCodebook } from "../services/tasks.service";
+import {
+  saveTaskCodebook,
+  exportCodebookSnapshot,
+} from "../services/tasks.service";
 import {
   generateSampleMetrics,
   generateMetadataMetrics,
@@ -97,6 +100,7 @@ export default function AnnotationPage() {
   const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
   const [isSavingCodebook, setIsSavingCodebook] = useState(false);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
+  const [reviewComplete, setReviewComplete] = useState(false);
   const [metricsFiles, setMetricsFiles] = useState<{
     sample?: string;
     metadata?: string;
@@ -105,6 +109,7 @@ export default function AnnotationPage() {
 
   // Codebook State
   const [codebook, setCodebook] = useState<string[]>([]);
+  const [lastPromptUsed, setLastPromptUsed] = useState<string>("");
   const [newRule, setNewRule] = useState("");
   // manual rules queue
   const [stagedRules, setStagedRules] = useState<string[]>([]);
@@ -221,6 +226,39 @@ export default function AnnotationPage() {
 
   const getCodebookSnapshot = () => [...codebook, ...stagedRules];
 
+  const toSafeFilename = (value: string) =>
+    value
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "");
+
+  const handleExportCodebook = () => {
+    if (!task?.name) return;
+    const name = toSafeFilename(task.name) || "task";
+    const filename = `${name}_codebook_and_prompt.txt`;
+    const codebookText = getCodebookSnapshot()
+      .map((rule) => `- ${rule}`)
+      .join("\n");
+    const content = [
+      "## CODEBOOK ##",
+      codebookText,
+      "",
+      "## LAST PROMPT ##",
+      lastPromptUsed || "",
+      "",
+    ].join("\n");
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
   const diffCodebook = (start: string[], end: string[]) => {
     const added = end.filter((rule) => !start.includes(rule));
     const deprecated = start.filter((rule) => !end.includes(rule));
@@ -308,6 +346,11 @@ export default function AnnotationPage() {
       setGeneratedLabels(response.label);
       setGeneratedSpanText(response.span_text);
       setGeneratedReasoning(response.reason);
+      if (response.system_prompt || response.user_prompt) {
+        const systemPrompt = response.system_prompt || "";
+        const userPrompt = response.user_prompt || "";
+        setLastPromptUsed(`${systemPrompt}\n\n${userPrompt}`.trim());
+      }
     }
     setIsLoading(false);
   };
@@ -474,8 +517,9 @@ export default function AnnotationPage() {
     }
   };
 
-  const handleCommitBatch = async () => {
+  const handleCommitBatch = async (): Promise<string[]> => {
     setIsLoading(true);
+    let committedCodebook = codebook;
     try {
       const startIdx = currentBatchIndex * batchSize;
       const endIdx = startIdx + batchSize;
@@ -513,6 +557,7 @@ export default function AnnotationPage() {
         });
 
       // Only perform rule synthesis if there are any incorrect model annotations
+      let nextCodebook = [...codebook];
       if (rule_synthesis_items.length > 0) {
         const request: RuleSynthesisRequest = {
           payload: rule_synthesis_items,
@@ -523,16 +568,19 @@ export default function AnnotationPage() {
 
         if (response.success) {
           // Append new rules to the live codebook
-          setCodebook((prev) => [...prev, ...response.rules]);
+          nextCodebook = [...nextCodebook, ...response.rules];
         }
       }
-      setCodebook((prev) => [...prev, ...stagedRules]);
+      nextCodebook = [...nextCodebook, ...stagedRules];
+      setCodebook(nextCodebook);
       setStagedRules([]);
+      committedCodebook = nextCodebook;
     } catch (error: any) {
       console.error("Failed to synthesize rules:", error);
     } finally {
       setIsLoading(false);
     }
+    return committedCodebook;
   };
 
   // const handleBatchInferenceClick = async () => {
@@ -1103,8 +1151,9 @@ export default function AnnotationPage() {
                       loading={isLoading}
                       onClick={async () => {
                         const shouldGenerateMetrics = isLastBatch;
+                        let committedCodebook: string[] = [];
                         if (currentBatchProgress === actualBatchSize) {
-                          await handleCommitBatch();
+                          committedCodebook = await handleCommitBatch();
                         }
                         await handleNextClick();
                         if (shouldGenerateMetrics && task?._id) {
@@ -1119,6 +1168,22 @@ export default function AnnotationPage() {
                             metadata: metadataRes.filename,
                             batch: batchRes.filename,
                           });
+                          try {
+                            await exportCodebookSnapshot(
+                              task._id,
+                              committedCodebook.length > 0
+                                ? committedCodebook
+                                : getCodebookSnapshot(),
+                              lastPromptUsed,
+                            );
+                          } catch (error: any) {
+                            console.error("Failed to export codebook:", error);
+                            toast.error(
+                              error?.message ||
+                                "Failed to export codebook on server",
+                            );
+                          }
+                          setReviewComplete(true);
                           setMetricsModalOpen(true);
                         }
                       }}
@@ -1155,6 +1220,18 @@ export default function AnnotationPage() {
                   >
                     Save Codebook
                   </Button>
+                  {reviewComplete && (
+                    <Button
+                      variant="outline"
+                      color="blue"
+                      size="xs"
+                      radius="xl"
+                      onClick={handleExportCodebook}
+                      disabled={!lastPromptUsed}
+                    >
+                      Export Codebook
+                    </Button>
+                  )}
                   <Tooltip label="These rules guide the AI for future batches">
                     <IconInfoCircle size={18} color="gray" />
                   </Tooltip>

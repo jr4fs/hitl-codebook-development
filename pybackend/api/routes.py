@@ -93,6 +93,14 @@ async def run_inference(request: InferenceRequest):
         chat_service_obj = ChatService()
         prompt_template_obj = PromptTemplate()
         system_prompt = prompt_template_obj.get_task_system_prompt(request.task_type)
+        inference_payload = {
+            "labels": [l.dict() for l in request.labels],
+            "case_notes": request.case_notes,
+            "task_definition": request.task_definition,
+            "user_input": request.user_input,
+        }
+        user_prompt = json.dumps(inference_payload, ensure_ascii=False)
+
         response = chat_service_obj.send_chat(
             request.labels,
             request.task_definition,
@@ -107,6 +115,8 @@ async def run_inference(request: InferenceRequest):
             "span_text": response["span_text"],
             "reason": response["reason"],
             "raw_response": response.get("raw_response", ""),
+            "system_prompt": system_prompt,
+            "user_prompt": user_prompt,
             "task_type": request.task_type,
             "tokens": response.get("tokens", 0),
             "time": response.get("time", 0.0),
