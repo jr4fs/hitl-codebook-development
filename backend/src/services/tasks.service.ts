@@ -53,6 +53,30 @@ function toSafeFilename(value: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
+async function ensureUniqueFilePath(
+  dir: string,
+  baseName: string,
+  ext: string,
+): Promise<string> {
+  const basePath = path.join(dir, `${baseName}${ext}`);
+  try {
+    await fs.access(basePath);
+  } catch {
+    return basePath;
+  }
+
+  let counter = 1;
+  while (true) {
+    const candidate = path.join(dir, `${baseName} ${counter}${ext}`);
+    try {
+      await fs.access(candidate);
+      counter += 1;
+    } catch {
+      return candidate;
+    }
+  }
+}
+
 /**
  * Fetches the global anonymize config from DB (or returns null if none exists)
  */
@@ -574,8 +598,9 @@ export async function exportCodebookSnapshot(req: AuthRequest, res: Response) {
     await fs.mkdir(outputDir, { recursive: true });
 
     const safeName = toSafeFilename(task.name || "task") || "task";
-    const filename = `${safeName}_codebook_and_prompt.txt`;
-    const filePath = path.join(outputDir, filename);
+    const baseName = `${safeName}_codebook_and_prompt`;
+    const filePath = await ensureUniqueFilePath(outputDir, baseName, ".txt");
+    const filename = path.basename(filePath);
 
     const codebookText = (codebook as string[])
       .map((rule) => `- ${rule}`)
