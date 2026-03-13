@@ -539,7 +539,7 @@ export default function AnnotationPage() {
       setTotalAttempted((prev) => prev + batchAttempted);
 
       const rule_synthesis_items: RuleSynthesisItem[] = batchResultsList
-        .filter(([_, result]) => result.isCorrect === false) // Only pick incorrect annotations
+        .filter(([_, result]) => result.isCorrect !== null) // Only pick incorrect annotations
         .map(([idx, result]) => {
           const i = parseInt(idx);
           const sample = annotationsForReview[i];
@@ -552,7 +552,10 @@ export default function AnnotationPage() {
             ground_truth_labels: result.correctLabel
               ? [result.correctLabel]
               : task.labels.map((item) => item.name),
-            user_feedback: result.feedback, // The actual string from the textarea
+            user_feedback: result.feedback, // The actual string from the textarea,
+            user_label_feedback: result.isCorrect || false,
+            user_span_feedback: result.spanFeedback || true,
+            user_reasoning_feedback: result.reasoningFeedback || true
           };
         });
 
@@ -888,9 +891,6 @@ export default function AnnotationPage() {
                       </Title>
                       {infoIcon("The model's proposed labels and rationale.")}
                     </Group>
-                    <Badge color="blue" variant="light">
-                      {currentSample?.sampleId}
-                    </Badge>
                   </Group>
 
                   <Group gap="sm">
@@ -1036,7 +1036,7 @@ export default function AnnotationPage() {
                     </Button>
                   </Group>
 
-                  {batchResults[currentIndex]?.isCorrect === false && (
+                  {(batchResults[currentIndex]?.isCorrect === false || spanTextFeedback === false || reasoningFeedback === false) && (
                     <Stack gap="xs">
                       <Group gap="xs" align="center">
                         <Text size="sm" fw={600}>
@@ -1146,7 +1146,9 @@ export default function AnnotationPage() {
                         batchResults[currentIndex]?.isCorrect == null ||
                         (batchResults[currentIndex]?.isCorrect === false &&
                           (!batchResults[currentIndex]?.feedback?.trim() ||
-                            !batchResults[currentIndex]?.correctLabel))
+                            !batchResults[currentIndex]?.correctLabel)) || 
+                            spanTextFeedback  === undefined ||
+                            reasoningFeedback  === undefined
                       }
                       loading={isLoading}
                       onClick={async () => {
@@ -1259,7 +1261,21 @@ export default function AnnotationPage() {
                         radius="sm"
                         style={{ border: `1px solid ${borderColor}` }}
                       >
-                        <Text size="sm">{rule}</Text>
+                        <Group align="flex-start" wrap="nowrap">
+                          <Text size="sm">{rule}</Text>
+                          <ActionIcon
+                            size="sm"
+                            color="red"
+                            variant="subtle"
+                            onClick={() =>
+                              setCodebook((prev) =>
+                                prev.filter((_, i) => i !== idx),
+                              )
+                            }
+                          >
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Group>
                       </Paper>
                     ))}
 

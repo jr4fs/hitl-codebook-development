@@ -52,7 +52,7 @@ class RuleSynthesisService:
             model_output = json.loads(response_json["message"]["content"])
             return {
                 "success": True,
-                "rules": model_output["rules"],
+                "rules": model_output.get("rules",[]),
                 "model_name": model_name
                 }
         except Exception as e:
