@@ -157,6 +157,8 @@ class LabelSampling:
     def run_faiss_indexing(self):
         all_results = []
         for label_item in tqdm(self.labels, desc="Processing"):
+            if not label_item.keywords:
+                continue  # Skip labels with no keywords (e.g. "not relevant")
             res = self.sample_for_label(
                 label_name=label_item.name,
                 keywords=label_item.keywords,
