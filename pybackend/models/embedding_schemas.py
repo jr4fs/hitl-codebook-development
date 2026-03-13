@@ -5,7 +5,7 @@ import pandas as pd
 class Label(BaseModel):
     name: str = Field(..., min_length=1)
     definition: str = Field(..., min_length=1)
-    keywords: List[str] = Field(..., min_length=1)
+    keywords: List[str] = Field(default_factory=list)
 
 class EmbedDatasetRequest(BaseModel):
     file_path: str = Field(..., min_length=1)

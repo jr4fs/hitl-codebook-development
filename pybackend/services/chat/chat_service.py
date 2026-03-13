@@ -1,5 +1,5 @@
 from typing import Dict, Any, List, Optional
-from models.ollama_adapter import OllamaAdapter, registry, configs
+from models.ollama_adapter import OllamaAdapter, AnnotationLLMOutput, registry, configs
 import json
 import logging
 import re
@@ -25,7 +25,7 @@ class ChatService:
         payload_str = json.dumps(inference_payload, ensure_ascii=False)
         messages = [{"role": "system", "content": system}, {"role": "user", "content": payload_str}]
         # token check, caching, metrics hooks go here
-        response = model.chat(messages, **opts)
+        response = model.chat(messages, format=AnnotationLLMOutput.model_json_schema(), **opts)
         response_json = response.json()
         prompt_tokens = response_json.get("prompt_eval_count")
         eval_tokens = response_json.get("eval_count")
@@ -69,7 +69,11 @@ class ChatService:
         label = model_output.get("label", [])
         if isinstance(label, str):
             label = [label]
+        if not label:
+            label = ["not relevant"]
         span_text = model_output.get("span_text", "")
+        if not span_text:
+            span_text = "No span text identified." 
         reason = model_output.get("reason", "")
 
         if not reason:
