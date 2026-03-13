@@ -56,6 +56,11 @@ class BatchInferenceSummary(BaseModel):
     results: List[BatchInferenceResponse]
     accuracy: float
 
+class AnnotationLLMOutput(BaseModel):
+    label: List[str] = Field(..., min_length=1)
+    span_text: str = Field(..., min_length=1)
+    reason: str = Field(..., min_length=1)
+
 
 registry = {
     "mistral:7b": OllamaAdapter(model="mistral:7b"),

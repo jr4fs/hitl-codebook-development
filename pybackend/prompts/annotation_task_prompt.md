@@ -24,7 +24,7 @@ You will have to provide your answer in the following JSON format:
 ```json
 {
   "label": ["one or more of the provided labels as a list of strings"],
-  "span_text": "The exact span of text from the input that supported your classification—quote it verbatim",
+  "span_text": "The exact span of text from the input that supported your classification—quote it verbatim. If no specific span applies, return the string 'No span text found'.",
   "reason": "Your reasoning for why you classified this with the above labels"
 }
 ```
