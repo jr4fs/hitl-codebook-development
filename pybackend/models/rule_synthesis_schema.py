@@ -21,3 +21,6 @@ class RuleSynthesisResponse(BaseModel):
     success: bool
     rules: List[str] = Field(..., min_length=1)
     model_name: str = Field(..., min_length=1)
+
+class RuleSynthesisLLMOutput(BaseModel):
+    rules: List[str] = Field(..., min_length=1)
