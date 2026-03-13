@@ -67,6 +67,8 @@ class ChatService:
                 raise ValueError("Model response was not valid JSON")
 
         label = model_output.get("label", [])
+        if isinstance(label, str):
+            label = [label]
         span_text = model_output.get("span_text", "")
         reason = model_output.get("reason", "")
 

@@ -5,12 +5,18 @@ import fs from "fs";
 import axios from "axios";
 import FormData from "form-data";
 import { AnonymizeConfig } from "@common/types/anonymize";
+import { uuidv7 } from "uuidv7";
 
 const PROJECT_ROOT = path.resolve(__dirname, "../../../");
 const UPLOADS_DIR = path.join(PROJECT_ROOT, "shared_uploads");
 const VAL_DATASETS_DIR = path.join(PROJECT_ROOT, "val_datasets");
 const REST_DATASETS_DIR = path.join(PROJECT_ROOT, "rest_datasets");
 const GUIDE_DATASETS_DIR = path.join(PROJECT_ROOT, "guide_datasets");
+
+function generateUUID7(){
+    const uuid = uuidv7();
+    return uuid;
+}
 
 /**
  * Ensures uploads directory exists
@@ -57,12 +63,13 @@ export function ensureRestDatasetsDir(): void {
  */
 export function generateUploadFilename(originalname: string): string {
   try {
-    const now = new Date();
-    const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
-    const time = now.toTimeString().split(" ")[0].replace(/:/g, ""); // HHmmss
+    const uuid7 = generateUUID7();
+    //const now = new Date();
+    //const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
+    //const time = now.toTimeString().split(" ")[0].replace(/:/g, ""); // HHmmss
     const basename = path.parse(originalname).name;
     const extension = path.parse(originalname).ext;
-    return `${basename}_${date}_${time}${extension}`;
+    return `${basename}_${uuid7}${extension}`;
   } catch (error) {
     console.error(`[fileUpload] Failed to generate filename for: ${originalname}`, error);
     throw error;

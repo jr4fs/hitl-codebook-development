@@ -37,6 +37,7 @@ import {
   IconBook,
   IconPlus,
   IconTrash,
+  IconEdit,
   IconInfoCircle,
   IconThumbUp,
   IconThumbDown,
@@ -113,6 +114,7 @@ export default function AnnotationPage() {
   const [newRule, setNewRule] = useState("");
   // manual rules queue
   const [stagedRules, setStagedRules] = useState<string[]>([]);
+  const [stagedRulesDeletion, setStagedRulesDeletion] = useState<string[]>([]);
 
   // generated span text feedback
   const [spanTextFeedback, setSpanTextFeedback] = useState<boolean>();
@@ -561,7 +563,12 @@ export default function AnnotationPage() {
       setTotalAttempted((prev) => prev + batchAttempted);
 
       const rule_synthesis_items: RuleSynthesisItem[] = batchResultsList
-        .filter(([_, result]) => result.isCorrect === false) // Only pick incorrect annotations
+        .filter(
+          ([_, result]) =>
+            result.isCorrect === false ||
+            result.spanFeedback === false ||
+            result.reasoningFeedback === false,
+        ) // Only pick incorrect annotations
         .map(([idx, result]) => {
           const i = parseInt(idx);
           const sample = annotationsForReview[i];
@@ -574,7 +581,10 @@ export default function AnnotationPage() {
             ground_truth_labels: result.correctLabel
               ? [result.correctLabel]
               : task.labels.map((item) => item.name),
-            user_feedback: result.feedback, // The actual string from the textarea
+            user_feedback: result.feedback, // The actual string from the textarea,
+            user_label_feedback: result.isCorrect || false,
+            user_span_feedback: result.spanFeedback || true,
+            user_reasoning_feedback: result.reasoningFeedback || true,
           };
         });
 
@@ -593,9 +603,17 @@ export default function AnnotationPage() {
           nextCodebook = [...nextCodebook, ...response.rules];
         }
       }
-      nextCodebook = [...nextCodebook, ...stagedRules];
+      nextCodebook = [
+        ...nextCodebook.filter((rule) => !stagedRulesDeletion.includes(rule)),
+        ...stagedRules,
+      ];
       setCodebook(nextCodebook);
+      console.log("staged before: ",stagedRules);
       setStagedRules([]);
+      console.log("staged after: ",stagedRules);
+      console.log("deletion before: ",stagedRulesDeletion);
+      setStagedRulesDeletion([]);
+      console.log("deletion after: ",stagedRulesDeletion);
       committedCodebook = nextCodebook;
     } catch (error: any) {
       console.error("Failed to synthesize rules:", error);
@@ -911,9 +929,6 @@ export default function AnnotationPage() {
                       </Title>
                       {infoIcon("The model's proposed labels and rationale.")}
                     </Group>
-                    <Badge color="blue" variant="light">
-                      {currentSample?.sampleId}
-                    </Badge>
                   </Group>
 
                   <Group gap="sm">
@@ -1059,7 +1074,9 @@ export default function AnnotationPage() {
                     </Button>
                   </Group>
 
-                  {batchResults[currentIndex]?.isCorrect === false && (
+                  {(batchResults[currentIndex]?.isCorrect === false ||
+                    spanTextFeedback === false ||
+                    reasoningFeedback === false) && (
                     <Stack gap="xs">
                       <Group gap="xs" align="center">
                         <Text size="sm" fw={600}>
@@ -1169,7 +1186,9 @@ export default function AnnotationPage() {
                         batchResults[currentIndex]?.isCorrect == null ||
                         (batchResults[currentIndex]?.isCorrect === false &&
                           (!batchResults[currentIndex]?.feedback?.trim() ||
-                            !batchResults[currentIndex]?.correctLabel))
+                            !batchResults[currentIndex]?.correctLabel)) ||
+                        spanTextFeedback === undefined ||
+                        reasoningFeedback === undefined
                       }
                       loading={isLoading}
                       onClick={async () => {
@@ -1280,9 +1299,59 @@ export default function AnnotationPage() {
                         p="sm"
                         bg={surface}
                         radius="sm"
-                        style={{ border: `1px solid ${borderColor}` }}
+                        style={{
+                          border: `1px solid ${stagedRulesDeletion.includes(rule) ? "crimson" : borderColor}`,
+                          opacity: stagedRulesDeletion.includes(rule) ? 0.5 : 1,
+                        }}
                       >
-                        <Text size="sm">{rule}</Text>
+                        <Group align="flex-start" wrap="nowrap">
+                          <Text
+                            size="sm"
+                            style={{
+                              textDecoration: stagedRulesDeletion.includes(rule)
+                                ? "line-through"
+                                : "none",
+                            }}
+                          >
+                            {rule}
+                          </Text>
+                          <ActionIcon
+                            size="sm"
+                            color="green"
+                            variant="subtle"
+                            onClick={() => {
+                              if (!stagedRulesDeletion.includes(rule)) {
+                                setStagedRulesDeletion((prev) => [
+                                  ...prev,
+                                  rule,
+                                ]);
+                              }
+                              setNewRule(rule);
+                            }}
+                          >
+                            <IconEdit size={14} />
+                          </ActionIcon>
+                          <ActionIcon
+                            size="sm"
+                            color="red"
+                            variant="subtle"
+                            onClick={() => {
+                              if (stagedRulesDeletion.includes(rule)) {
+                                // Toggle off if already staged
+                                setStagedRulesDeletion((prev) =>
+                                  prev.filter((r) => r !== rule),
+                                );
+                              } else {
+                                setStagedRulesDeletion((prev) => [
+                                  ...prev,
+                                  rule,
+                                ]);
+                              }
+                            }}
+                          >
+                            <IconTrash size={14} />
+                          </ActionIcon>
+                        </Group>
                       </Paper>
                     ))}
 

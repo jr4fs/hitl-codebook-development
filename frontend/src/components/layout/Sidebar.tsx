@@ -40,6 +40,14 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const modelNameMap: Record<string, string> = {
+    "gemma3:1b": "Gemma3-1B",
+    "qwen3.5:2b": "Qwen3.5-2B",
+    "mistral:7b": "Mistral-7B",
+    "qwen:32b": "Qwen-32B",
+    "llama3.3:70b": "Llama3.3-70B",
+  };
+
   const handleLogout = () => {
     dispatch(clearUser());
     navigate("/login");
@@ -233,7 +241,12 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
                   fz="md"
                   classNames={{ root: "sidebar-button" }}
                 >
-                  {task.name}
+                  <Stack gap={2}>
+                    <Text>{task.name}</Text>
+                    <Text fz="xs" c="dimmed" fw={400} ta="start">
+                      {modelNameMap[task.modelName]}
+                    </Text>
+                  </Stack>
                 </Button>
               ))
             )}

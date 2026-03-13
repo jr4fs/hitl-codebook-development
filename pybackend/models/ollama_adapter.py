@@ -67,18 +67,18 @@ registry = {
 
 configs = {
     "mistral:7b": {
-        "temperature": 0.7,
+        "temperature": 0.4,
     },
     "gemma3:1b": {
-        "temperature": 0.7,
+        "temperature": 0.4,
     },
     "qwen3.5:2b": {
-        "temperature": 0.7,
+        "temperature": 0.4,
     },
     "qwen:32b": {
-        "temperature": 0.7,
+        "temperature": 0.4,
     },
     "llama3.3:70b": {
-        "temperature": 0.7,
+        "temperature": 0.4,
     }
 }

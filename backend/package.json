@@ -33,6 +33,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.0.0",
     "multer": "^2.0.2",
-    "papaparse": "^5.5.3"
+    "papaparse": "^5.5.3",
+    "uuidv7": "^1.1.0"
   }
 }
