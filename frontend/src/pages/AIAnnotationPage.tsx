@@ -18,7 +18,7 @@ import {
   Modal,
   Checkbox,
 } from "@mantine/core";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { inference, batchInference } from "../services/inference.service";
 import {
@@ -46,6 +46,14 @@ import {
 } from "@common/types/inference";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import { saveTaskCodebook } from "../services/tasks.service";
+import { updateAnnotation } from "../services/annotations.service";
+import {
+  generateSampleMetrics,
+  generateMetadataMetrics,
+  generateBatchMetrics,
+  generateCodebookExport,
+  downloadMetricsFile,
+} from "../services/metrics.service";
 import { toast } from "../lib/toast";
 
 export default function AnnotationPage() {
@@ -66,6 +74,7 @@ export default function AnnotationPage() {
   //const [currentBatchIndex, setCurrentBatchIndex] = useState<number>(0);
   const batchSize = 1;
   const currentBatchIndex = Math.floor(currentIndex / batchSize);
+  const [currentBatchId, setCurrentBatchId] = useState<string>("");
 
   // Performance Metrics State
   const [totalCorrect, setTotalCorrect] = useState<number>(0);
@@ -79,23 +88,39 @@ export default function AnnotationPage() {
   const [isSavingCodebook, setIsSavingCodebook] = useState(false);
   const [editingRuleIndex, setEditingRuleIndex] = useState<number | null>(null);
   const [editingRuleValue, setEditingRuleValue] = useState("");
+  const [metricsModalOpen, setMetricsModalOpen] = useState(false);
+  const [metricsGenerated, setMetricsGenerated] = useState(false);
+  const [metricsFiles, setMetricsFiles] = useState<{
+    sample?: string;
+    metadata?: string;
+    batch?: string;
+    codebook?: string;
+  }>({});
 
   // Codebook State
   const [codebook, setCodebook] = useState<string[]>([]);
   const [newRule, setNewRule] = useState("");
 
   interface AIAssisted {
+    batchID?: string | null;
+    batchNum?: number | null;
     label: string[];
     reason: string;
     span_text: string;
+    predictionRaw?: string | null;
     isCorrect: boolean | null;
     feedback: string;
+    timeToCompleteMs?: number | null;
+    codebookSnapshot?: string[];
   }
 
   // Annotation States for current batch
   const [batchResults, setBatchResults] = useState<Record<number, AIAssisted>>(
     {},
   );
+  const sampleStartsRef = useRef<
+    Record<number, { startedAt: number; codebook: string[] }>
+  >({});
 
   const datasetShuffler = (dataset: AnnotationItem[], ratio: number) => {
     const n = dataset.length;
@@ -152,6 +177,23 @@ export default function AnnotationPage() {
     }
   }, [task, codebook.length]);
 
+  const makeBatchId = () => {
+    const randomId = globalThis.crypto?.randomUUID?.();
+    if (randomId) return randomId;
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  };
+
+  useEffect(() => {
+    if (currentIndex % batchSize === 0) {
+      setCurrentBatchId(makeBatchId());
+    }
+  }, [currentIndex, batchSize]);
+
+  const currentSample =
+    workingSamples && currentIndex > -1
+      ? workingSamples?.tenPercent[currentIndex]
+      : null;
+
   const handleClickAnnotation = async () => {
     if (!currentSample) return;
     setIsLoading(true);
@@ -166,14 +208,23 @@ export default function AnnotationPage() {
     const response: InferenceResponse = await inference(payload);
     if (response) {
       console.log("MODEL RESPONSE: ", response);
+      const batchId = currentBatchId || makeBatchId();
+      if (!currentBatchId) {
+        setCurrentBatchId(batchId);
+      }
       setBatchResults((sample: Record<number, AIAssisted>) => ({
         ...sample,
         [currentIndex]: {
+          batchID: batchId,
+          batchNum: currentBatchIndex + 1,
           label: response.label,
           reason: response.reason,
           span_text: response.span_text,
+          predictionRaw: response.raw_response ?? null,
           isCorrect: sample[currentIndex]?.isCorrect ?? null,
           feedback: sample[currentIndex]?.feedback ?? "",
+          timeToCompleteMs: sample[currentIndex]?.timeToCompleteMs ?? null,
+          codebookSnapshot: sample[currentIndex]?.codebookSnapshot ?? [],
         },
       }));
       setGeneratedLabels(response.label);
@@ -189,6 +240,18 @@ export default function AnnotationPage() {
       return;
     handleClickAnnotation();
   }, [currentIndex, workingSamples]);
+
+  useEffect(() => {
+    if (isLoading || !currentSample) return;
+    const hasInference = Boolean(batchResults[currentIndex]?.label?.length);
+    if (!hasInference) return;
+    if (!sampleStartsRef.current[currentIndex]) {
+      sampleStartsRef.current[currentIndex] = {
+        startedAt: Date.now(),
+        codebook: [...codebook],
+      };
+    }
+  }, [isLoading, currentSample, currentIndex, codebook, batchResults]);
 
   useEffect(() => {
     const hideIntro = localStorage.getItem("hideStep3Intro") === "true";
@@ -218,10 +281,23 @@ export default function AnnotationPage() {
     </Tooltip>
   );
 
-  const currentSample =
-    workingSamples && currentIndex > -1
-      ? workingSamples?.tenPercent[currentIndex]
-      : null;
+  const handleDownloadMetrics = async (filename?: string) => {
+    if (!filename) return;
+    try {
+      const blob = await downloadMetricsFile(filename);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Failed to download metrics file.");
+    }
+  };
+
   const totalSamples = workingSamples?.tenPercent.length || 0;
 
   const actualBatchSize = Math.min(
@@ -305,6 +381,7 @@ export default function AnnotationPage() {
         const i = parseInt(idx);
         return i >= startIdx && i < endIdx;
       });
+      const commitTimestamp = Date.now();
 
       const batchCorrect = batchResultsList.filter(
         ([_, res]) => res.isCorrect === true,
@@ -330,6 +407,7 @@ export default function AnnotationPage() {
           };
         });
 
+      let nextCodebook = [...codebook];
       // Only perform rule synthesis if there are any incorrect model annotations
       if (rule_synthesis_items.length > 0) {
         const request: RuleSynthesisRequest = {
@@ -341,9 +419,33 @@ export default function AnnotationPage() {
 
         if (response.success) {
           // Append new rules to the live codebook
-          setCodebook((prev) => [...prev, ...response.rules]);
+          nextCodebook = [...codebook, ...response.rules];
+          setCodebook(nextCodebook);
         }
       }
+
+      await Promise.all(
+        batchResultsList.map(async ([idx, result]) => {
+          const i = parseInt(idx);
+          const sample = workingSamples?.tenPercent[i];
+          if (!sample?._id) return;
+          const startSnapshot = sampleStartsRef.current[i];
+          const timeToCompleteMs = startSnapshot
+            ? commitTimestamp - startSnapshot.startedAt
+            : null;
+          const enriched = {
+            ...result,
+            batchID: result.batchID ?? currentBatchId,
+            batchNum: result.batchNum ?? currentBatchIndex + 1,
+            timeToCompleteMs,
+            codebookSnapshot: nextCodebook,
+          } as AIAssisted;
+          await updateAnnotation({
+            annotationId: sample._id,
+            aiAnnotation: enriched,
+          });
+        }),
+      );
     } catch (error: any) {
       console.error("Failed to synthesize rules:", error);
     } finally {
@@ -401,6 +503,30 @@ export default function AnnotationPage() {
     }
   };
 
+  const finalizeMetrics = async () => {
+    if (!task?._id || metricsGenerated) return;
+    try {
+      const [sampleRes, metadataRes, batchRes, codebookRes] = await Promise.all(
+        [
+          generateSampleMetrics(task._id),
+          generateMetadataMetrics(task._id),
+          generateBatchMetrics(task._id),
+          generateCodebookExport(task._id),
+        ],
+      );
+      setMetricsGenerated(true);
+      setMetricsFiles({
+        sample: sampleRes.filename,
+        metadata: metadataRes.filename,
+        batch: batchRes.filename,
+        codebook: codebookRes.filename,
+      });
+      setMetricsModalOpen(true);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to generate metrics files");
+    }
+  };
+
   return (
     <Box h="100vh" bg="#0f1418" c="#D8D8D8">
       <Stack h="100%" gap="md" p="xl">
@@ -440,6 +566,60 @@ export default function AnnotationPage() {
             <Group justify="flex-end">
               <Button onClick={handleCloseIntro}>Got it</Button>
             </Group>
+          </Stack>
+        </Modal>
+        <Modal
+          opened={metricsModalOpen}
+          onClose={() => setMetricsModalOpen(false)}
+          centered
+          title="Metrics files ready"
+          overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
+          styles={{
+            content: {
+              backgroundColor: "rgba(20, 28, 34, 0.98)",
+              border: "1px solid rgba(124, 231, 225, 0.25)",
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
+              color: "#e8eef1",
+            },
+            header: { backgroundColor: "transparent" },
+            title: { color: "#e8eef1", fontWeight: 600 },
+            close: { color: "#e8eef1" },
+          }}
+        >
+          <Stack gap="sm">
+            <Text>Download the metrics files generated for this review.</Text>
+            <Button
+              fullWidth
+              variant="light"
+              onClick={() => handleDownloadMetrics(metricsFiles.sample)}
+              disabled={!metricsFiles.sample}
+            >
+              Download sample metrics
+            </Button>
+            <Button
+              fullWidth
+              variant="light"
+              onClick={() => handleDownloadMetrics(metricsFiles.metadata)}
+              disabled={!metricsFiles.metadata}
+            >
+              Download metadata metrics
+            </Button>
+            <Button
+              fullWidth
+              variant="light"
+              onClick={() => handleDownloadMetrics(metricsFiles.batch)}
+              disabled={!metricsFiles.batch}
+            >
+              Download batch metrics
+            </Button>
+            <Button
+              fullWidth
+              variant="light"
+              onClick={() => handleDownloadMetrics(metricsFiles.codebook)}
+              disabled={!metricsFiles.codebook}
+            >
+              Export codebook
+            </Button>
           </Stack>
         </Modal>
         <StepTrackerBanner
@@ -761,8 +941,12 @@ export default function AnnotationPage() {
                       }
                       loading={isLoading}
                       onClick={async () => {
+                        const isLastSample = currentIndex >= totalSamples - 1;
                         if (currentBatchProgress === actualBatchSize) {
                           await handleCommitBatch();
+                        }
+                        if (isLastSample) {
+                          await finalizeMetrics();
                         }
                         handleNextClick();
                       }}

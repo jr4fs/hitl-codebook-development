@@ -31,6 +31,7 @@ class InferenceResponse(BaseModel):
     label: List[str] = Field(..., min_length=1)
     span_text: str = Field(..., min_length=1)
     reason: str = Field(..., min_length=1)
+    raw_response: Optional[str] = Field(None, min_length=0)
     task_type: str = Field(..., min_length=1)
     tokens: int
     time: float

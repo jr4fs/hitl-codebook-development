@@ -141,6 +141,7 @@ async def run_inference(request: InferenceRequest):
             "label": response["label"],
             "span_text": response["span_text"],
             "reason": response["reason"],
+            "raw_response": response.get("raw_response", ""),
             "task_type": request.task_type,
             "tokens": response.get("tokens", 0),
             "time": response.get("time", 0.0),
