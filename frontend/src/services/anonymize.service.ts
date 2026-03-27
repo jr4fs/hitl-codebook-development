@@ -1,14 +1,16 @@
 import { apiClient } from "../lib/apiClient";
 import {
   AnonymizeConfigResponse,
-  UpdateAnonymizeConfigRequest
+  UpdateAnonymizeConfigRequest,
 } from "@common/types/anonymize";
 
 /**
  * Fetches the current anonymization config from the server
  */
 export async function getAnonymizeConfig(): Promise<AnonymizeConfigResponse> {
-  const { data } = await apiClient.get<AnonymizeConfigResponse>("/api/anonymize/config");
+  const { data } = await apiClient.get<AnonymizeConfigResponse>(
+    "/api/anonymize/config",
+  );
   return data;
 }
 
@@ -16,11 +18,11 @@ export async function getAnonymizeConfig(): Promise<AnonymizeConfigResponse> {
  * Updates the anonymization config
  */
 export async function updateAnonymizeConfig(
-  config: UpdateAnonymizeConfigRequest
+  config: UpdateAnonymizeConfigRequest,
 ): Promise<AnonymizeConfigResponse> {
   const { data } = await apiClient.put<AnonymizeConfigResponse>(
     "/api/anonymize/config",
-    config
+    config,
   );
   return data;
 }
@@ -28,9 +30,12 @@ export async function updateAnonymizeConfig(
 /**
  * Downloads the current names file and returns blob + filename
  */
-export async function downloadNamesFile(): Promise<{ blob: Blob; filename: string }> {
+export async function downloadNamesFile(): Promise<{
+  blob: Blob;
+  filename: string;
+}> {
   const response = await apiClient.get("/api/anonymize/names", {
-    responseType: "blob"
+    responseType: "blob",
   });
   const headerName = response.headers?.["x-filename"];
   const disposition = response.headers?.["content-disposition"] || "";
@@ -42,13 +47,15 @@ export async function downloadNamesFile(): Promise<{ blob: Blob; filename: strin
 /**
  * Uploads a new names.csv file
  */
-export async function uploadNamesFile(file: File): Promise<{ success: boolean; message: string }> {
+export async function uploadNamesFile(
+  file: File,
+): Promise<{ success: boolean; message: string }> {
   const formData = new FormData();
   formData.append("file", file);
   const { data } = await apiClient.post("/api/anonymize/names", formData, {
     headers: {
-      "Content-Type": "multipart/form-data"
-    }
+      "Content-Type": "multipart/form-data",
+    },
   });
   return data;
 }

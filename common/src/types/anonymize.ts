@@ -5,6 +5,7 @@ export interface PhraseMapping {
 
 export interface AnonymizeConfig {
   _id?: string;
+  anonymizeEnabled?: boolean;
   // Toggle rules
   ageEnabled: boolean;
   emailEnabled: boolean;
@@ -27,6 +28,7 @@ export interface AnonymizeConfigResponse {
 }
 
 export interface UpdateAnonymizeConfigRequest {
+  anonymizeEnabled?: boolean;
   ageEnabled?: boolean;
   emailEnabled?: boolean;
   phoneEnabled?: boolean;

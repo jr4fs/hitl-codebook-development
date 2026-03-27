@@ -153,6 +153,36 @@
   margin: 0 auto;
 }
 
+.formLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.formCard {
+  background: rgba(18, 24, 29, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 24px;
+  backdrop-filter: blur(6px);
+}
+
+.infoCard {
+  background: rgba(18, 24, 29, 0.55);
+  border: 1px solid rgba(124, 231, 225, 0.2);
+  border-radius: 18px;
+  padding: 28px;
+  backdrop-filter: blur(6px);
+  text-align: center;
+}
+
+.uploadVisual {
+  background: rgba(124, 231, 225, 0.12);
+  border: 1px dashed rgba(124, 231, 225, 0.5);
+  color: #e8eef1;
+}
+
 .tableTitle {
   font-size: clamp(24px, 2.4vw, 34px);
   font-weight: 600;
@@ -203,5 +233,9 @@
 @media (max-width: 768px) {
   .hero {
     padding-top: 56px;
+  }
+
+  .formLayout {
+    grid-template-columns: 1fr;
   }
 }

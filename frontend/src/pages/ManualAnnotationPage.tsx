@@ -61,6 +61,47 @@ export default function ManualAnnotationPage() {
   );
   const hasInitializedIndex = useRef(false);
 
+  const getSampleId = (sample: Record<string, any> | null, index: number) => {
+    if (!sample) return index;
+    const rawId =
+      sample.example_id ?? sample.exampleId ?? sample.sampleId ?? sample.id;
+    const parsed = Number(rawId);
+    return Number.isFinite(parsed) ? parsed : index;
+  };
+
+  const uniqueSubsampledData = useMemo(() => {
+    if (!subsampledData) return [] as Record<string, any>[];
+    const seen = new Set<string>();
+    return subsampledData.filter((sample, index) => {
+      const rawId =
+        sample.example_id ?? sample.exampleId ?? sample.sampleId ?? sample.id;
+      const key = rawId ?? `index-${index}`;
+      const keyString = String(key);
+      if (seen.has(keyString)) {
+        return false;
+      }
+      seen.add(keyString);
+      return true;
+    });
+  }, [subsampledData]);
+
+  const findNextUnannotatedIndex = (
+    startIndex: number,
+    annotatedIds: Set<number>,
+  ) => {
+    if (!uniqueSubsampledData.length) return startIndex;
+    for (let i = startIndex; i < uniqueSubsampledData.length; i += 1) {
+      const sampleId = getSampleId(
+        uniqueSubsampledData[i] as Record<string, any>,
+        i,
+      );
+      if (!annotatedIds.has(sampleId)) {
+        return i;
+      }
+    }
+    return uniqueSubsampledData.length;
+  };
+
   const labelCounts = useMemo(() => {
     const counts = new Map<string, number>();
     task?.labels?.forEach((label) => counts.set(label.name, 0));
@@ -76,30 +117,33 @@ export default function ManualAnnotationPage() {
   const totalCount = labelCounts.reduce((sum, [, count]) => sum + count, 0);
 
   const seedTarget = 7;
-  const totalSamples = subsampledData?.length || 0;
+  const totalSamples = uniqueSubsampledData.length;
   const targetCount = Math.min(totalSamples, seedTarget);
   const annotatedSampleIds = useMemo(() => {
     return new Set(localAnnotations.map((annotation) => annotation.sampleId));
   }, [localAnnotations]);
   const annotatedCount = useMemo(() => {
-    if (!subsampledData) return 0;
-    return subsampledData.filter((sample) =>
-      annotatedSampleIds.has(Number(sample.example_id)),
-    ).length;
-  }, [annotatedSampleIds, subsampledData]);
+    if (!uniqueSubsampledData.length) return 0;
+    return uniqueSubsampledData.reduce((count, sample, index) => {
+      const sampleId = getSampleId(sample as Record<string, any>, index);
+      return annotatedSampleIds.has(sampleId) ? count + 1 : count;
+    }, 0);
+  }, [annotatedSampleIds, uniqueSubsampledData]);
   const reviewIndices = useMemo(() => {
-    if (!subsampledData) return [] as number[];
-    return subsampledData.reduce<number[]>((acc, sample, index) => {
-      if (annotatedSampleIds.has(Number(sample.example_id))) {
+    if (!uniqueSubsampledData.length) return [] as number[];
+    return uniqueSubsampledData.reduce<number[]>((acc, sample, index) => {
+      if (
+        annotatedSampleIds.has(
+          getSampleId(sample as Record<string, any>, index),
+        )
+      ) {
         acc.push(index);
       }
       return acc;
     }, []);
-  }, [annotatedSampleIds, subsampledData]);
+  }, [annotatedSampleIds, uniqueSubsampledData]);
   const currentSample =
-    subsampledData && currentIndex < totalSamples
-      ? subsampledData[currentIndex]
-      : null;
+    currentIndex < totalSamples ? uniqueSubsampledData[currentIndex] : null;
   const isCompleted = totalSamples > 0 && annotatedCount >= targetCount;
   const showCompletion = isCompleted && !isReviewing;
 
@@ -111,22 +155,25 @@ export default function ManualAnnotationPage() {
   // Set initial index based on existing annotations
   useEffect(() => {
     if (hasInitializedIndex.current) return;
-    if (!loading && subsampledData && subsampledData.length > 0) {
+    if (!loading && uniqueSubsampledData.length > 0) {
       if (annotatedCount >= targetCount) {
-        setCurrentIndex(subsampledData.length);
+        setCurrentIndex(uniqueSubsampledData.length);
         hasInitializedIndex.current = true;
         return;
       }
 
       // Find the first index that hasn't been annotated yet
-      const firstUnannotatedIndex = subsampledData.findIndex(
-        (sample) => !annotatedSampleIds.has(Number(sample.example_id)),
+      const firstUnannotatedIndex = uniqueSubsampledData.findIndex(
+        (sample, index) =>
+          !annotatedSampleIds.has(
+            getSampleId(sample as Record<string, any>, index),
+          ),
       );
 
       if (firstUnannotatedIndex !== -1) {
         setCurrentIndex(firstUnannotatedIndex);
       } else {
-        setCurrentIndex(subsampledData.length);
+        setCurrentIndex(uniqueSubsampledData.length);
       }
       hasInitializedIndex.current = true;
     }
@@ -134,7 +181,7 @@ export default function ManualAnnotationPage() {
     loading,
     annotatedCount,
     annotatedSampleIds,
-    subsampledData,
+    uniqueSubsampledData,
     targetCount,
   ]);
 
@@ -144,9 +191,8 @@ export default function ManualAnnotationPage() {
     }
   }, [isCompleted, isReviewing, totalSamples]);
 
-
   useEffect(() => {
-    const hideIntro = localStorage.getItem("hideStep4Intro") === "true";
+    const hideIntro = localStorage.getItem("hideStep2Intro") === "true";
     if (!hideIntro) {
       setIntroShowCheckbox(true);
       setIntroOpen(true);
@@ -188,7 +234,7 @@ export default function ManualAnnotationPage() {
 
   const handleCloseIntro = () => {
     if (introShowCheckbox && introDontShow) {
-      localStorage.setItem("hideStep4Intro", "true");
+      localStorage.setItem("hideStep2Intro", "true");
     }
     setIntroOpen(false);
   };
@@ -233,8 +279,12 @@ export default function ManualAnnotationPage() {
   // Update/Reset current labels when index changes
   useEffect(() => {
     if (currentSample && localAnnotations) {
+      const sampleId = getSampleId(
+        currentSample as Record<string, any>,
+        currentIndex,
+      );
       const existingAnnotation = localAnnotations.find(
-        (a) => a.sampleId === Number(currentSample.example_id),
+        (a) => a.sampleId === sampleId,
       );
       setCurrentLabels(existingAnnotation ? existingAnnotation.labels : []);
     } else {
@@ -254,7 +304,7 @@ export default function ManualAnnotationPage() {
     );
   }
 
-  if (!task || !subsampledData || subsampledData.length === 0) {
+  if (!task || uniqueSubsampledData.length === 0) {
     return (
       <Center h="100vh" bg="#0f1418">
         <Stack align="center" gap="md">
@@ -283,8 +333,12 @@ export default function ManualAnnotationPage() {
 
     setIsSaving(true);
     try {
+      const sampleId = getSampleId(
+        currentSample as Record<string, any>,
+        currentIndex,
+      );
       const existingAnnotation = localAnnotations?.find(
-        (a) => a.sampleId === Number(currentSample.example_id),
+        (a) => a.sampleId === sampleId,
       );
       let response;
 
@@ -298,27 +352,27 @@ export default function ManualAnnotationPage() {
         // Add new annotation
         response = await addAnnotation({
           taskId: task._id,
-          sampleId: Number(currentSample.example_id),
+          sampleId,
           annotationSampleRow: currentSample,
           labels: currentLabels,
         });
       }
 
       if (response.success) {
-        const sampleId = Number(currentSample.example_id);
+        let nextAnnotations: AnnotationItem[] = [];
         if (existingAnnotation?._id) {
-          setLocalAnnotations((prev) =>
-            prev.map((ann) =>
-              ann._id === existingAnnotation._id
-                ? { ...ann, labels: currentLabels }
-                : ann,
-            ),
+          nextAnnotations = localAnnotations.map((ann) =>
+            ann._id === existingAnnotation._id
+              ? { ...ann, labels: currentLabels }
+              : ann,
           );
         } else {
-          setLocalAnnotations((prev) => [
-            ...prev,
+          const newAnnotationId = (response as { annotationId?: string })
+            .annotationId;
+          nextAnnotations = [
+            ...localAnnotations,
             {
-              _id: response.annotationId,
+              _id: newAnnotationId,
               taskId: task._id,
               sampleId,
               sampleContent: currentSample as Record<string, string>,
@@ -326,8 +380,14 @@ export default function ManualAnnotationPage() {
               createdBy: "",
               createdAt: new Date().toISOString(),
             },
-          ]);
+          ];
         }
+
+        const nextAnnotatedIds = new Set(
+          nextAnnotations.map((annotation) => annotation.sampleId),
+        );
+
+        setLocalAnnotations(nextAnnotations);
         setStatus({
           type: "success",
           message: "Annotation saved successfully",
@@ -351,11 +411,15 @@ export default function ManualAnnotationPage() {
         }
 
         // Short delay to allow user to review annotation
+        const nextIndex = findNextUnannotatedIndex(
+          currentIndex + 1,
+          nextAnnotatedIds,
+        );
         setTimeout(() => {
-          if (currentIndex < totalSamples) {
-            setCurrentIndex((prev) => prev + 1);
+          if (currentIndex <= totalSamples) {
+            setCurrentIndex(nextIndex);
           }
-        }, 500);
+        }, 250);
       } else {
         setStatus({
           type: "error",
@@ -404,7 +468,7 @@ export default function ManualAnnotationPage() {
 
     navigate(`/auto-annotate/${task?._id}`, {
       state: {
-        subsampledCsv: subsampledData,
+        subsampledCsv: uniqueSubsampledData,
         task: task ? { ...task, codebook: manualRules } : task,
         annotations: localAnnotations,
       },
@@ -420,11 +484,6 @@ export default function ManualAnnotationPage() {
     setCurrentIndex(reviewIndices[reviewIndices.length - 1]);
   };
 
-  const handleExitReview = () => {
-    setIsReviewing(false);
-    setCurrentIndex(totalSamples);
-  };
-
   return (
     <Paper mih="100vh" bg="#0f1418" c="#D8D8D8" p="lg">
       <Stack align="center" justify="center" gap="md" maw={900} mx="auto">
@@ -432,7 +491,7 @@ export default function ManualAnnotationPage() {
           opened={introOpen}
           onClose={handleCloseIntro}
           centered
-          title="Step 4: Manual seed annotation"
+          title="Step 2: Manual seed annotation"
           overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
           styles={{
             content: {
@@ -448,9 +507,8 @@ export default function ManualAnnotationPage() {
         >
           <Stack gap="sm">
             <Text>
-              Label a focused set of samples so the system learns your intent
-              before AI-assisted review. This also creates a baseline for
-              accuracy checks.
+              Label a focused set of samples to give the AI clear examples and
+              establish a baseline for how the data should be labeled.
             </Text>
             {introShowCheckbox && (
               <Checkbox
@@ -466,7 +524,7 @@ export default function ManualAnnotationPage() {
             </Group>
           </Stack>
         </Modal>
-        <StepTrackerBanner currentStep={4} onHelp={handleHelp} />
+        <StepTrackerBanner currentStep={2} onHelp={handleHelp} />
         <Group justify="space-between" w="100%">
           <Title order={3} c="white">
             Manual Annotation
@@ -560,7 +618,7 @@ export default function ManualAnnotationPage() {
           </Group>
           <Text size="sm" c="dimmed" mt={4}>
             Add your labeling intuition here. These rules seed the live codebook
-            in step 5.
+            in the next step.
           </Text>
           <Divider my="sm" color="#2b3944" />
           <Stack gap="sm">
@@ -758,7 +816,12 @@ export default function ManualAnnotationPage() {
                 loading={isSaving}
               >
                 {localAnnotations?.find(
-                  (a) => a.sampleId === Number(currentSample?.example_id),
+                  (a) =>
+                    a.sampleId ===
+                    getSampleId(
+                      currentSample as Record<string, any>,
+                      currentIndex,
+                    ),
                 )
                   ? "Update & Next"
                   : "Save & Next"}

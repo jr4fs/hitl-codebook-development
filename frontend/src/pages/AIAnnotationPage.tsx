@@ -43,7 +43,6 @@ import {
   InferenceRequest,
   InferenceResponse,
   BatchInferenceRequest,
-  BatchInferenceSummary,
 } from "@common/types/inference";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import { saveTaskCodebook } from "../services/tasks.service";
@@ -192,7 +191,7 @@ export default function AnnotationPage() {
   }, [currentIndex, workingSamples]);
 
   useEffect(() => {
-    const hideIntro = localStorage.getItem("hideStep5Intro") === "true";
+    const hideIntro = localStorage.getItem("hideStep3Intro") === "true";
     if (!hideIntro) {
       setIntroShowCheckbox(true);
       setIntroOpen(true);
@@ -201,7 +200,7 @@ export default function AnnotationPage() {
 
   const handleCloseIntro = () => {
     if (introShowCheckbox && introDontShow) {
-      localStorage.setItem("hideStep5Intro", "true");
+      localStorage.setItem("hideStep3Intro", "true");
     }
     setIntroOpen(false);
   };
@@ -409,7 +408,7 @@ export default function AnnotationPage() {
           opened={introOpen}
           onClose={handleCloseIntro}
           centered
-          title="Step 5-6: AI annotation review + codebook completion"
+          title="Steps 3-4: AI annotation review + codebook completion"
           overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
           styles={{
             content: {
@@ -444,8 +443,8 @@ export default function AnnotationPage() {
           </Stack>
         </Modal>
         <StepTrackerBanner
-          currentStep={5}
-          activeSteps={[5, 6]}
+          currentStep={3}
+          activeSteps={[3, 4]}
           onHelp={handleHelp}
         />
         <Grid gutter={0} style={{ flex: 1, minHeight: 0 }}>

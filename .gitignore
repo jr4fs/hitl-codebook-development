@@ -7,3 +7,6 @@ shared_uploads/
 val_datasets/
 rest_datasets
 venv
+generated_codebooks/
+guide_datasets/
+metrics/
