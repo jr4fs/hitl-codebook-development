@@ -261,7 +261,15 @@ export default function DatasetUploadPage() {
           },
           header: { backgroundColor: "transparent" },
           title: { color: "#e8eef1", fontWeight: 600 },
-          close: { color: "#e8eef1" },
+          close: {
+            color: "#e8eef1",
+            backgroundColor: "transparent",
+            transition: "background-color 120ms ease, color 120ms ease",
+            "&:hover": {
+              backgroundColor: "rgba(124, 231, 225, 0.12)",
+              color: "#e8eef1",
+            },
+          },
         }}
       >
         <Stack gap="sm">
@@ -309,7 +317,7 @@ export default function DatasetUploadPage() {
                 <FileInput
                   label="Dataset CSV"
                   description="CSV containing the text to annotate."
-                  placeholder="Upload dataset.csv"
+                  placeholder="E.g. dataset.csv"
                   value={csvFile}
                   onChange={handleCsvUpload}
                   accept=".csv,text/csv"
@@ -332,7 +340,7 @@ export default function DatasetUploadPage() {
                 <FileInput
                   label="Task JSON"
                   description="task.json with taskname and description."
-                  placeholder="Upload task.json"
+                  placeholder="E.g. task.json"
                   value={taskJsonFile}
                   onChange={handleTaskJsonUpload}
                   accept="application/json"
@@ -350,7 +358,7 @@ export default function DatasetUploadPage() {
                 <FileInput
                   label="Labels JSON"
                   description="labels.json with label definitions and keywords."
-                  placeholder="Upload labels.json"
+                  placeholder="E.g. labels.json"
                   value={labelsJsonFile}
                   onChange={handleLabelsJsonUpload}
                   accept="application/json"
@@ -368,7 +376,7 @@ export default function DatasetUploadPage() {
                 <TextInput
                   label="Text column name"
                   description="Column name that contains the final text."
-                  placeholder="e.g. translated_text"
+                  placeholder="E.g. translated_text"
                   value={textColumn}
                   onChange={(event) => setTextColumn(event.currentTarget.value)}
                   styles={{

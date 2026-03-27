@@ -19,7 +19,10 @@ export interface AIAssisted {
   isCorrect: boolean | null;
   feedback: string;
   timeToCompleteMs?: number | null;
+  batchDurationMs?: number | null;
   codebookSnapshot?: string[];
+  codebookSnapshotSample?: string[];
+  codebookSnapshotBatch?: string[];
 }
 
 export interface AddAnnotationRequest {

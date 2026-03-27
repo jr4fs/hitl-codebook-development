@@ -6,7 +6,12 @@ import { Task } from "@common/types/tasks";
 import { getCollection } from "./database.service";
 import { ObjectId } from "mongodb";
 import { AuthRequest } from "./tasks.service";
-import { ensureMetricsDir, METRICS_DIR } from "../utils/metrics";
+import {
+  ensureMetricsDir,
+  ensureCodebookDir,
+  METRICS_DIR,
+  CODEBOOK_DIR,
+} from "../utils/metrics";
 import fsAsync from "fs/promises";
 
 const ANNOTATION_COLLECTION =
@@ -215,6 +220,13 @@ export async function generateSampleMetrics(req: AuthRequest, res: Response) {
       .sort({ sampleId: 1 })
       .toArray();
 
+    const sortedAnnotations = [...annotations].sort((a, b) => {
+      const batchA = a.aiAnnotation?.batchNum ?? Number.MAX_SAFE_INTEGER;
+      const batchB = b.aiAnnotation?.batchNum ?? Number.MAX_SAFE_INTEGER;
+      if (batchA !== batchB) return batchA - batchB;
+      return a.sampleId - b.sampleId;
+    });
+
     const taskCollection = getCollection<Task>(
       process.env.TASKS_COLLECTION_NAME || "TaskDetails",
     );
@@ -233,7 +245,7 @@ export async function generateSampleMetrics(req: AuthRequest, res: Response) {
     const filename = `sample_metrics_${taskId}_${timestamp}.csv`;
     const filePath = path.join(METRICS_DIR, filename);
 
-    const rows = annotations.map((annotation) => {
+    const rows = sortedAnnotations.map((annotation) => {
       const ai = annotation.aiAnnotation;
       const isCorrect = ai?.isCorrect ?? null;
       const parsedLabels = formatLabelList(ai?.label);
@@ -253,7 +265,7 @@ export async function generateSampleMetrics(req: AuthRequest, res: Response) {
         "final 'correct' label": finalLabel,
         "expert feedback": ai?.feedback ?? "",
         "codebook at the end of this example": toJson(
-          ai?.codebookSnapshot ?? [],
+          ai?.codebookSnapshotSample ?? ai?.codebookSnapshot ?? [],
         ),
         "time to complete this example (seconds)":
           ai?.timeToCompleteMs != null
@@ -450,24 +462,40 @@ export async function generateBatchMetrics(req: AuthRequest, res: Response) {
       .map(([batchId, items]) => ({
         batchId,
         items,
+        batchNum:
+          items.find((item) => typeof item.aiAnnotation?.batchNum === "number")
+            ?.aiAnnotation?.batchNum ?? Number.MAX_SAFE_INTEGER,
         minSampleId: Math.min(...items.map((item) => item.sampleId)),
       }))
-      .sort((a, b) => a.minSampleId - b.minSampleId);
+      .sort((a, b) => {
+        if (a.batchNum !== b.batchNum) return a.batchNum - b.batchNum;
+        return a.minSampleId - b.minSampleId;
+      });
 
     const rows = sortedBatches.map((batch, index) => {
       const { batchId, items } = batch;
       const metrics = computeLabelMetrics(items, labelNames);
       const lastSample = items[items.length - 1];
-      const batchNum = index + 1;
+      const batchNum =
+        Number.isFinite(batch.batchNum) &&
+        batch.batchNum !== Number.MAX_SAFE_INTEGER
+          ? batch.batchNum
+          : index + 1;
 
       const feedbacks = items
         .map((item) => item.aiAnnotation?.feedback)
         .filter((val): val is string => Boolean(val));
 
-      const batchTimeMs = items.reduce(
-        (sum, item) => sum + (item.aiAnnotation?.timeToCompleteMs || 0),
-        0,
-      );
+      const batchDurationMs =
+        items.find((item) => item.aiAnnotation?.batchDurationMs != null)
+          ?.aiAnnotation?.batchDurationMs ?? null;
+      const batchTimeMs =
+        batchDurationMs != null
+          ? batchDurationMs
+          : items.reduce(
+              (sum, item) => sum + (item.aiAnnotation?.timeToCompleteMs || 0),
+              0,
+            );
 
       return {
         batch_id: batchId,
@@ -489,7 +517,9 @@ export async function generateBatchMetrics(req: AuthRequest, res: Response) {
           toJson(metrics.fnr),
         "expert feedback given": toJson(feedbacks),
         "codebook at the end of the batch": toJson(
-          lastSample?.aiAnnotation?.codebookSnapshot ?? [],
+          lastSample?.aiAnnotation?.codebookSnapshotBatch ??
+            lastSample?.aiAnnotation?.codebookSnapshot ??
+            [],
         ),
         "prompt given to lm synthesizer": synthPrompt,
         "time to complete a single batch": Math.round(batchTimeMs / 1000),
@@ -518,7 +548,10 @@ export async function generateBatchMetrics(req: AuthRequest, res: Response) {
 
 export async function generateCodebookExport(req: AuthRequest, res: Response) {
   const userId = req.user?.userId;
-  const { taskId } = req.body as { taskId?: string };
+  const { taskId, codebook } = req.body as {
+    taskId?: string;
+    codebook?: string[];
+  };
 
   if (!userId) {
     return res.status(401).json({
@@ -568,7 +601,11 @@ export async function generateCodebookExport(req: AuthRequest, res: Response) {
       console.warn("[metrics] annotation_task_prompt.md not readable:", error);
     }
 
-    const rules = Array.isArray(task.codebook) ? task.codebook : [];
+    const rules = Array.isArray(codebook)
+      ? codebook.filter((rule) => typeof rule === "string" && rule.trim())
+      : Array.isArray(task.codebook)
+        ? task.codebook
+        : [];
     const rulesBlock = rules.length
       ? rules.map((rule) => `- ${rule}`).join("\n")
       : "(no rules)";
@@ -591,10 +628,13 @@ export async function generateCodebookExport(req: AuthRequest, res: Response) {
       `${EXPORT_HEADERS[1]}\n${finalPrompt}`,
     ].join("\n");
 
-    ensureMetricsDir();
+    ensureCodebookDir();
     const timestamp = new Date().toISOString().replace(/[:.]/g, "");
-    const filename = `codebook_export_${taskId}_${timestamp}.txt`;
-    const filePath = path.join(METRICS_DIR, filename);
+    const safeTaskName = (task.name || "task")
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]+/g, "_");
+    const filename = `${safeTaskName}_codebook_and_prompt_${timestamp}.txt`;
+    const filePath = path.join(CODEBOOK_DIR, filename);
 
     await fsAsync.writeFile(filePath, exportText, "utf-8");
 
@@ -631,8 +671,21 @@ export async function downloadMetricsFile(req: AuthRequest, res: Response) {
 
   try {
     const safeName = path.basename(filename);
-    const filePath = path.join(METRICS_DIR, safeName);
-    return res.download(filePath, safeName);
+    const metricsPath = path.join(METRICS_DIR, safeName);
+    const codebookPath = path.join(CODEBOOK_DIR, safeName);
+
+    if (fs.existsSync(metricsPath)) {
+      return res.download(metricsPath, safeName);
+    }
+
+    if (fs.existsSync(codebookPath)) {
+      return res.download(codebookPath, safeName);
+    }
+
+    return res.status(404).json({
+      success: false,
+      message: "File not found",
+    });
   } catch (error: any) {
     console.error("Error downloading metrics file:", error);
     return res.status(500).json({

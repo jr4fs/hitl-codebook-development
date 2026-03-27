@@ -24,11 +24,14 @@ export async function generateBatchMetrics(taskId: string) {
   return data;
 }
 
-export async function generateCodebookExport(taskId: string) {
+export async function generateCodebookExport(
+  taskId: string,
+  codebook?: string[],
+) {
   const { data } = await apiClient.post<{
     success: boolean;
     filename?: string;
-  }>("/api/metrics/codebook", { taskId });
+  }>("/api/metrics/codebook", { taskId, codebook });
   return data;
 }
 

@@ -502,7 +502,15 @@ export default function ManualAnnotationPage() {
             },
             header: { backgroundColor: "transparent" },
             title: { color: "#e8eef1", fontWeight: 600 },
-            close: { color: "#e8eef1" },
+            close: {
+              color: "#e8eef1",
+              backgroundColor: "transparent",
+              transition: "background-color 120ms ease, color 120ms ease",
+              "&:hover": {
+                backgroundColor: "rgba(124, 231, 225, 0.12)",
+                color: "#e8eef1",
+              },
+            },
           }}
         >
           <Stack gap="sm">

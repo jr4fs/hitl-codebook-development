@@ -72,7 +72,7 @@ export default function AnnotationPage() {
   );
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   //const [currentBatchIndex, setCurrentBatchIndex] = useState<number>(0);
-  const batchSize = 1;
+  const batchSize = 2;
   const currentBatchIndex = Math.floor(currentIndex / batchSize);
   const [currentBatchId, setCurrentBatchId] = useState<string>("");
 
@@ -86,6 +86,7 @@ export default function AnnotationPage() {
   const [introDontShow, setIntroDontShow] = useState(false);
   const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
   const [isSavingCodebook, setIsSavingCodebook] = useState(false);
+  const [isExportingCodebook, setIsExportingCodebook] = useState(false);
   const [editingRuleIndex, setEditingRuleIndex] = useState<number | null>(null);
   const [editingRuleValue, setEditingRuleValue] = useState("");
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
@@ -94,7 +95,6 @@ export default function AnnotationPage() {
     sample?: string;
     metadata?: string;
     batch?: string;
-    codebook?: string;
   }>({});
 
   // Codebook State
@@ -111,7 +111,10 @@ export default function AnnotationPage() {
     isCorrect: boolean | null;
     feedback: string;
     timeToCompleteMs?: number | null;
+    batchDurationMs?: number | null;
     codebookSnapshot?: string[];
+    codebookSnapshotSample?: string[];
+    codebookSnapshotBatch?: string[];
   }
 
   // Annotation States for current batch
@@ -121,6 +124,9 @@ export default function AnnotationPage() {
   const sampleStartsRef = useRef<
     Record<number, { startedAt: number; codebook: string[] }>
   >({});
+  const sampleSnapshotsRef = useRef<Record<number, string[]>>({});
+  const batchStartsRef = useRef<Record<number, number>>({});
+  const batchIdsRef = useRef<Record<number, string>>({});
 
   const datasetShuffler = (dataset: AnnotationItem[], ratio: number) => {
     const n = dataset.length;
@@ -156,9 +162,21 @@ export default function AnnotationPage() {
     const storageKey = `workingSamples_${task._id}`;
     const stored = localStorage.getItem(storageKey);
 
+    const forcedReviewCount = Math.min(4, annotations.length);
+
     if (stored) {
       try {
-        setWorkingSamples(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        const merged = [
+          ...(parsed.tenPercent || []),
+          ...(parsed.ninetyPercent || []),
+        ];
+        const forcedSplit = {
+          tenPercent: merged.slice(0, forcedReviewCount),
+          ninetyPercent: merged.slice(forcedReviewCount),
+        };
+        localStorage.setItem(storageKey, JSON.stringify(forcedSplit));
+        setWorkingSamples(forcedSplit);
         return;
       } catch {
         // Corrupt entry — fall through and recompute
@@ -167,8 +185,19 @@ export default function AnnotationPage() {
     }
 
     const split = datasetShuffler(annotations as any, 0.1);
-    localStorage.setItem(storageKey, JSON.stringify(split));
-    setWorkingSamples(split);
+    const forcedReviewSamples = [
+      ...split.tenPercent,
+      ...split.ninetyPercent,
+    ].slice(0, forcedReviewCount);
+    const forcedRemaining = [...split.tenPercent, ...split.ninetyPercent].slice(
+      forcedReviewCount,
+    );
+    const forcedSplit = {
+      tenPercent: forcedReviewSamples,
+      ninetyPercent: forcedRemaining,
+    };
+    localStorage.setItem(storageKey, JSON.stringify(forcedSplit));
+    setWorkingSamples(forcedSplit);
   }, [annotations, task]);
 
   useEffect(() => {
@@ -183,11 +212,20 @@ export default function AnnotationPage() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   };
 
-  useEffect(() => {
-    if (currentIndex % batchSize === 0) {
-      setCurrentBatchId(makeBatchId());
+  const getBatchIdForIndex = (index: number) => {
+    const batchIndex = Math.floor(index / batchSize);
+    if (!batchIdsRef.current[batchIndex]) {
+      batchIdsRef.current[batchIndex] = makeBatchId();
     }
-  }, [currentIndex, batchSize]);
+    return batchIdsRef.current[batchIndex];
+  };
+
+  useEffect(() => {
+    if (!workingSamples?.tenPercent.length) return;
+    if (currentIndex < 0 || currentIndex >= workingSamples.tenPercent.length)
+      return;
+    setCurrentBatchId(getBatchIdForIndex(currentIndex));
+  }, [currentIndex, workingSamples, batchSize]);
 
   const currentSample =
     workingSamples && currentIndex > -1
@@ -208,15 +246,20 @@ export default function AnnotationPage() {
     const response: InferenceResponse = await inference(payload);
     if (response) {
       console.log("MODEL RESPONSE: ", response);
-      const batchId = currentBatchId || makeBatchId();
-      if (!currentBatchId) {
-        setCurrentBatchId(batchId);
+      if (!sampleSnapshotsRef.current[currentIndex]) {
+        sampleSnapshotsRef.current[currentIndex] = [...codebook];
       }
+      const batchIndex = Math.floor(currentIndex / batchSize);
+      const batchId = getBatchIdForIndex(currentIndex);
+      if (!batchStartsRef.current[batchIndex]) {
+        batchStartsRef.current[batchIndex] = Date.now();
+      }
+      setCurrentBatchId(batchId);
       setBatchResults((sample: Record<number, AIAssisted>) => ({
         ...sample,
         [currentIndex]: {
           batchID: batchId,
-          batchNum: currentBatchIndex + 1,
+          batchNum: batchIndex + 1,
           label: response.label,
           reason: response.reason,
           span_text: response.span_text,
@@ -225,6 +268,10 @@ export default function AnnotationPage() {
           feedback: sample[currentIndex]?.feedback ?? "",
           timeToCompleteMs: sample[currentIndex]?.timeToCompleteMs ?? null,
           codebookSnapshot: sample[currentIndex]?.codebookSnapshot ?? [],
+          codebookSnapshotSample:
+            sample[currentIndex]?.codebookSnapshotSample ?? [],
+          codebookSnapshotBatch:
+            sample[currentIndex]?.codebookSnapshotBatch ?? [],
         },
       }));
       setGeneratedLabels(response.label);
@@ -372,6 +419,7 @@ export default function AnnotationPage() {
 
   const handleCommitBatch = async () => {
     setIsLoading(true);
+    let latestCodebook: string[] | null = null;
     try {
       const startIdx = currentBatchIndex * batchSize;
       const endIdx = startIdx + batchSize;
@@ -382,6 +430,20 @@ export default function AnnotationPage() {
         return i >= startIdx && i < endIdx;
       });
       const commitTimestamp = Date.now();
+      const batchIndex = currentBatchIndex;
+      const batchId = getBatchIdForIndex(startIdx);
+      const batchStartTimes = batchResultsList
+        .map(([idx]) => {
+          const i = parseInt(idx);
+          return sampleStartsRef.current[i]?.startedAt;
+        })
+        .filter((value): value is number => typeof value === "number");
+      const batchStartedAt = batchStartsRef.current[batchIndex];
+      const batchStartTime =
+        batchStartedAt ??
+        (batchStartTimes.length > 0 ? Math.min(...batchStartTimes) : undefined);
+      const batchDurationMs =
+        batchStartTime != null ? commitTimestamp - batchStartTime : null;
 
       const batchCorrect = batchResultsList.filter(
         ([_, res]) => res.isCorrect === true,
@@ -424,6 +486,8 @@ export default function AnnotationPage() {
         }
       }
 
+      latestCodebook = nextCodebook;
+
       await Promise.all(
         batchResultsList.map(async ([idx, result]) => {
           const i = parseInt(idx);
@@ -433,12 +497,18 @@ export default function AnnotationPage() {
           const timeToCompleteMs = startSnapshot
             ? commitTimestamp - startSnapshot.startedAt
             : null;
+          const sampleBatchIndex = Math.floor(i / batchSize);
+          const sampleBatchId = getBatchIdForIndex(i);
           const enriched = {
             ...result,
-            batchID: result.batchID ?? currentBatchId,
-            batchNum: result.batchNum ?? currentBatchIndex + 1,
+            batchID: result.batchID ?? sampleBatchId,
+            batchNum: result.batchNum ?? sampleBatchIndex + 1,
             timeToCompleteMs,
+            batchDurationMs,
             codebookSnapshot: nextCodebook,
+            codebookSnapshotSample:
+              sampleSnapshotsRef.current[i] ?? startSnapshot?.codebook ?? [],
+            codebookSnapshotBatch: nextCodebook,
           } as AIAssisted;
           await updateAnnotation({
             annotationId: sample._id,
@@ -451,6 +521,8 @@ export default function AnnotationPage() {
     } finally {
       setIsLoading(false);
     }
+
+    return latestCodebook;
   };
 
   const handleBatchInferenceClick = async () => {
@@ -503,23 +575,33 @@ export default function AnnotationPage() {
     }
   };
 
-  const finalizeMetrics = async () => {
+  const handleExportCodebook = async () => {
+    if (!task?._id || isExportingCodebook) return;
+    setIsExportingCodebook(true);
+    try {
+      const response = await generateCodebookExport(task._id, codebook);
+      await handleDownloadMetrics(response.filename);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to export codebook");
+    } finally {
+      setIsExportingCodebook(false);
+    }
+  };
+
+  const finalizeMetrics = async (finalCodebook?: string[]) => {
     if (!task?._id || metricsGenerated) return;
     try {
-      const [sampleRes, metadataRes, batchRes, codebookRes] = await Promise.all(
-        [
-          generateSampleMetrics(task._id),
-          generateMetadataMetrics(task._id),
-          generateBatchMetrics(task._id),
-          generateCodebookExport(task._id),
-        ],
-      );
+      const [sampleRes, metadataRes, batchRes] = await Promise.all([
+        generateSampleMetrics(task._id),
+        generateMetadataMetrics(task._id),
+        generateBatchMetrics(task._id),
+      ]);
+      await generateCodebookExport(task._id, finalCodebook ?? codebook);
       setMetricsGenerated(true);
       setMetricsFiles({
         sample: sampleRes.filename,
         metadata: metadataRes.filename,
         batch: batchRes.filename,
-        codebook: codebookRes.filename,
       });
       setMetricsModalOpen(true);
     } catch (error: any) {
@@ -532,6 +614,7 @@ export default function AnnotationPage() {
       <Stack h="100%" gap="md" p="xl">
         <Modal
           opened={introOpen}
+          size="lg"
           onClose={handleCloseIntro}
           centered
           title="Steps 3-4: AI annotation review + codebook completion"
@@ -545,7 +628,15 @@ export default function AnnotationPage() {
             },
             header: { backgroundColor: "transparent" },
             title: { color: "#e8eef1", fontWeight: 600 },
-            close: { color: "#e8eef1" },
+            close: {
+              color: "#e8eef1",
+              backgroundColor: "transparent",
+              transition: "background-color 120ms ease, color 120ms ease",
+              "&:hover": {
+                backgroundColor: "rgba(124, 231, 225, 0.12)",
+                color: "#e8eef1",
+              },
+            },
           }}
         >
           <Stack gap="sm">
@@ -611,14 +702,6 @@ export default function AnnotationPage() {
               disabled={!metricsFiles.batch}
             >
               Download batch metrics
-            </Button>
-            <Button
-              fullWidth
-              variant="light"
-              onClick={() => handleDownloadMetrics(metricsFiles.codebook)}
-              disabled={!metricsFiles.codebook}
-            >
-              Export codebook
             </Button>
           </Stack>
         </Modal>
@@ -773,11 +856,36 @@ export default function AnnotationPage() {
 
                   <Group gap="sm">
                     <Text fw={700}>Labels:</Text>
-                    {generatedLabels.map((label) => (
-                      <Badge size="lg" variant="filled" color="green">
+                    {generatedLabels.map((label, index) => (
+                      <Badge
+                        key={`${label}-${index}`}
+                        size="lg"
+                        variant="filled"
+                        color="green"
+                      >
                         {label || "..."}
                       </Badge>
                     ))}
+                  </Group>
+
+                  <Group gap="sm">
+                    <Text fw={700}>User Labels:</Text>
+                    {currentSample?.labels?.length ? (
+                      currentSample.labels.map((label, index) => (
+                        <Badge
+                          key={`${label}-${index}`}
+                          size="lg"
+                          variant="light"
+                          color="gray"
+                        >
+                          {label}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge size="lg" variant="light" color="gray">
+                        None
+                      </Badge>
+                    )}
                   </Group>
 
                   <Stack gap={4}>
@@ -942,11 +1050,17 @@ export default function AnnotationPage() {
                       loading={isLoading}
                       onClick={async () => {
                         const isLastSample = currentIndex >= totalSamples - 1;
+                        if (!sampleSnapshotsRef.current[currentIndex]) {
+                          sampleSnapshotsRef.current[currentIndex] = [
+                            ...codebook,
+                          ];
+                        }
+                        let latestCodebook: string[] | null = null;
                         if (currentBatchProgress === actualBatchSize) {
-                          await handleCommitBatch();
+                          latestCodebook = await handleCommitBatch();
                         }
                         if (isLastSample) {
-                          await finalizeMetrics();
+                          await finalizeMetrics(latestCodebook ?? codebook);
                         }
                         handleNextClick();
                       }}
@@ -970,6 +1084,9 @@ export default function AnnotationPage() {
                   <Title order={4} c="white">
                     Live Codebook
                   </Title>
+                  <Tooltip label="These rules guide the AI for future batches">
+                    <IconInfoCircle size={18} color="gray" />
+                  </Tooltip>
                 </Group>
                 <Group gap="xs">
                   <Button
@@ -983,9 +1100,19 @@ export default function AnnotationPage() {
                   >
                     Save Codebook
                   </Button>
-                  <Tooltip label="These rules guide the AI for future batches">
-                    <IconInfoCircle size={18} color="gray" />
-                  </Tooltip>
+                  {metricsGenerated && (
+                    <Button
+                      variant="outline"
+                      color="cyan"
+                      size="xs"
+                      radius="xl"
+                      onClick={handleExportCodebook}
+                      loading={isExportingCodebook}
+                      disabled={codebook.length === 0}
+                    >
+                      Export Codebook
+                    </Button>
+                  )}
                 </Group>
               </Group>
 
