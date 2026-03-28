@@ -213,6 +213,7 @@ export default function DatasetUploadPage() {
       const embedResponse = await embedDataset({
         file_path: fileName,
         text_col: [textColumn],
+        split_to_sentences: false,
         labels: sanitizedLabels,
       });
 

@@ -26,11 +26,7 @@ import {
 import { IconTrash, IconPlus, IconInfoCircle } from "@tabler/icons-react";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  createTask,
-  checkValFileExists,
-  getUserTasks,
-} from "../services/tasks.service";
+import { createTask, getUserTasks } from "../services/tasks.service";
 import { embedDataset } from "../services/embedding.service";
 import { EmbedDatasetRequest } from "@common/types/embedding";
 import { useSelector } from "react-redux";

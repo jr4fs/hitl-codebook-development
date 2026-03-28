@@ -1,11 +1,10 @@
 import fs from "fs";
 import path from "path";
+import { resolveProjectRoot } from "./projectRoot";
 
-export const METRICS_DIR = path.resolve(__dirname, "../../../metrics");
-export const CODEBOOK_DIR = path.resolve(
-  __dirname,
-  "../../../generated_codebooks",
-);
+const PROJECT_ROOT = resolveProjectRoot();
+export const METRICS_DIR = path.resolve(PROJECT_ROOT, "metrics");
+export const CODEBOOK_DIR = path.resolve(PROJECT_ROOT, "generated_codebooks");
 
 export function ensureMetricsDir(): void {
   if (!fs.existsSync(METRICS_DIR)) {

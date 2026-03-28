@@ -5,8 +5,9 @@ import fs from "fs";
 import axios from "axios";
 import FormData from "form-data";
 import { AnonymizeConfig } from "@common/types/anonymize";
+import { resolveProjectRoot } from "./projectRoot";
 
-const PROJECT_ROOT = path.resolve(__dirname, "../../../");
+const PROJECT_ROOT = resolveProjectRoot();
 const UPLOADS_DIR = path.join(PROJECT_ROOT, "shared_uploads");
 const VAL_DATASETS_DIR = path.join(PROJECT_ROOT, "val_datasets");
 const REST_DATASETS_DIR = path.join(PROJECT_ROOT, "rest_datasets");

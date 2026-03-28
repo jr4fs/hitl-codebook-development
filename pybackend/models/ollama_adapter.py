@@ -2,12 +2,13 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import requests
 import json
+import os
 
 from models.embedding_schemas import Label
 
 class OllamaAdapter(BaseModel):
     model: str
-    base:str = "http://localhost:11434"
+    base: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     
     def chat(self, messages: List[Dict[str,str]], **opts):
         payload = {"model": self.model, "messages": messages, "stream":False, "format": "json", **opts}

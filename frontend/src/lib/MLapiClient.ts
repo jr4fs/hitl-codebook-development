@@ -3,7 +3,7 @@ import { store } from "../store/store";
 import { clearUser } from "../store/userSlice";
 
 export const MLapiClient = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: import.meta.env.VITE_ML_API_URL || "http://localhost:8000",
   headers: {
     "Content-Type": "application/json",
   },
@@ -11,7 +11,7 @@ export const MLapiClient = axios.create({
 
 MLapiClient.interceptors.request.use(
   (config) => {
-    const accessToken = localStorage.getItem('accessToken');
+    const accessToken = localStorage.getItem("accessToken");
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -19,7 +19,7 @@ MLapiClient.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 MLapiClient.interceptors.response.use(
@@ -32,7 +32,7 @@ MLapiClient.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export type MLApiClient = typeof MLapiClient;

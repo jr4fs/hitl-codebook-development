@@ -338,7 +338,8 @@ export async function generateMetadataMetrics(req: AuthRequest, res: Response) {
       .find({ taskId, createdBy: userId })
       .toArray();
 
-    const projectRoot = path.resolve(__dirname, "../../../");
+    const projectRoot =
+      process.env.PROJECT_ROOT || path.resolve(__dirname, "../../../");
     const promptPath = path.join(
       projectRoot,
       "pybackend",
@@ -439,7 +440,8 @@ export async function generateBatchMetrics(req: AuthRequest, res: Response) {
       batches.get(batchId)?.push(annotation);
     }
 
-    const projectRoot = path.resolve(__dirname, "../../../");
+    const projectRoot =
+      process.env.PROJECT_ROOT || path.resolve(__dirname, "../../../");
     const promptPath = path.join(
       projectRoot,
       "pybackend",
@@ -587,7 +589,8 @@ export async function generateCodebookExport(req: AuthRequest, res: Response) {
       });
     }
 
-    const projectRoot = path.resolve(__dirname, "../../../");
+    const projectRoot =
+      process.env.PROJECT_ROOT || path.resolve(__dirname, "../../../");
     const promptPath = path.join(
       projectRoot,
       "pybackend",

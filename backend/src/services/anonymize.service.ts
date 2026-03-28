@@ -9,12 +9,13 @@ import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
 import axios from "axios";
+import { resolveProjectRoot } from "../utils/projectRoot";
 
 const ANONYMIZE_CONFIG_COLLECTION = "AnonymizeConfig";
 const CONFIG_DOC_ID = "global";
 const PYBACKEND_URL = process.env.PYBACKEND_URL || "http://localhost:8000";
 
-const PROJECT_ROOT = path.resolve(__dirname, "../../../");
+const PROJECT_ROOT = resolveProjectRoot();
 const NAMES_FILE_PATH = path.join(
   PROJECT_ROOT,
   "shared_uploads",
