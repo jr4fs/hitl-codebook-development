@@ -12,39 +12,25 @@ import {
 } from "@mantine/core";
 import {
   IconArrowRight,
-  IconBook2,
   IconHandClick,
-  IconListCheck,
   IconRobot,
-  IconSettings,
   IconUpload,
+  IconBook2,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import styles from "./LandingPage.module.css";
 
 const steps = [
   {
-    title: "Configure anonymization",
+    title: "Upload files and setup",
     description:
-      "Review defaults and add any rules that should apply before data enters the flow.",
-    icon: IconSettings,
-  },
-  {
-    title: "Upload CSV dataset",
-    description:
-      "Drop the dataset you want to annotate and preview a clean sample.",
+      "Upload the dataset plus task and labels JSON, then choose the text column.",
     icon: IconUpload,
-  },
-  {
-    title: "Define the task",
-    description:
-      "Name the task, set labels, and pick the columns you want to label.",
-    icon: IconListCheck,
   },
   {
     title: "Manual seed annotation",
     description:
-      "Label a focused set so the AI mirrors your intent and edge cases.",
+      "Label a focused set so the AI learns your intent and edge cases.",
     icon: IconHandClick,
   },
   {
@@ -139,9 +125,7 @@ export default function LandingPage() {
           <Text className={styles.flowLabel}>Flow snapshot</Text>
           <Group gap="xs" wrap="nowrap" className={styles.flowPills}>
             {[
-              "Configure anonymization",
-              "Upload CSV dataset",
-              "Task definition",
+              "Upload files and setup",
               "Manual seed annotation",
               "AI annotation review",
               "Codebook completion",

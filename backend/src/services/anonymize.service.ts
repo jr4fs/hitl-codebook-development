@@ -1,18 +1,27 @@
 import { Response } from "express";
-import { AnonymizeConfig, UpdateAnonymizeConfigRequest } from "@common/types/anonymize";
+import {
+  AnonymizeConfig,
+  UpdateAnonymizeConfigRequest,
+} from "@common/types/anonymize";
 import { getCollection } from "./database.service";
 import { AuthRequest } from "./tasks.service";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
 import axios from "axios";
+import { resolveProjectRoot } from "../utils/projectRoot";
 
 const ANONYMIZE_CONFIG_COLLECTION = "AnonymizeConfig";
 const CONFIG_DOC_ID = "global";
 const PYBACKEND_URL = process.env.PYBACKEND_URL || "http://localhost:8000";
 
-const PROJECT_ROOT = path.resolve(__dirname, "../../../");
-const NAMES_FILE_PATH = path.join(PROJECT_ROOT, "shared_uploads", "anonymize", "names.csv");
+const PROJECT_ROOT = resolveProjectRoot();
+const NAMES_FILE_PATH = path.join(
+  PROJECT_ROOT,
+  "shared_uploads",
+  "anonymize",
+  "names.csv",
+);
 
 /**
  * Fetches the default anonymization config from pybackend (parsed from config.yaml)
@@ -23,7 +32,7 @@ async function fetchDefaultConfig(): Promise<Omit<AnonymizeConfig, "_id">> {
     if (response.data?.success && response.data?.defaults) {
       return {
         ...response.data.defaults,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
     }
   } catch (error) {
@@ -32,13 +41,14 @@ async function fetchDefaultConfig(): Promise<Omit<AnonymizeConfig, "_id">> {
 
   // Fallback defaults if pybackend is unavailable
   return {
+    anonymizeEnabled: true,
     ageEnabled: true,
     emailEnabled: true,
     phoneEnabled: true,
     pronounEnabled: false,
     phrases: [],
     skipWords: [],
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -51,11 +61,13 @@ export async function getAnonymizeConfig(req: AuthRequest, res: Response) {
     if (!userID) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized - user not authenticated"
+        message: "Unauthorized - user not authenticated",
       });
     }
 
-    const collection = getCollection<AnonymizeConfig>(ANONYMIZE_CONFIG_COLLECTION);
+    const collection = getCollection<AnonymizeConfig>(
+      ANONYMIZE_CONFIG_COLLECTION,
+    );
     let config = await collection.findOne({ _id: CONFIG_DOC_ID as any });
 
     if (!config) {
@@ -66,13 +78,13 @@ export async function getAnonymizeConfig(req: AuthRequest, res: Response) {
 
     return res.status(200).json({
       success: true,
-      config
+      config,
     });
   } catch (error: any) {
     console.error("Error retrieving anonymize config:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to retrieve config"
+      message: error.message || "Failed to retrieve config",
     });
   }
 }
@@ -86,46 +98,52 @@ export async function updateAnonymizeConfig(req: AuthRequest, res: Response) {
     if (!userID) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized - user not authenticated"
+        message: "Unauthorized - user not authenticated",
       });
     }
 
     const updates: UpdateAnonymizeConfigRequest = req.body;
-    const collection = getCollection<AnonymizeConfig>(ANONYMIZE_CONFIG_COLLECTION);
+    const collection = getCollection<AnonymizeConfig>(
+      ANONYMIZE_CONFIG_COLLECTION,
+    );
 
     // Get existing config or defaults from pybackend
     let existing = await collection.findOne({ _id: CONFIG_DOC_ID as any });
-    const baseConfig = existing || { _id: CONFIG_DOC_ID, ...(await fetchDefaultConfig()) };
+    const baseConfig = existing || {
+      _id: CONFIG_DOC_ID,
+      ...(await fetchDefaultConfig()),
+    };
 
     // Merge updates
     const updatedConfig: AnonymizeConfig = {
       ...baseConfig,
+      anonymizeEnabled: updates.anonymizeEnabled ?? baseConfig.anonymizeEnabled,
       ageEnabled: updates.ageEnabled ?? baseConfig.ageEnabled,
       emailEnabled: updates.emailEnabled ?? baseConfig.emailEnabled,
       phoneEnabled: updates.phoneEnabled ?? baseConfig.phoneEnabled,
       pronounEnabled: updates.pronounEnabled ?? baseConfig.pronounEnabled,
       phrases: updates.phrases ?? baseConfig.phrases,
       skipWords: updates.skipWords ?? baseConfig.skipWords,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
     // Upsert the config
     await collection.updateOne(
       { _id: CONFIG_DOC_ID as any },
       { $set: updatedConfig },
-      { upsert: true }
+      { upsert: true },
     );
 
     return res.status(200).json({
       success: true,
       config: updatedConfig,
-      message: "Configuration updated successfully"
+      message: "Configuration updated successfully",
     });
   } catch (error: any) {
     console.error("Error updating anonymize config:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to update config"
+      message: error.message || "Failed to update config",
     });
   }
 }
@@ -139,30 +157,35 @@ export async function downloadNamesFile(req: AuthRequest, res: Response) {
     if (!userID) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized - user not authenticated"
+        message: "Unauthorized - user not authenticated",
       });
     }
 
     if (!existsSync(NAMES_FILE_PATH)) {
       return res.status(404).json({
         success: false,
-        message: "Names file not found"
+        message: "Names file not found",
       });
     }
 
-    const collection = getCollection<AnonymizeConfig>(ANONYMIZE_CONFIG_COLLECTION);
+    const collection = getCollection<AnonymizeConfig>(
+      ANONYMIZE_CONFIG_COLLECTION,
+    );
     const config = await collection.findOne({ _id: CONFIG_DOC_ID as any });
     const requestedName = config?.namesFileName || "names.csv";
     const safeName = path.basename(requestedName);
 
     res.setHeader("X-Filename", safeName);
-    res.setHeader("Access-Control-Expose-Headers", "Content-Disposition, X-Filename");
+    res.setHeader(
+      "Access-Control-Expose-Headers",
+      "Content-Disposition, X-Filename",
+    );
     res.download(NAMES_FILE_PATH, safeName);
   } catch (error: any) {
     console.error("Error downloading names file:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to download file"
+      message: error.message || "Failed to download file",
     });
   }
 }
@@ -176,14 +199,14 @@ export async function uploadNamesFile(req: AuthRequest, res: Response) {
     if (!userID) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized - user not authenticated"
+        message: "Unauthorized - user not authenticated",
       });
     }
 
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "No file provided"
+        message: "No file provided",
       });
     }
 
@@ -196,27 +219,29 @@ export async function uploadNamesFile(req: AuthRequest, res: Response) {
     // Write the uploaded file to names.csv location
     await fs.writeFile(NAMES_FILE_PATH, req.file.buffer, "utf-8");
 
-    const collection = getCollection<AnonymizeConfig>(ANONYMIZE_CONFIG_COLLECTION);
+    const collection = getCollection<AnonymizeConfig>(
+      ANONYMIZE_CONFIG_COLLECTION,
+    );
     await collection.updateOne(
       { _id: CONFIG_DOC_ID as any },
       {
         $set: {
           namesFileName: req.file.originalname,
-          updatedAt: new Date().toISOString()
-        }
+          updatedAt: new Date().toISOString(),
+        },
       },
-      { upsert: true }
+      { upsert: true },
     );
 
     return res.status(200).json({
       success: true,
-      message: "Names file uploaded successfully"
+      message: "Names file uploaded successfully",
     });
   } catch (error: any) {
     console.error("Error uploading names file:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to upload file"
+      message: error.message || "Failed to upload file",
     });
   }
 }

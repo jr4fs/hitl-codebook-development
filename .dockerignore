@@ -1,0 +1,15 @@
+.git
+.gitignore
+node_modules
+**/node_modules
+dist
+**/dist
+**/__pycache__
+**/*.pyc
+metrics
+generated_codebooks
+shared_uploads
+val_datasets
+rest_datasets
+guide_datasets
+.DS_Store

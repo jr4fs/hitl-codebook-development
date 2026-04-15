@@ -7,6 +7,7 @@ import {
   fileExists,
   restFileExists,
   valFileExists,
+  saveRawCsv,
 } from "../utils/fileUpload";
 import { ObjectId } from "mongodb";
 import Papa from "papaparse";
@@ -399,10 +400,14 @@ export async function uploadTaskFile(req: AuthRequest, res: Response) {
 
     let filename: string;
     try {
-      filename = await anonymizeAndSaveCsv(
-        req.file,
-        anonymizeConfig ?? undefined,
-      );
+      if (anonymizeConfig && anonymizeConfig.anonymizeEnabled === false) {
+        filename = await saveRawCsv(req.file);
+      } else {
+        filename = await anonymizeAndSaveCsv(
+          req.file,
+          anonymizeConfig ?? undefined,
+        );
+      }
     } catch (error: any) {
       const message = error?.message || "Failed to anonymize CSV";
       const status = message.includes("saved") ? 500 : 502;

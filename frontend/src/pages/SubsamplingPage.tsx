@@ -26,11 +26,7 @@ import {
 import { IconTrash, IconPlus, IconInfoCircle } from "@tabler/icons-react";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  createTask,
-  checkValFileExists,
-  getUserTasks,
-} from "../services/tasks.service";
+import { createTask, getUserTasks } from "../services/tasks.service";
 import { embedDataset } from "../services/embedding.service";
 import { EmbedDatasetRequest } from "@common/types/embedding";
 import { useSelector } from "react-redux";
@@ -287,7 +283,7 @@ export default function SubsamplingPage() {
         JSON.stringify(task.labels) !== JSON.stringify(taskLabels) ||
         task.type !== taskType ||
         JSON.stringify(task.codebook || []) !==
-        JSON.stringify(appliedCodebook || []) ||
+          JSON.stringify(appliedCodebook || []) ||
         task.codebookSourceTaskId !== appliedCodebookSource?.id ||
         task.codebookSourceTaskName !== appliedCodebookSource?.name;
 
@@ -476,7 +472,15 @@ export default function SubsamplingPage() {
           },
           header: { backgroundColor: "transparent" },
           title: { color: "#e8eef1", fontWeight: 600 },
-          close: { color: "#e8eef1" },
+          close: {
+            color: "#e8eef1",
+            backgroundColor: "transparent",
+            transition: "background-color 120ms ease, color 120ms ease",
+            "&:hover": {
+              backgroundColor: "rgba(124, 231, 225, 0.12)",
+              color: "#e8eef1",
+            },
+          },
         }}
       >
         <Stack gap="sm">
@@ -596,8 +600,8 @@ export default function SubsamplingPage() {
                     </Text>
                   )}
                   <MultiSelect
-                ml="15"
-                mr="15"
+                    ml="15"
+                    mr="15"
                     variant="filled"
                     fz="lg"
                     label={infoLabel(
@@ -621,12 +625,12 @@ export default function SubsamplingPage() {
                       option: styles.option,
                     }}
                   ></MultiSelect>
-              <Title order={4} c="#D8D8D8" ml="15" mr="15">
+                  <Title order={4} c="#D8D8D8" ml="15" mr="15">
                     Task Definition
                   </Title>
                   <TextInput
-                ml="15"
-                mr="15"
+                    ml="15"
+                    mr="15"
                     variant="filled"
                     label={infoLabel(
                       "Task name",
@@ -640,8 +644,8 @@ export default function SubsamplingPage() {
                     }}
                   />
                   <Textarea
-                ml="15"
-                mr="15"
+                    ml="15"
+                    mr="15"
                     variant="filled"
                     label={infoLabel(
                       "Task description",
@@ -655,8 +659,8 @@ export default function SubsamplingPage() {
                     }}
                   />
                   <Select
-                ml="15"
-                mr="15"
+                    ml="15"
+                    mr="15"
                     variant="filled"
                     label={infoLabel(
                       "Select task type",
@@ -804,12 +808,12 @@ export default function SubsamplingPage() {
                         subsampledCsv,
                         task: task
                           ? {
-                            ...task,
-                            codebook: appliedCodebook,
-                            codebookSourceTaskId: appliedCodebookSource?.id,
-                            codebookSourceTaskName:
-                              appliedCodebookSource?.name,
-                          }
+                              ...task,
+                              codebook: appliedCodebook,
+                              codebookSourceTaskId: appliedCodebookSource?.id,
+                              codebookSourceTaskName:
+                                appliedCodebookSource?.name,
+                            }
                           : task,
                       },
                     });

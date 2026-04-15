@@ -16,7 +16,13 @@ import {
   Alert,
   FileButton,
 } from "@mantine/core";
-import { IconPlus, IconTrash, IconDownload, IconUpload, IconAlertCircle } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconTrash,
+  IconDownload,
+  IconUpload,
+  IconAlertCircle,
+} from "@tabler/icons-react";
 import { PhraseMapping } from "@common/types/anonymize";
 import {
   getAnonymizeConfig,
@@ -31,12 +37,16 @@ interface AnonymizeConfigModalProps {
   onClose: () => void;
 }
 
-export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfigModalProps) {
+export default function AnonymizeConfigModal({
+  opened,
+  onClose,
+}: AnonymizeConfigModalProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Config state
+  const [anonymizeEnabled, setAnonymizeEnabled] = useState(true);
   const [ageEnabled, setAgeEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [phoneEnabled, setPhoneEnabled] = useState(true);
@@ -58,6 +68,7 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
       const response = await getAnonymizeConfig();
       if (response.success && response.config) {
         const config = response.config;
+        setAnonymizeEnabled(config.anonymizeEnabled ?? true);
         setAgeEnabled(config.ageEnabled);
         setEmailEnabled(config.emailEnabled);
         setPhoneEnabled(config.phoneEnabled);
@@ -82,6 +93,7 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
         .filter((s) => s.length > 0);
 
       await updateAnonymizeConfig({
+        anonymizeEnabled,
         ageEnabled,
         emailEnabled,
         phoneEnabled,
@@ -134,7 +146,11 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
     setPhrases(phrases.filter((_, i) => i !== index));
   };
 
-  const updatePhrase = (index: number, field: "text" | "replacement", value: string) => {
+  const updatePhrase = (
+    index: number,
+    field: "text" | "replacement",
+    value: string,
+  ) => {
     const updated = [...phrases];
     updated[index] = { ...updated[index], [field]: value };
     setPhrases(updated);
@@ -154,166 +170,194 @@ export default function AnonymizeConfigModal({ opened, onClose }: AnonymizeConfi
       }}
     >
       <LoadingOverlay visible={loading} />
-
       <Stack gap="md">
         {error && (
-          <Alert icon={<IconAlertCircle size={16} />} color="red" onClose={() => setError(null)} withCloseButton>
+          <Alert color="red" icon={<IconAlertCircle size={18} />} title="Error">
             {error}
           </Alert>
         )}
-
-        {/* Names File Section */}
         <Paper p="md" bg="#2C2C2C" radius="sm">
-          <Text fw={500} mb="sm">Names File</Text>
-          <Text size="sm" c="dimmed" mb="md">
-            Upload a CSV with names to anonymize (columns: First Name, Middle Name, Last Name, Other Name)
+          <Text fw={500} mb="md">
+            Anonymization
           </Text>
-          <Group>
-            <Button
-              variant="outline"
-              color="gray"
-              leftSection={<IconDownload size={16} />}
-              onClick={handleDownloadNames}
-            >
-              Download Current
-            </Button>
-            <FileButton onChange={handleUploadNames} accept=".csv,text/csv">
-              {(props) => (
-                <Button
-                  {...props}
-                  variant="filled"
-                  color="blue"
-                  leftSection={<IconUpload size={16} />}
-                >
-                  Upload New
-                </Button>
-              )}
-            </FileButton>
-          </Group>
-        </Paper>
-
-        <Divider color="#444" />
-
-        {/* Toggle Rules */}
-        <Paper p="md" bg="#2C2C2C" radius="sm">
-          <Text fw={500} mb="md">Rule Toggles</Text>
-          <Stack gap="sm">
-            <Switch
-              label="Anonymize Ages"
-              description="Replace age values like 'age 61' with [AGE]"
-              checked={ageEnabled}
-              onChange={(e) => setAgeEnabled(e.currentTarget.checked)}
-              color="blue"
-              styles={{ track: { cursor: "pointer" }, label: { cursor: "pointer" } }}
-            />
-            <Switch
-              label="Anonymize Emails"
-              description="Replace email addresses with [EMAIL]"
-              checked={emailEnabled}
-              onChange={(e) => setEmailEnabled(e.currentTarget.checked)}
-              color="blue"
-              styles={{ track: { cursor: "pointer" }, label: { cursor: "pointer" } }}
-            />
-            <Switch
-              label="Anonymize Phone Numbers"
-              description="Replace phone numbers with [PHONE]"
-              checked={phoneEnabled}
-              onChange={(e) => setPhoneEnabled(e.currentTarget.checked)}
-              color="blue"
-              styles={{ track: { cursor: "pointer" }, label: { cursor: "pointer" } }}
-            />
-            <Switch
-              label="Anonymize Pronouns"
-              description="Replace pronouns (she, he, they, etc.) with [PRONOUN]"
-              checked={pronounEnabled}
-              onChange={(e) => setPronounEnabled(e.currentTarget.checked)}
-              color="blue"
-              styles={{ track: { cursor: "pointer" }, label: { cursor: "pointer" } }}
-            />
-          </Stack>
-        </Paper>
-
-        <Divider color="#444" />
-
-        {/* Phrase Mappings */}
-        <Paper p="md" bg="#2C2C2C" radius="sm">
-          <Text fw={500} mb="md">Phrase Replacements</Text>
-          <Text size="sm" c="dimmed" mb="md">
-            Define phrases and their replacements (e.g., "Mercy Medical" → "ORG")
-          </Text>
-          <Stack gap="xs">
-            {phrases.map((phrase, index) => (
-              <Group key={index} gap="xs" align="flex-end">
-                <TextInput
-                  placeholder="Phrase to match"
-                  value={phrase.text}
-                  onChange={(e) => updatePhrase(index, "text", e.target.value)}
-                  style={{ flex: 1 }}
-                  styles={{
-                    input: { backgroundColor: "#1C1A1A", borderColor: "#444", color: "#D8D8D8" },
-                  }}
-                />
-                <TextInput
-                  placeholder="Replacement"
-                  value={phrase.replacement}
-                  onChange={(e) => updatePhrase(index, "replacement", e.target.value)}
-                  style={{ flex: 1 }}
-                  styles={{
-                    input: { backgroundColor: "#1C1A1A", borderColor: "#444", color: "#D8D8D8" },
-                  }}
-                />
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  onClick={() => removePhrase(index)}
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Group>
-            ))}
-            {phrases.length === 0 && (
-              <Text size="sm" c="dimmed" ta="center">
-                No custom phrases defined
-              </Text>
-            )}
-          </Stack>
-          <Group justify="flex-end" mt="md">
-            <Button
-              variant="light"
-              color="blue"
-              size="xs"
-              leftSection={<IconPlus size={14} />}
-              onClick={addPhrase}
-            >
-              Add Phrase
-            </Button>
-          </Group>
-        </Paper>
-
-        <Divider color="#444" />
-
-        {/* Skip Words */}
-        <Paper p="md" bg="#2C2C2C" radius="sm">
-          <Text fw={500} mb="sm">Skip Words</Text>
-          <Text size="sm" c="dimmed" mb="md">
-            Words to skip during anonymization (separate with new lines or commas)
-          </Text>
-          <Textarea
-            placeholder="Enter words to skip, one per line or comma-separated..."
-            value={skipWords}
-            onChange={(e) => setSkipWords(e.target.value)}
-            minRows={4}
-            maxRows={8}
-            autosize
+          <Switch
+            label="Enable anonymization"
+            description="When off, uploads are stored without anonymizing."
+            checked={anonymizeEnabled}
+            onChange={(e) => setAnonymizeEnabled(e.currentTarget.checked)}
+            color="blue"
             styles={{
-              input: { backgroundColor: "#1C1A1A", borderColor: "#444", color: "#D8D8D8" },
+              track: { cursor: "pointer" },
+              label: { cursor: "pointer" },
             }}
           />
         </Paper>
-
+        {anonymizeEnabled && (
+          <>
+            <Paper p="md" bg="#2C2C2C" radius="sm">
+              <Text fw={500} mb="sm">
+                Names File
+              </Text>
+              <Text size="sm" c="dimmed" mb="md">
+                Upload a CSV with names to anonymize (columns: First Name,
+                Middle Name, Last Name, Other Name)
+              </Text>
+              <Group>
+                <Button
+                  variant="outline"
+                  color="gray"
+                  leftSection={<IconDownload size={16} />}
+                  onClick={handleDownloadNames}
+                >
+                  Download Current
+                </Button>
+                <FileButton onChange={handleUploadNames} accept=".csv,text/csv">
+                  {(props) => (
+                    <Button
+                      {...props}
+                      variant="filled"
+                      color="blue"
+                      leftSection={<IconUpload size={16} />}
+                    >
+                      Upload New
+                    </Button>
+                  )}
+                </FileButton>
+              </Group>
+            </Paper>
+            <Divider color="#444" />
+            <Paper p="md" bg="#2C2C2C" radius="sm">
+              <Text fw={500} mb="md">
+                Rule Toggles
+              </Text>
+              <Stack gap="sm">
+                <Switch
+                  label="Anonymize Ages"
+                  description="Replace age values like 'age 61' with [AGE]"
+                  checked={ageEnabled}
+                  onChange={(e) => setAgeEnabled(e.currentTarget.checked)}
+                  color="blue"
+                  styles={{
+                    track: { cursor: "pointer" },
+                    label: { cursor: "pointer" },
+                  }}
+                />
+                <Switch
+                  label="Anonymize Emails"
+                  description="Replace email addresses with [EMAIL]"
+                  checked={emailEnabled}
+                  onChange={(e) => setEmailEnabled(e.currentTarget.checked)}
+                  color="blue"
+                  styles={{
+                    track: { cursor: "pointer" },
+                    label: { cursor: "pointer" },
+                  }}
+                />
+                <Switch
+                  label="Anonymize Phone Numbers"
+                  description="Replace phone numbers with [PHONE]"
+                  checked={phoneEnabled}
+                  onChange={(e) => setPhoneEnabled(e.currentTarget.checked)}
+                  color="blue"
+                  styles={{
+                    track: { cursor: "pointer" },
+                    label: { cursor: "pointer" },
+                  }}
+                />
+                <Switch
+                  label="Anonymize Pronouns"
+                  description="Replace pronouns (she, he, they, etc.) with [PRONOUN]"
+                  checked={pronounEnabled}
+                  onChange={(e) => setPronounEnabled(e.currentTarget.checked)}
+                  color="blue"
+                  styles={{
+                    track: { cursor: "pointer" },
+                    label: { cursor: "pointer" },
+                  }}
+                />
+              </Stack>
+            </Paper>
+            <Divider color="#444" />
+            <Paper p="md" bg="#2C2C2C" radius="sm">
+              <Text fw={500} mb="md">
+                Phrase Replacements
+              </Text>
+              <Text size="sm" c="dimmed" mb="md">
+                Define phrases and their replacements (e.g., "Mercy Medical" →
+                "ORG")
+              </Text>
+              <Stack gap="xs">
+                {phrases.map((phrase, index) => (
+                  <Group key={index} gap="xs" align="flex-end">
+                    <TextInput
+                      placeholder="Phrase to match"
+                      value={phrase.text}
+                      onChange={(e) =>
+                        updatePhrase(index, "text", e.target.value)
+                      }
+                      style={{ flex: 1 }}
+                      styles={{
+                        input: {
+                          backgroundColor: "#1C1A1A",
+                          borderColor: "#444",
+                          color: "#D8D8D8",
+                        },
+                      }}
+                    />
+                    <TextInput
+                      placeholder="Replacement"
+                      value={phrase.replacement}
+                      onChange={(e) =>
+                        updatePhrase(index, "replacement", e.target.value)
+                      }
+                      style={{ flex: 1 }}
+                      styles={{
+                        input: {
+                          backgroundColor: "#1C1A1A",
+                          borderColor: "#444",
+                          color: "#D8D8D8",
+                        },
+                      }}
+                    />
+                    <ActionIcon color="red" onClick={() => removePhrase(index)}>
+                      <IconTrash size={18} />
+                    </ActionIcon>
+                  </Group>
+                ))}
+                <Button
+                  variant="light"
+                  leftSection={<IconPlus size={16} />}
+                  onClick={addPhrase}
+                >
+                  Add Phrase
+                </Button>
+              </Stack>
+            </Paper>
+            <Divider color="#444" />
+            <Paper p="md" bg="#2C2C2C" radius="sm">
+              <Text fw={500} mb="md">
+                Skip Words
+              </Text>
+              <Text size="sm" c="dimmed" mb="md">
+                Words to exclude from anonymization (one per line).
+              </Text>
+              <Textarea
+                placeholder="e.g., John\nNew York\nAcme"
+                value={skipWords}
+                onChange={(e) => setSkipWords(e.target.value)}
+                minRows={4}
+                styles={{
+                  input: {
+                    backgroundColor: "#1C1A1A",
+                    borderColor: "#444",
+                    color: "#D8D8D8",
+                  },
+                }}
+              />
+            </Paper>
+          </>
+        )}
         <Divider color="#444" />
-
-        {/* Actions */}
         <Group justify="flex-end">
           <Button variant="subtle" color="gray" onClick={onClose}>
             Cancel

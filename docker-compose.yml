@@ -1,0 +1,87 @@
+version: "3.9"
+
+services:
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      DB_CONN_STRING: "mongodb://mongodb:27017"
+      DB_NAME: "annotationTool"
+      PROJECT_ROOT: "/app"
+      PYBACKEND_URL: "http://pybackend:8000"
+      ML_API_URL: "http://pybackend:8000"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      pybackend:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./shared_uploads:/app/shared_uploads
+      - ./val_datasets:/app/val_datasets
+      - ./rest_datasets:/app/rest_datasets
+      - ./metrics:/app/metrics
+      - ./generated_codebooks:/app/generated_codebooks
+
+  pybackend:
+    build:
+      context: .
+      dockerfile: pybackend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - pybackend/.env
+    environment:
+      OLLAMA_BASE_URL: "http://host.docker.internal:11434"
+      PROJECT_ROOT: "/app"
+      HF_HOME: "/app/.cache/huggingface"
+      TRANSFORMERS_CACHE: "/app/.cache/huggingface/transformers"
+      SENTENCE_TRANSFORMERS_HOME: "/app/.cache/huggingface/sentence-transformers"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./shared_uploads:/app/shared_uploads
+      - ./val_datasets:/app/val_datasets
+      - ./rest_datasets:/app/rest_datasets
+      - ./metrics:/app/metrics
+      - ./generated_codebooks:/app/generated_codebooks
+      - hf_cache:/app/.cache/huggingface
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app/frontend
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    environment:
+      VITE_API_URL: "http://localhost:8080"
+      VITE_ML_API_URL: "http://localhost:8000"
+    volumes:
+      - ./:/app
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - pybackend
+    ports:
+      - "5173:5173"
+
+volumes:
+  mongo_data:
+  hf_cache:

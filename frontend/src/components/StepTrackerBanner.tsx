@@ -3,9 +3,7 @@ import { IconHelpCircle } from "@tabler/icons-react";
 import styles from "./StepTrackerBanner.module.css";
 
 const steps = [
-  "Configure anonymization",
-  "Upload CSV",
-  "Task definition",
+  "Upload files and setup",
   "Manual seed annotation",
   "AI annotation review",
   "Codebook completion",

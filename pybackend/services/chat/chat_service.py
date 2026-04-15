@@ -78,6 +78,7 @@ class ChatService:
             "label": label,
             "span_text": span_text,
             "reason": reason,
+            "raw_response": raw_content,
             "tokens": total_tokens,
             "time": (duration_ns / 1e9) if duration_ns else 0.0,
         }
