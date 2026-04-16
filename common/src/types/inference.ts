@@ -37,3 +37,4 @@ export interface BatchInferenceSummary {
   results: BatchInferenceResponse[];
   accuracy: number;
 }
+

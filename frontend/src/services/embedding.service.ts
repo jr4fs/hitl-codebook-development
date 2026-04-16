@@ -1,4 +1,4 @@
-import { MLapiClient } from "../lib/MLapiClient";
+import { apiClient } from "../lib/apiClient";
 import { EmbedDatasetRequest, EmbedDatasetResponse } from '@common/types/embedding';
 import { AxiosError } from "axios";
 
@@ -6,7 +6,7 @@ export async function embedDataset(
   payload: EmbedDatasetRequest
 ): Promise<EmbedDatasetResponse> {
   try {
-    const { data } = await MLapiClient.post<EmbedDatasetResponse>(
+    const { data } = await apiClient.post<EmbedDatasetResponse>(
       "/embedding/run",
       payload
     );
@@ -23,8 +23,8 @@ export async function representativeSampling(
   payload: EmbedDatasetRequest
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const { data } = await MLapiClient.post<{ success: boolean; message: string }>(
-      "/embedding/representative",
+    const { data } = await apiClient.post<{ success: boolean; message: string }>(
+      "/api/embedding/representative",
       payload
     );
     return data;
@@ -41,8 +41,8 @@ export async function coverageSampling(
   payload: EmbedDatasetRequest
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const { data } = await MLapiClient.post<{ success: boolean; message: string }>(
-      "/embedding/coverage",
+    const { data } = await apiClient.post<{ success: boolean; message: string }>(
+      "/api/embedding/coverage",
       payload
     );
     return data;

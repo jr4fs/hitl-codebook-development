@@ -5,6 +5,8 @@ import tasksRouter from "./routes/tasks";
 // import anonymizeRouter from "./routes/anonymize";
 import annotationsRouter from "./routes/annotations";
 import metricsRouter from "./routes/metrics";
+import embeddingRouter from "./routes/embedding";
+import inferenceRouter from "./routes/inference";
 
 export const app = express();
 
@@ -38,3 +40,5 @@ app.use("/api/tasks", tasksRouter);
 // app.use("/api/anonymize", anonymizeRouter);
 app.use("/api/annotate", annotationsRouter);
 app.use("/api/metrics", metricsRouter);
+app.use("/api/embedding", embeddingRouter);
+app.use("/api/inference", inferenceRouter);
