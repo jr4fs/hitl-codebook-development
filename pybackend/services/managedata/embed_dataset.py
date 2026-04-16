@@ -4,6 +4,7 @@ import re
 import torch
 from sentence_transformers import SentenceTransformer
 from typing import List, Optional, Tuple
+from .model_singleton import get_embedding_model, DEVICE
 
 class DatasetEmbedding:
    
@@ -32,7 +33,7 @@ class DatasetEmbedding:
       self.do_split_sentences = do_split_sentences
       self.vector_col = "vector"
       self.use_cosine = use_cosine
-      self.device = "mps" if torch.mps.is_available() else "cpu"
+      self.device = DEVICE
         
       # combining string columns
       self.df["text_combined"] = self.df[self.text_cols].fillna("").astype(str).agg(" ".join, axis=1).str.strip() 
@@ -73,7 +74,7 @@ class DatasetEmbedding:
       model : SentenceTransformer
          Loaded embedding model.
       """
-      model = SentenceTransformer(self.sentence_model).to(self.device)
+      model = get_embedding_model()
       records = []
       # Handle id_col=None by using the dataframe index
       if self.id_col and self.id_col in self.df.columns:
