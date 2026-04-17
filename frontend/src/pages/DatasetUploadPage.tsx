@@ -29,13 +29,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import { uploadTaskBundle } from "../services/tasks.service";
-import {
-  representativeSampling,
-  coverageSampling,
-} from "../services/embedding.service";
 import { toast } from "../lib/toast";
 import styles from "./DatasetUploadPage.module.css";
-import { EmbedDatasetRequest } from "@common/types/embedding";
 
 export default function DatasetUploadPage() {
   const navigate = useNavigate();
@@ -259,6 +254,9 @@ export default function DatasetUploadPage() {
         textColumn,
         labelColumn,
         modelName: selectedModel ?? "",
+        coverageN:
+          typeof coverageSampleSize === "number" ? coverageSampleSize : 150,
+        useRepresentativeSampling,
       });
 
       if (!response.success || !response.taskId) {
@@ -267,38 +265,12 @@ export default function DatasetUploadPage() {
 
       if (response.valSummary && response.restSummary) {
         toast.success(
-          `Upload complete. Labeled rows: ${response.valSummary.rows}. Unlabeled rows: ${response.restSummary.rows}.`,
+          `Task created. Sampling is pending. Labeled rows: ${response.valSummary.rows}. Unlabeled rows: ${response.restSummary.rows}.`,
         );
-        const samplingPayload: EmbedDatasetRequest = {
-          file_path: response.restFileName ?? "",
-          text_col: [textColumn],
-          label_col: labelColumn,
-          model_name: selectedModel || "",
-          labels: response.task?.labels ?? [],
-          taskId: response.task?._id ?? "",
-          userId: response.task?.userID ?? "",
-          coverage_n:
-            typeof coverageSampleSize === "number" ? coverageSampleSize : 150,
-        };
-        if (useRepresentativeSampling) {
-          try {
-            const repSamplingResponse =
-              await representativeSampling(samplingPayload);
-            console.log("repSamplingResponse: ", repSamplingResponse);
-          } catch (error: any) {
-            console.error(`[representative sampling] ${error}`);
-          }
-        }
-        try {
-          const coverageSamplingResponse =
-            await coverageSampling(samplingPayload);
-          console.log("coverageSamplingResponse: ", coverageSamplingResponse);
-        } catch (error: any) {
-          console.error(`[coverage sampling] ${error}`);
-        }
       } else {
-        toast.success("Upload complete. Opening AI review..."); // possibly remove, message does not state the failure branch
+        toast.success("Task created. Sampling is pending.");
       }
+      window.dispatchEvent(new Event("tasks:updated"));
       navigate(`/auto-annotate/${response.taskId}`, {
         state: {
           task: response.task,

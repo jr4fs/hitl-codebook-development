@@ -33,4 +33,16 @@ router.post("/coverage", async (req: AuthRequest, res: Response) => {
     }
 });
 
+router.post("/sample", async (req: AuthRequest, res: Response) => {
+    try {
+        const payload: EmbedDatasetRequest = req.body;
+        const { data } = await axios.post(`${ML_BASE_URL}/embedding/sample`, payload);
+        res.json(data);
+    } catch (error: any) {
+        const status = error.response?.status ?? 500;
+        const error_msg = error.response?.data?.detail ?? "Sampling request failed";
+        res.status(status).json({ success: false, message: error_msg });
+    }
+});
+
 export default router;

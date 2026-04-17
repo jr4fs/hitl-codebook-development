@@ -34,7 +34,12 @@ class DataManagerService:
         print(self.rest_file_path)
         obj = RepresentativeSampling(upsampling_payload)
         upsampled_result = obj.run()
-        upsampled_result.to_csv(self.rest_file_path)
+        upsampled_result.to_csv(self.rest_file_path, index=False)
+
+    def run_sampling(self):
+        if self.request.use_representative_sampling:
+            self.upsample()
+        self.coverage_sample()
     
     def coverage_sample(self):
         rest_path = Path(self.rest_file_path)
@@ -43,7 +48,7 @@ class DataManagerService:
             source_path = self.project_root / 'shared_uploads' / self.request.file_path
         df = pd.read_csv(source_path)
         if not rest_path.exists():
-            df.to_csv(rest_path)
+            df.to_csv(rest_path, index=False)
         obj = CoverageBasedSampling(
             df = df,
             model = get_embedding_model()
@@ -58,7 +63,7 @@ class DataManagerService:
                 text_col = "text"
         coverage_n = self.request.coverage_n or 150
         coverage_sampling_results = obj.sample(n=coverage_n, text_col=text_col)
-        coverage_sampling_results.to_csv(self.guide_file_path)
+        coverage_sampling_results.to_csv(self.guide_file_path, index=False)
 
         # Push the guide dataset into MongoDB AnnotationDetails
         if self.request.taskId and self.request.userId:
@@ -85,8 +90,11 @@ class DataManagerService:
                 
                 if annotations_to_insert:
                     collection = get_collection("AnnotationDetails")
+                    collection.delete_many({
+                        "taskId": self.request.taskId,
+                        "source": "guide"
+                    })
                     collection.insert_many(annotations_to_insert)
                     print(f"Successfully inserted {len(annotations_to_insert)} guide annotations into MongoDB.")
             except Exception as e:
                 print(f"Failed to insert guide annotations to MongoDB: {e}")
-

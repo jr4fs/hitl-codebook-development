@@ -13,6 +13,7 @@ export interface Task {
   labels: LabelItem[];
   labelColumn: string;
   modelName: string;
+  status?: "sampling_pending" | "ready" | "sampling_error";
   codebook?: string[];
   codebookSourceTaskId?: string;
   codebookSourceTaskName?: string;
@@ -40,6 +41,7 @@ export interface CreateTaskRequest {
   restFile?: string;
   valFile?: string;
   userID: string;
+  status?: "sampling_pending" | "ready" | "sampling_error";
 }
 
 export interface UpdateTaskRequest {

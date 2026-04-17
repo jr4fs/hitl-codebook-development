@@ -34,6 +34,18 @@ router.post(
   uploadTaskBundle,
 );
 
+// Unified task creation endpoint (upload + create + async sampling kickoff)
+router.post(
+  "/create",
+  uploadBundle.fields([
+    { name: "d_val", maxCount: 1 },
+    { name: "d_all", maxCount: 1 },
+    { name: "task_json", maxCount: 1 },
+    { name: "labels_json", maxCount: 1 },
+  ]),
+  uploadTaskBundle,
+);
+
 // Create a new task
 router.post("/createTask", createTask);
 
