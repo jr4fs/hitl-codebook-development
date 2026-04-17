@@ -11,3 +11,6 @@ metrics/
 venv
 at_slurm_job.sh
 generated_codebooks/
+.context
+AGENTS.md
+.idea
