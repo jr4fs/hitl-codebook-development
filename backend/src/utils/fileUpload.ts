@@ -59,14 +59,11 @@ export function ensureRestDatasetsDir(): void {
 
 /**
  * Custom storage engine for multer
- * Generates filename with timestamp: originalname_YYYY-MM-DD_HHMMSS.csv
+ * Generates filename with timestamp: <originalname>_<UUID7>.csv
  */
 export function generateUploadFilename(originalname: string): string {
   try {
     const uuid7 = generateUUID7();
-    //const now = new Date();
-    //const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
-    //const time = now.toTimeString().split(" ")[0].replace(/:/g, ""); // HHmmss
     const basename = path.parse(originalname).name;
     const extension = path.parse(originalname).ext;
     return `${basename}_${uuid7}${extension}`;
