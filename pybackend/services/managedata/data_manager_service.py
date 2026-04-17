@@ -4,11 +4,10 @@ import numpy as np
 import pandas as pd
 import re
 from models.embedding_schemas import EmbedDatasetRequest
-import torch
-from sentence_transformers import SentenceTransformer
 from typing import List, Optional, Tuple
 from .rep_sampling import RepresentativeSampling
 from .coverage_sampling import CoverageBasedSampling
+from .model_singleton import get_embedding_model
 from ..database.database_service import get_collection
 from datetime import datetime, timezone
 
@@ -47,7 +46,7 @@ class DataManagerService:
             df.to_csv(rest_path)
         obj = CoverageBasedSampling(
             df = df,
-            model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+            model = get_embedding_model()
         )
         
 
