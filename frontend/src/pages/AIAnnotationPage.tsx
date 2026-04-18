@@ -27,7 +27,7 @@ import {
   RuleSynthesisItem,
   RuleSynthesisRequest,
 } from "@common/types/ruleSynthesis";
-import { useTaskData } from "../hooks/useTaskData";
+import { useAITaskData } from "../hooks/useAITaskData";
 import { ruleSynthesis } from "../services/ruleSynthesis.service";
 import {
   IconCheck,
@@ -76,13 +76,13 @@ export default function AnnotationPage() {
   const borderStrong = isLight
     ? "rgba(15, 20, 24, 0.18)"
     : "var(--app-border-strong)";
-  const { loading, task, guideData, refreshTaskData } = useTaskData();
+  const { loading, task, guideAnnotations, refreshTaskData } = useAITaskData();
   const [samplingStatus, setSamplingStatus] = useState<
     "sampling_pending" | "ready" | "sampling_error" | null
   >(null);
   const [samplingErrorMsg, setSamplingErrorMsg] = useState<string | null>(null);
   const samplingNotifiedRef = useRef(false);
-  console.log("guidedata length: ", guideData.length);
+  console.log("guide annotations length: ", guideAnnotations.length);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [generatedLabels, setGeneratedLabels] = useState<string[]>([
     "Click next to generate this content",
@@ -190,7 +190,7 @@ export default function AnnotationPage() {
   // }, [annotations, guideData, task?._id, fallbackAnnotations.length]);
 
   const annotationsForReview =
-    guideData && guideData.length > 0 ? guideData : [];
+    guideAnnotations && guideAnnotations.length > 0 ? guideAnnotations : [];
 
   // Persist the 10/90 split in localStorage so a page refresh restores the same
   // partition. Keyed by taskId to avoid cross-task collisions.
@@ -497,10 +497,11 @@ export default function AnnotationPage() {
     </Tooltip>
   );
 
-  const currentSample =
+  const currentAnnotation =
     annotationsForReview.length > 0 && currentIndex > -1
       ? annotationsForReview[currentIndex]
       : null;
+  const currentSample = currentAnnotation?.sampleContent ?? null;
 
   const totalSamples = annotationsForReview.length;
 
@@ -581,7 +582,7 @@ export default function AnnotationPage() {
   const handleNextClick = async () => {
     try {
       const currentAIResult = batchResults[currentIndex];
-      if (currentAIResult && task?._id && currentSample) {
+      if (currentAIResult && task?._id && currentSample && currentAnnotation) {
         const startSnapshot = sampleStartsRef.current[currentIndex];
         const endCodebook = getCodebookSnapshot();
         const { added, deprecated, revised } = diffCodebook(
@@ -612,7 +613,7 @@ export default function AnnotationPage() {
         }));
         await updateGuideAnnotation({
           taskId: task._id,
-          sampleId: currentIndex + 1,
+          sampleId: currentAnnotation.sampleId,
           sampleContent: currentSample as Record<string, string>,
           source: "guide",
           labels: resolvedLabels,
@@ -661,7 +662,9 @@ export default function AnnotationPage() {
         ) // Only pick incorrect annotations
         .map(([idx, result]) => {
           const i = parseInt(idx);
-          const sample = annotationsForReview[i];
+          const sample = annotationsForReview[i]?.sampleContent as
+            | CsvRow
+            | undefined;
           // Create rule synthesis item
           return {
             sample_text: getSampleText(sample),
