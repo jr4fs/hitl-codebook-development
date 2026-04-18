@@ -22,6 +22,7 @@ import fs from "fs/promises";
 import path from "path";
 import dotenv from "dotenv";
 import axios from "axios";
+import { AnnotationItem } from "@common/types/annotations";
 dotenv.config();
 
 interface TaskValidation {
@@ -38,6 +39,8 @@ export interface AuthRequest extends Request {
 }
 
 const TASKS_COLLECTION = process.env.TASKS_COLLECTION_NAME || "TaskDetails";
+const ANNOTATION_COLLECTION =
+  process.env.ANNOTATION_COLLECTION_NAME || "AnnotationDetails";
 const ANONYMIZE_CONFIG_COLLECTION = "AnonymizeConfig";
 const CONFIG_DOC_ID = "global";
 
@@ -1072,6 +1075,111 @@ export async function checkValFileExists(req: AuthRequest, res: Response) {
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error",
+    });
+  }
+}
+
+async function deleteFileIfPresent(filePath: string): Promise<boolean> {
+  try {
+    await fs.unlink(filePath);
+    return true;
+  } catch (error: any) {
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export async function deleteTask(req: AuthRequest, res: Response) {
+  try {
+    const userID = req.user?.userId;
+    const { taskId } = req.params;
+
+    if (!userID) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - user not authenticated",
+      });
+    }
+
+    if (!taskId) {
+      return res.status(400).json({
+        success: false,
+        message: "Task ID is required",
+      });
+    }
+
+    if (!ObjectId.isValid(taskId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid task ID format",
+      });
+    }
+
+    const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
+    const annotationCollection = getCollection<AnnotationItem>(
+      ANNOTATION_COLLECTION,
+    );
+    const taskObjectId = new ObjectId(taskId);
+
+    const task = await taskDetailsCollection.findOne({
+      _id: taskObjectId as any,
+      userID,
+    });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Task not found or you don't have permission to delete it",
+      });
+    }
+
+    const candidateFilenames = new Set<string>();
+    if (task.file) candidateFilenames.add(task.file);
+    if (task.restFile) candidateFilenames.add(task.restFile);
+    if (task.valFile) candidateFilenames.add(task.valFile);
+
+    const candidatePaths = new Set<string>();
+    for (const filename of candidateFilenames) {
+      candidatePaths.add(fileExists(filename).path);
+      candidatePaths.add(restFileExists(filename).path);
+      candidatePaths.add(valFileExists(filename).path);
+      candidatePaths.add(guideFileExists(filename).path);
+    }
+
+    const deletedFiles: string[] = [];
+    for (const filePath of candidatePaths) {
+      const deleted = await deleteFileIfPresent(filePath);
+      if (deleted) {
+        deletedFiles.push(filePath);
+      }
+    }
+
+    const [annotationDeleteResult, taskDeleteResult] = await Promise.all([
+      annotationCollection.deleteMany({ taskId, createdBy: userID }),
+      taskDetailsCollection.deleteOne({ _id: taskObjectId as any, userID }),
+    ]);
+
+    if (taskDeleteResult.deletedCount === 0) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete task record",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Task deleted successfully",
+      deletedTaskId: taskId,
+      deletedFilesCount: deletedFiles.length,
+      deletedAnnotationsCount: annotationDeleteResult.deletedCount,
+    });
+  } catch (error: any) {
+    console.error("Error deleting task:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete task",
     });
   }
 }

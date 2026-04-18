@@ -9,6 +9,7 @@ import {
   saveTaskCodebook,
   exportCodebookSnapshot,
   uploadTaskBundle,
+  deleteTask,
 } from "../services/tasks.service";
 import { uploadCSV, uploadBundle } from "../utils/fileUpload";
 import { authenticateToken } from "../middleware/auth.middleware";
@@ -59,6 +60,9 @@ router.get("/getTasks", getUserTasks);
 
 // Get a single task's details
 router.get("/getTask/:taskId", getTaskByID);
+
+// Delete a task and associated artifacts
+router.delete("/delete/:taskId", deleteTask);
 
 // Get CSV file when reloading a task
 router.get("/csv/:fileName", getCsvData);

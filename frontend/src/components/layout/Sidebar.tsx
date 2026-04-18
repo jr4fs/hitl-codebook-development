@@ -35,9 +35,12 @@ import {
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router";
 import { getUserTasks } from "../../services/tasks.service";
+import { deleteTaskById } from "../../services/tasks.service";
 import { IRootState } from "../../store/store";
 import { Task } from "@common/types/tasks";
 import { clearUser } from "../../store/userSlice";
+import { toast } from "../../lib/toast";
+import ConfirmActionModal from "../common/ConfirmActionModal";
 
 //Props to handle navbar collapsed/expanded state
 interface SideBarProps {
@@ -63,12 +66,10 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
     dispatch(clearUser());
     navigate("/login");
   };
-  const handleDeleteTask = (task: Task) => {
-    // TODO: wire to delete endpoint when available.
-    console.warn("Delete task not implemented yet:", task._id);
-  };
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskPendingDelete, setTaskPendingDelete] = useState<Task | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>();
   const [sectionsOpen, setSectionsOpen] = useState({
@@ -198,6 +199,33 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
     }
   }, [accessToken]);
 
+  const handleDeleteTask = useCallback(async () => {
+    const task = taskPendingDelete;
+    if (!task?._id) return;
+
+    setDeleteLoading(true);
+    try {
+      await deleteTaskById(task._id);
+      toast.success(`Deleted "${task.name}"`);
+      setTaskPendingDelete(null);
+      await fetchTasks();
+
+      const currentPath = window.location.pathname;
+      const isOnDeletedTaskPath =
+        currentPath.endsWith(`/codebook-creation/${task._id}`) ||
+        currentPath.endsWith(`/annotate-dataset/${task._id}`);
+      if (isOnDeletedTaskPath) {
+        navigate("/");
+      }
+      window.dispatchEvent(new Event("tasks:updated"));
+    } catch (error: any) {
+      console.error("Failed to delete task:", error);
+      toast.error(error?.response?.data?.message || "Failed to delete task");
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [taskPendingDelete, fetchTasks, navigate]);
+
   // Fetch user tasks, updates with every access token refresh
   useEffect(() => {
     fetchTasks();
@@ -285,7 +313,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleDeleteTask(task);
+                  setTaskPendingDelete(task);
                 }}
               >
                 Delete
@@ -646,6 +674,19 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
+        <ConfirmActionModal
+          opened={Boolean(taskPendingDelete)}
+          title="Delete Task"
+          message={`Delete "${taskPendingDelete?.name ?? "this task"}"? This permanently removes associated files and annotations.`}
+          confirmLabel="Delete"
+          onConfirm={handleDeleteTask}
+          onCancel={() => {
+            if (!deleteLoading) {
+              setTaskPendingDelete(null);
+            }
+          }}
+          loading={deleteLoading}
+        />
       </Stack>
     );
   }
