@@ -17,6 +17,11 @@
   color: var(--app-sidebar-text);
 }
 
+.sidebar-button-active {
+  background-color: var(--app-sidebar-button-hover);
+  border: 1px solid rgba(124, 231, 225, 0.45);
+}
+
 .sidebar-task-row-wrap {
   position: relative;
 }
@@ -83,6 +88,11 @@
   background-color: var(--app-sidebar-button-hover);
 }
 
+.sidebar-task-row-active {
+  background-color: var(--app-sidebar-button-hover);
+  border: 1px solid rgba(124, 231, 225, 0.45);
+}
+
 .sidebar-task-title {
   width: 100%;
   display: block;
@@ -141,6 +151,11 @@
 .sidebar-button-collapsed:hover {
   background-color: rgba(124, 231, 225, 0.12);
   border-color: rgba(124, 231, 225, 0.12);
+}
+
+.sidebar-button-collapsed-active {
+  background-color: rgba(124, 231, 225, 0.16);
+  border: 1px solid rgba(124, 231, 225, 0.4);
 }
 
 .sidebar-home-button {

@@ -42,6 +42,7 @@ const options = [
     requirements: [
       "Codebook file",
       "Unlabeled dataset to annotate",
+      "Task definition file",
       "Label definitions file",
     ],
     icon: IconFileText,
