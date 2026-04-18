@@ -215,7 +215,7 @@ export default function DatasetUploadPage() {
       }
 
       window.dispatchEvent(new Event("tasks:updated"));
-      navigate(`/auto-annotate/${response.taskId}`, {
+      navigate(`/codebook-creation/${response.taskId}`, {
         state: {
           task: response.task,
           fileName: response.fileName,

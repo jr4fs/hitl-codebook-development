@@ -17,6 +17,67 @@
   color: var(--app-sidebar-text);
 }
 
+.sidebar-task-row-wrap {
+  position: relative;
+}
+
+.sidebar-task-row {
+  background-color: transparent;
+  border: 0;
+  color: var(--app-sidebar-text);
+  transition: background-color 0.12s ease;
+}
+
+.sidebar-task-row:hover,
+.sidebar-task-row-wrap:focus-within .sidebar-task-row {
+  background-color: var(--app-sidebar-button-hover);
+}
+
+.sidebar-task-title {
+  width: 100%;
+  display: block;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 28px;
+}
+
+.sidebar-task-menu-trigger {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  bottom: 4px;
+  width: 30px;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  z-index: 2;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  opacity: 0;
+  color: var(--app-sidebar-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    opacity 0.12s ease,
+    background-color 0.12s ease;
+}
+
+.sidebar-task-row-wrap:hover .sidebar-task-menu-trigger,
+.sidebar-task-row-wrap:focus-within .sidebar-task-menu-trigger {
+  opacity: 1;
+}
+
+.sidebar-task-menu-trigger:hover,
+.sidebar-task-menu-trigger:focus-visible {
+  background-color: var(--app-sidebar-button-hover);
+}
+
 .sidebar-button-collapsed {
   background-color: transparent;
   color: var(--app-sidebar-text);
@@ -38,8 +99,16 @@
 
 .sidebar-home-logo {
   transition:
-    transform 0.2s ease;
+    transform 0.2s ease,
+    opacity 0.2s ease;
   display: block;
+}
+
+.sidebar-home-logo-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar-home-logo-collapsed {
@@ -52,9 +121,32 @@
   height: 30px;
 }
 
+.sidebar-home-expand-icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
 .sidebar-home-button:hover .sidebar-home-logo,
 .sidebar-home-button:focus-visible .sidebar-home-logo {
   transform: translateY(-2px) scale(1.05);
+}
+
+.sidebar-home-button.sidebar-button-collapsed:hover .sidebar-home-logo,
+.sidebar-home-button.sidebar-button-collapsed:focus-visible .sidebar-home-logo {
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.sidebar-home-button.sidebar-button-collapsed:hover .sidebar-home-expand-icon,
+.sidebar-home-button.sidebar-button-collapsed:focus-visible .sidebar-home-expand-icon {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .sidebar-menu-dropdown {
@@ -71,9 +163,18 @@
 }
 
 .sidebar-user-button {
-  overflow: visible;
+  overflow: hidden;
+  margin-top: auto;
 }
 
 .sidebar-user-icon {
   display: block;
+}
+
+.sidebar-user-name {
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

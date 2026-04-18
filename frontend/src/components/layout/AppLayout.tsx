@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import { ActionIcon, AppShell, useMantineColorScheme } from "@mantine/core";
-import { IconMoon, IconSun } from "@tabler/icons-react";
+import { AppShell } from "@mantine/core";
 import { SideBar } from "./Sidebar";
 
 export const AppLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   return (
     <AppShell
@@ -27,27 +25,6 @@ export const AppLayout = () => {
         />
       </AppShell.Navbar>
       <AppShell.Main style={{ minHeight: "100dvh", position: "relative" }}>
-        <ActionIcon
-          variant="outline"
-          radius="xl"
-          size="xl"
-          onClick={() =>
-            setColorScheme(colorScheme === "dark" ? "light" : "dark")
-          }
-          style={{
-            position: "fixed",
-            bottom: 16,
-            right: 16,
-            zIndex: 2000,
-          }}
-          title="Toggle color scheme"
-        >
-          {colorScheme === "dark" ? (
-            <IconSun size={22} />
-          ) : (
-            <IconMoon size={22} />
-          )}
-        </ActionIcon>
         <Outlet />
       </AppShell.Main>
     </AppShell>
