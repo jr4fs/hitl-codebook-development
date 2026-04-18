@@ -160,12 +160,49 @@ export default function AnnotationPage() {
     Record<number, { startedAt: number; codebook: string[] }>
   >({});
   const skipInferenceRef = useRef(false);
+  const resumeInitializedRef = useRef(false);
 
   const resetAISuggestion = () => {
     setGeneratedLabels(["Generating suggestion..."]);
     setGeneratedSpanText("Generating span text...");
     setGeneratedReasoning("Generating reasoning...");
   };
+
+  const isFeedbackComplete = (ai?: AIAssisted | null) => {
+    if (!ai) return false;
+    if (ai.isCorrect === null) return false;
+    if (ai.spanFeedback === null || ai.reasoningFeedback === null) return false;
+    if (ai.isCorrect === false) {
+      return Boolean(ai.correctLabel && ai.feedback?.trim());
+    }
+    return true;
+  };
+
+  const normalizeAI = (ai: Partial<AIAssisted> | null | undefined): AIAssisted => ({
+    taskID: ai?.taskID ?? task?._id ?? null,
+    batchID: ai?.batchID ?? null,
+    batchNum: ai?.batchNum ?? null,
+    label: Array.isArray(ai?.label) ? ai.label : [],
+    reason: ai?.reason ?? "",
+    span_text: ai?.span_text ?? "",
+    isCorrect: ai?.isCorrect ?? null,
+    feedback: ai?.feedback ?? "",
+    spanFeedback: ai?.spanFeedback ?? null,
+    reasoningFeedback: ai?.reasoningFeedback ?? null,
+    correctLabel: ai?.correctLabel ?? null,
+    predictionRaw: ai?.predictionRaw ?? null,
+    timeToCompleteMs: ai?.timeToCompleteMs ?? null,
+    codebookSnapshot: Array.isArray(ai?.codebookSnapshot)
+      ? ai.codebookSnapshot
+      : [],
+    guidelinesAdded: Array.isArray(ai?.guidelinesAdded) ? ai.guidelinesAdded : [],
+    guidelinesDeprecated: Array.isArray(ai?.guidelinesDeprecated)
+      ? ai.guidelinesDeprecated
+      : [],
+    guidelinesRevised: Array.isArray(ai?.guidelinesRevised)
+      ? ai.guidelinesRevised
+      : [],
+  });
 
   // useEffect(() => {
   //   if (annotations && annotations.length > 0) {
@@ -204,10 +241,44 @@ export default function AnnotationPage() {
     setLocalGuideAnnotations(guideAnnotations || []);
   }, [guideAnnotations]);
 
+  useEffect(() => {
+    resumeInitializedRef.current = false;
+    setCurrentIndex(0);
+  }, [task?._id]);
+
   const annotationsForReview =
     localGuideAnnotations && localGuideAnnotations.length > 0
       ? localGuideAnnotations
       : [];
+
+  useEffect(() => {
+    if (resumeInitializedRef.current || annotationsForReview.length === 0) return;
+
+    let lastWithInferenceIndex = -1;
+    for (let i = 0; i < annotationsForReview.length; i += 1) {
+      if (annotationsForReview[i]?.aiAnnotation) {
+        lastWithInferenceIndex = i;
+      }
+    }
+
+    if (lastWithInferenceIndex === -1) {
+      setCurrentIndex(0);
+      resumeInitializedRef.current = true;
+      return;
+    }
+
+    const lastAi = normalizeAI(
+      annotationsForReview[lastWithInferenceIndex]?.aiAnnotation as
+        | Partial<AIAssisted>
+        | null
+        | undefined,
+    );
+    const nextIndex = isFeedbackComplete(lastAi)
+      ? Math.min(lastWithInferenceIndex + 1, annotationsForReview.length - 1)
+      : lastWithInferenceIndex;
+    setCurrentIndex(nextIndex);
+    resumeInitializedRef.current = true;
+  }, [annotationsForReview]);
 
   // Persist the 10/90 split in localStorage so a page refresh restores the same
   // partition. Keyed by taskId to avoid cross-task collisions.
@@ -306,6 +377,27 @@ export default function AnnotationPage() {
 
   const getCodebookSnapshot = () => [...codebook, ...stagedRules];
 
+  const hasFeedbackChanged = (
+    existing: AIAssisted | null,
+    next: AIAssisted,
+    existingLabels: string[],
+    nextLabels: string[],
+  ) => {
+    if (!existing) return true;
+    if (existing.isCorrect !== next.isCorrect) return true;
+    if ((existing.feedback || "").trim() !== (next.feedback || "").trim())
+      return true;
+    if ((existing.correctLabel || null) !== (next.correctLabel || null))
+      return true;
+    if ((existing.spanFeedback ?? null) !== (next.spanFeedback ?? null))
+      return true;
+    if ((existing.reasoningFeedback ?? null) !== (next.reasoningFeedback ?? null))
+      return true;
+    if (JSON.stringify(existingLabels || []) !== JSON.stringify(nextLabels || []))
+      return true;
+    return false;
+  };
+
   const toSafeFilename = (value: string) =>
     value
       .trim()
@@ -376,7 +468,7 @@ export default function AnnotationPage() {
   };
 
   const handleClickAnnotation = async (): Promise<boolean> => {
-    if (!currentSample) return false;
+    if (!currentSample || !currentAnnotation || !task?._id) return false;
     const finalText = getSampleText(currentSample);
     if (!finalText) {
       console.warn("No text available for inference.");
@@ -397,32 +489,32 @@ export default function AnnotationPage() {
       const response: InferenceResponse = await inference(payload);
       if (response) {
         console.log("Annotation Response: ", response);
+        const aiResult: AIAssisted = {
+          taskID: task?._id ?? null,
+          batchID: currentBatchUUID,
+          batchNum: currentBatchIndex + 1,
+          label: response.label,
+          reason: response.reason,
+          span_text: response.span_text,
+          isCorrect: null,
+          feedback: "",
+          spanFeedback: null,
+          reasoningFeedback: null,
+          correctLabel: null,
+          predictionRaw: response.raw_response ?? null,
+          timeToCompleteMs: null,
+          codebookSnapshot: [],
+          guidelinesAdded: [],
+          guidelinesDeprecated: [],
+          guidelinesRevised: [],
+        };
         sampleStartsRef.current[currentIndex] = {
           startedAt: Date.now(),
           codebook: getCodebookSnapshot(),
         };
         setBatchResults((sample: Record<number, AIAssisted>) => ({
           ...sample,
-          [currentIndex]: {
-            taskID: task?._id ?? null,
-            batchID: currentBatchUUID,
-            batchNum: currentBatchIndex + 1,
-            label: response.label,
-            reason: response.reason,
-            span_text: response.span_text,
-            isCorrect: sample[currentIndex]?.isCorrect ?? null,
-            feedback: sample[currentIndex]?.feedback ?? "",
-            spanFeedback: spanTextFeedback ?? null,
-            reasoningFeedback: reasoningFeedback ?? null,
-            correctLabel: sample[currentIndex]?.correctLabel ?? null,
-            predictionRaw: response.raw_response ?? null,
-            timeToCompleteMs: sample[currentIndex]?.timeToCompleteMs ?? null,
-            codebookSnapshot: sample[currentIndex]?.codebookSnapshot ?? [],
-            guidelinesAdded: sample[currentIndex]?.guidelinesAdded ?? [],
-            guidelinesDeprecated:
-              sample[currentIndex]?.guidelinesDeprecated ?? [],
-            guidelinesRevised: sample[currentIndex]?.guidelinesRevised ?? [],
-          },
+          [currentIndex]: aiResult,
         }));
         setGeneratedLabels(response.label);
         setGeneratedSpanText(response.span_text);
@@ -432,6 +524,24 @@ export default function AnnotationPage() {
           const userPrompt = response.user_prompt || "";
           setLastPromptUsed(`${systemPrompt}\n\n${userPrompt}`.trim());
         }
+        await updateGuideAnnotation({
+          taskId: task._id,
+          sampleId: currentAnnotation.sampleId,
+          sampleContent: currentSample as Record<string, string>,
+          source: "guide",
+          labels: currentAnnotation.labels || [],
+          aiAnnotation: aiResult,
+        });
+        setLocalGuideAnnotations((prev) =>
+          prev.map((annotation) =>
+            annotation.sampleId === currentAnnotation.sampleId
+              ? {
+                  ...annotation,
+                  aiAnnotation: aiResult,
+                }
+              : annotation,
+          ),
+        );
         return true;
       }
       toast.error("Something went wrong, please try again");
@@ -457,6 +567,36 @@ export default function AnnotationPage() {
       skipInferenceRef.current = false;
       return;
     }
+    const existingAi = normalizeAI(
+      annotationsForReview[currentIndex]?.aiAnnotation as
+        | Partial<AIAssisted>
+        | null
+        | undefined,
+    );
+    if (annotationsForReview[currentIndex]?.aiAnnotation) {
+      setGeneratedLabels(
+        existingAi.label.length > 0
+          ? existingAi.label
+          : ["Click next to generate this content"],
+      );
+      setGeneratedSpanText(existingAi.span_text || "Click next to generate this content");
+      setGeneratedReasoning(existingAi.reason || "Click next to generate this content");
+      setSpanTextFeedback(existingAi.spanFeedback ?? undefined);
+      setReasoningFeedback(existingAi.reasoningFeedback ?? undefined);
+      setBatchResults((prev) => ({
+        ...prev,
+        [currentIndex]: {
+          ...existingAi,
+          batchNum: existingAi.batchNum ?? currentBatchIndex + 1,
+        },
+      }));
+      sampleStartsRef.current[currentIndex] = {
+        startedAt: Date.now(),
+        codebook: getCodebookSnapshot(),
+      };
+      return;
+    }
+
     resetAISuggestion();
     setSpanTextFeedback(undefined);
     setReasoningFeedback(undefined);
@@ -468,7 +608,7 @@ export default function AnnotationPage() {
       }
     };
     runInference();
-  }, [currentIndex, annotationsForReview.length]);
+  }, [currentIndex, annotationsForReview, currentBatchIndex]);
 
   useEffect(() => {
     const hideIntro = localStorage.getItem("hideStep5Intro") === "true";
@@ -601,6 +741,7 @@ export default function AnnotationPage() {
   const isLastBatch =
     currentBatchIndex === totalBatches - 1 &&
     currentBatchProgress === actualBatchSize;
+  const currentBatchStartIndex = currentBatchIndex * batchSize;
 
   const addRule = () => {
     if (newRule.trim()) {
@@ -641,25 +782,38 @@ export default function AnnotationPage() {
           ...prev,
           [currentIndex]: enrichedAIResult,
         }));
-        await updateGuideAnnotation({
-          taskId: task._id,
-          sampleId: currentAnnotation.sampleId,
-          sampleContent: currentSample as Record<string, string>,
-          source: "guide",
-          labels: resolvedLabels,
-          aiAnnotation: enrichedAIResult,
-        });
-        setLocalGuideAnnotations((prev) =>
-          prev.map((annotation) =>
-            annotation.sampleId === currentAnnotation.sampleId
-              ? {
-                  ...annotation,
-                  labels: resolvedLabels,
-                  aiAnnotation: enrichedAIResult,
-                }
-              : annotation,
-          ),
+
+        const existingAi = currentAnnotation.aiAnnotation
+          ? normalizeAI(currentAnnotation.aiAnnotation as Partial<AIAssisted>)
+          : null;
+        const shouldUpdateGuide = hasFeedbackChanged(
+          existingAi,
+          enrichedAIResult,
+          currentAnnotation.labels || [],
+          resolvedLabels,
         );
+
+        if (shouldUpdateGuide) {
+          await updateGuideAnnotation({
+            taskId: task._id,
+            sampleId: currentAnnotation.sampleId,
+            sampleContent: currentSample as Record<string, string>,
+            source: "guide",
+            labels: resolvedLabels,
+            aiAnnotation: enrichedAIResult,
+          });
+          setLocalGuideAnnotations((prev) =>
+            prev.map((annotation) =>
+              annotation.sampleId === currentAnnotation.sampleId
+                ? {
+                    ...annotation,
+                    labels: resolvedLabels,
+                    aiAnnotation: enrichedAIResult,
+                  }
+                : annotation,
+            ),
+          );
+        }
       }
     } catch (error) {
       console.error("Failed to update guide annotation:", error);
@@ -1270,6 +1424,7 @@ export default function AnnotationPage() {
                         placeholder="Why was the AI wrong? (This will help the rule synthesizer)"
                         variant="filled"
                         size="sm"
+                        value={batchResults[currentIndex]?.feedback ?? ""}
                         required
                         styles={{
                           input: {
@@ -1297,8 +1452,12 @@ export default function AnnotationPage() {
                       variant="subtle"
                       color="gray"
                       leftSection={<IconArrowLeft size={16} />}
-                      disabled={currentIndex === 0 || isLoading}
-                      onClick={() => setCurrentIndex((prev) => prev - 1)}
+                      disabled={currentIndex <= currentBatchStartIndex || isLoading}
+                      onClick={() =>
+                        setCurrentIndex((prev) =>
+                          Math.max(prev - 1, currentBatchStartIndex),
+                        )
+                      }
                     >
                       Previous
                     </Button>
