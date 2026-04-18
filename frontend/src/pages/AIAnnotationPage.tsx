@@ -40,6 +40,7 @@ import {
   IconPlus,
   IconTrash,
   IconEdit,
+  IconDownload,
   IconInfoCircle,
   IconThumbUp,
   IconThumbDown,
@@ -110,7 +111,6 @@ export default function AnnotationPage() {
   const [introOpen, setIntroOpen] = useState(false);
   const [introDontShow, setIntroDontShow] = useState(false);
   const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
-  const [isSavingCodebook, setIsSavingCodebook] = useState(false);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [reviewComplete, setReviewComplete] = useState(false);
   const [metricsFiles, setMetricsFiles] = useState<{
@@ -424,7 +424,7 @@ export default function AnnotationPage() {
     if (!task?.name) return;
     const name = toSafeFilename(task.name) || "task";
     const filename = `${name}_codebook_and_prompt.txt`;
-    const codebookText = getCodebookSnapshot()
+    const codebookText = codebook
       .map((rule) => `- ${rule}`)
       .join("\n");
     const content = [
@@ -959,24 +959,6 @@ export default function AnnotationPage() {
   //   }
   // };
 
-  const handleSaveCodebook = async () => {
-    if (!task?._id || isSavingCodebook) return;
-    setIsSavingCodebook(true);
-    try {
-      const response = await saveTaskCodebook(task._id, codebook);
-
-      if (response.success) {
-        toast.success("Codebook saved");
-      } else {
-        toast.error(response.message || "Failed to save codebook");
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to save codebook");
-    } finally {
-      setIsSavingCodebook(false);
-    }
-  };
-
   return (
     <Box
       mih="100vh"
@@ -1482,6 +1464,16 @@ export default function AnnotationPage() {
                         let committedCodebook: string[] = [];
                         if (currentBatchProgress === actualBatchSize) {
                           committedCodebook = await handleCommitBatch();
+                          if (task?._id) {
+                            try {
+                              await saveTaskCodebook(task._id, committedCodebook);
+                            } catch (error: any) {
+                              toast.error(
+                                error?.message ||
+                                  "Failed to auto-save codebook after batch commit",
+                              );
+                            }
+                          }
                         }
                         await handleNextClick();
                         if (shouldGenerateMetrics && task?._id) {
@@ -1501,7 +1493,7 @@ export default function AnnotationPage() {
                               task._id,
                               committedCodebook.length > 0
                                 ? committedCodebook
-                                : getCodebookSnapshot(),
+                                : codebook,
                               lastPromptUsed,
                             );
                           } catch (error: any) {
@@ -1542,24 +1534,12 @@ export default function AnnotationPage() {
                     color="blue"
                     size="xs"
                     radius="xl"
-                    onClick={handleSaveCodebook}
-                    loading={isSavingCodebook}
+                    onClick={handleExportCodebook}
+                    leftSection={<IconDownload size={14} />}
                     disabled={codebook.length === 0}
                   >
-                    Save Codebook
+                    Export Codebook
                   </Button>
-                  {reviewComplete && (
-                    <Button
-                      variant="outline"
-                      color="blue"
-                      size="xs"
-                      radius="xl"
-                      onClick={handleExportCodebook}
-                      disabled={!lastPromptUsed}
-                    >
-                      Export Codebook
-                    </Button>
-                  )}
                   <Tooltip label="These rules guide the AI for future batches">
                     <IconInfoCircle size={18} color="gray" />
                   </Tooltip>
