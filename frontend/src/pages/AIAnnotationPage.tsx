@@ -11,6 +11,7 @@ import {
   Loader,
   Center,
   Box,
+  Container,
   Grid,
   Divider,
   Badge,
@@ -61,6 +62,7 @@ import {
 import { toast } from "../lib/toast";
 import { v4 as uuidv4 } from "uuid";
 import { getTaskById } from "../services/tasks.service";
+import styles from "./AIAnnotationPage.module.css";
 
 interface CsvRow {
   [key: string]: string;
@@ -112,7 +114,6 @@ export default function AnnotationPage() {
   const [introDontShow, setIntroDontShow] = useState(false);
   const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
-  const [reviewComplete, setReviewComplete] = useState(false);
   const [metricsFiles, setMetricsFiles] = useState<{
     sample?: string;
     metadata?: string;
@@ -960,12 +961,23 @@ export default function AnnotationPage() {
   // };
 
   return (
-    <Box
-      mih="100vh"
-      bg={isLight ? "#f7fafb" : "var(--app-bg)"}
-      c={isLight ? "#0f1418" : "var(--app-text)"}
-    >
-      <Stack mih="100vh" gap="md" p="xl">
+    <Box className={styles.page} style={{ minHeight: "100dvh", overflowX: "hidden", overflowY: "auto" }}>
+      <div className={styles.orbOne} />
+      <Container fluid className={styles.hero}>
+        <StepTrackerBanner
+          currentStep={2}
+          activeSteps={[2]}
+          onHelp={handleHelp}
+        />
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <Title className={styles.title}>AI Assisted Annotation</Title>
+        </Group>
+        <Text className={styles.subtitle}>
+          Review model suggestions, provide feedback, and evolve the live codebook before finalizing your task.
+        </Text>
+      </Container>
+
+      <Container fluid className={styles.tableSection} style={{ height: "auto", overflow: "visible" }}>
         <Modal
           opened={metricsModalOpen}
           onClose={() => setMetricsModalOpen(false)}
@@ -1069,19 +1081,15 @@ export default function AnnotationPage() {
             </Group>
           </Stack>
         </Modal>
-        <StepTrackerBanner
-          currentStep={2}
-          activeSteps={[2]}
-          onHelp={handleHelp}
-        />
-        <Grid gutter={0} style={{ flex: 1, minHeight: 0 }}>
+        <Grid gutter="md" align="stretch" className={styles.annotationGrid}>
           {/* Main Annotation Area */}
           <Grid.Col
-            span={8}
+            span={{ base: 12, md: 8 }}
             h="100%"
-            style={{ borderRight: `1px solid ${borderColor}` }}
+            className={styles.mainColumn}
           >
-            <Stack h="100%" p="xl" gap="md">
+            <Paper className={styles.dropCard} radius="lg" h="100%">
+              <Stack h="100%" p="md" gap="md">
               {/* Header / Batch Ribbon */}
               <Group justify="space-between">
                 <Group gap="sm">
@@ -1503,7 +1511,6 @@ export default function AnnotationPage() {
                                 "Failed to export codebook on server",
                             );
                           }
-                          setReviewComplete(true);
                           setMetricsModalOpen(true);
                         }
                       }}
@@ -1515,12 +1522,14 @@ export default function AnnotationPage() {
                   </Group>
                 </Stack>
               </Paper>
-            </Stack>
+              </Stack>
+            </Paper>
           </Grid.Col>
 
           {/* Sidebar: Live Codebook */}
-          <Grid.Col span={4} h="100%" bg={panelBg}>
-            <Stack h="100%" p="xl" gap="md">
+          <Grid.Col span={{ base: 12, md: 4 }} h="100%">
+            <Paper className={styles.dropCard} radius="lg" h="100%" bg={panelBg}>
+              <Stack h="100%" p="md" gap="md">
               <Group justify="space-between">
                 <Group gap="xs">
                   <IconBook color="var(--app-text)" />
@@ -1681,10 +1690,11 @@ export default function AnnotationPage() {
                   </ActionIcon>
                 </Group>
               </Stack>
-            </Stack>
+              </Stack>
+            </Paper>
           </Grid.Col>
         </Grid>
-      </Stack>
+      </Container>
     </Box>
   );
 }
