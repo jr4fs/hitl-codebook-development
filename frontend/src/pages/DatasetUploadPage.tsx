@@ -1,18 +1,14 @@
 import {
-  ActionIcon,
   Alert,
   Badge,
   Box,
   Button,
-  Checkbox,
   Container,
   Divider,
   Grid,
   Group,
-  Modal,
   NumberInput,
   Paper,
-  Popover,
   Select,
   Stack,
   Switch,
@@ -21,165 +17,152 @@ import {
   Title,
   useMantineColorScheme,
 } from "@mantine/core";
-import {
-  IconAlertCircle,
-  IconArrowRight,
-  IconBraces,
-  IconFileTypeCsv,
-  IconHelpCircle,
-  IconUpload,
-} from "@tabler/icons-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {IconAlertCircle, IconArrowRight, IconBraces, IconFileTypeCsv, IconUpload,} from "@tabler/icons-react";
+import {type ReactNode, useCallback, useEffect, useState} from "react";
+import {useNavigate} from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
-import { uploadTaskBundle } from "../services/tasks.service";
-import { toast } from "../lib/toast";
+import GuidedTour, {GuidedTourStep} from "../components/common/GuidedTour";
+import PageIntro from "../components/common/PageIntro";
+import {shouldShowPageIntro} from "../components/common/pageIntroStorage";
+import {toast} from "../lib/toast";
+import {uploadTaskBundle} from "../services/tasks.service";
+import {downloadContent} from "../utils/downloadContent";
 import styles from "./DatasetUploadPage.module.css";
+
+interface UploadConfig {
+  selectedModel: string | null;
+  textColumn: string;
+  labelColumn: string;
+  coverageSampleSize: number | "";
+  useRepresentativeSampling: boolean;
+}
+
+const defaultUploadConfig: UploadConfig = {
+  selectedModel: "mistral:7b",
+  textColumn: "translated_text",
+  labelColumn: "Final Label",
+  coverageSampleSize: 150,
+  useRepresentativeSampling: false,
+};
+
+interface RequiredFileCardProps {
+  inputId: string;
+  accept: string;
+  icon: ReactNode;
+  label: string;
+  selectLabel: string;
+  hint: string;
+  file: File | null;
+  onFileChange: (file: File | null) => void;
+  templateAction?: {
+    label: string;
+    onClick: () => void;
+  };
+}
+
+function RequiredFileCard({
+                            inputId,
+                            accept,
+                            icon,
+                            label,
+                            selectLabel,
+                            hint,
+                            file,
+                            onFileChange,
+                            templateAction,
+                          }: RequiredFileCardProps) {
+  return (
+    <div className={styles.fileRow}>
+      <input
+        id={inputId}
+        className={styles.fileInput}
+        type="file"
+        accept={accept}
+        onChange={(event) => onFileChange(event.currentTarget.files?.[0] || null)}
+      />
+      <Group justify="space-between" w="100%" wrap="nowrap">
+        <Group gap={8} wrap="nowrap">
+          {icon}
+          <Text fw={600} className={styles.fileLabel}>
+            {label}
+          </Text>
+        </Group>
+        <label htmlFor={inputId} className={styles.fileButton}>
+          <IconUpload size={14}/>
+          {selectLabel}
+        </label>
+      </Group>
+      <Text size="xs" className={styles.fileHint}>
+        {hint}
+      </Text>
+      {templateAction ? (
+        <Group className={styles.fileMetaRow} wrap="nowrap">
+          <Text
+            size="xs"
+            className={`${styles.fileName} ${file ? styles.fileNameSelected : styles.fileNameMissing}`}
+          >
+            {file ? file.name : "No file selected"}
+          </Text>
+          <Button
+            size="compact-xs"
+            variant="light"
+            className={styles.fileTemplateButton}
+            onClick={templateAction.onClick}
+          >
+            {templateAction.label}
+          </Button>
+        </Group>
+      ) : (
+        <Text
+          size="xs"
+          className={`${styles.fileName} ${file ? styles.fileNameSelected : styles.fileNameMissing}`}
+        >
+          {file ? file.name : "No file selected"}
+        </Text>
+      )}
+    </div>
+  );
+}
 
 export default function DatasetUploadPage() {
   const navigate = useNavigate();
-  const { colorScheme } = useMantineColorScheme();
+  const {colorScheme} = useMantineColorScheme();
   const isLight = colorScheme === "light";
+
   const [dValFile, setDValFile] = useState<File | null>(null);
   const [dAllFile, setDAllFile] = useState<File | null>(null);
   const [taskJsonFile, setTaskJsonFile] = useState<File | null>(null);
   const [labelsJsonFile, setLabelsJsonFile] = useState<File | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string | null>(
-    "mistral:7b",
-  );
-  const [textColumn, setTextColumn] = useState("translated_text");
-  const [labelColumn, setLabelColumn] = useState("Final Label");
-  const [coverageSampleSize, setCoverageSampleSize] = useState<number | "">(
-    150,
-  );
-  const [useRepresentativeSampling, setUseRepresentativeSampling] =
-    useState(false);
+  const [config, setConfig] = useState<UploadConfig>(defaultUploadConfig);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const [introOpen, setIntroOpen] = useState(false);
-  const [introDontShow, setIntroDontShow] = useState(false);
-  const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
+  const [introMode, setIntroMode] = useState<"firstRun" | "help">("firstRun");
   const [tourOpen, setTourOpen] = useState(false);
-  const [tourStep, setTourStep] = useState(0);
 
-  const labeledRef = useRef<HTMLDivElement | null>(null);
-  const unlabeledRef = useRef<HTMLDivElement | null>(null);
-  const taskJsonRef = useRef<HTMLDivElement | null>(null);
-  const labelsJsonRef = useRef<HTMLDivElement | null>(null);
-  const submitRef = useRef<HTMLDivElement | null>(null);
-
-  const isReady = Boolean(
-    dValFile && dAllFile && taskJsonFile && labelsJsonFile,
-  );
+  const isReady = Boolean(dValFile && dAllFile && taskJsonFile && labelsJsonFile);
 
   useEffect(() => {
-    const hideIntro = localStorage.getItem("hideStep1Intro") === "true";
-    const hideTour = localStorage.getItem("hideStep1Tour") === "true";
-    if (!hideIntro) {
-      setIntroShowCheckbox(true);
+    if (shouldShowPageIntro("hideStep1Intro")) {
+      setIntroMode("firstRun");
       setIntroOpen(true);
-    } else if (!hideTour) {
-      setTourOpen(true);
     }
   }, []);
 
-  const handleCloseIntro = () => {
-    if (introShowCheckbox && introDontShow) {
-      localStorage.setItem("hideStep1Intro", "true");
-    }
-    setIntroOpen(false);
-  };
-
   const handleHelp = () => {
-    setIntroShowCheckbox(false);
+    setIntroMode("help");
     setIntroOpen(true);
   };
 
-  const startTour = () => {
-    setTourStep(0);
-    setTourOpen(true);
-  };
-
-  const endTour = (hideFuture: boolean) => {
-    if (hideFuture) {
-      localStorage.setItem("hideStep1Tour", "true");
-    }
-    setTourOpen(false);
-  };
-
-  const tourSteps = useMemo(
-    () => [
-      {
-        title: "Upload labeled data",
-        description:
-          'A subset of the dataset with labels. It should include "text" and "task_label" columns.',
-        ref: labeledRef,
-      },
-      {
-        title: "Upload unlabeled data",
-        description:
-          'The remaining dataset without labels. It should include a "text".',
-        ref: unlabeledRef,
-      },
-      {
-        title: "Task details",
-        description: "Provide the task name and description in JSON.",
-        ref: taskJsonRef,
-      },
-      {
-        title: "Labels JSON",
-        description:
-          "Provide the label list with name, description, keywords, and guidelines.",
-        ref: labelsJsonRef,
-      },
-      {
-        title: "Start the upload",
-        description: "When all files are selected, upload to continue.",
-        ref: submitRef,
-      },
-    ],
-    [],
-  );
-
-  useEffect(() => {
-    if (!tourOpen) return;
-    const currentStep = tourSteps[tourStep];
-    const target = currentStep?.ref?.current;
-    if (!target) return;
-
-    const rect = target.getBoundingClientRect();
-    const inView = rect.top >= 0 && rect.bottom <= window.innerHeight;
-    if (inView) return;
-
-    requestAnimationFrame(() => {
-      target.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-  }, [tourOpen, tourStep, tourSteps]);
-
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setDValFile(null);
     setDAllFile(null);
     setTaskJsonFile(null);
     setLabelsJsonFile(null);
-    setSelectedModel("mistral:7b");
-    setTextColumn("translated_text");
-    setLabelColumn("Final Label");
-    setCoverageSampleSize(150);
-    setUseRepresentativeSampling(false);
+    setConfig(defaultUploadConfig);
     setError(null);
-  };
-
-  const downloadTemplate = (filename: string, content: string) => {
-    const blob = new Blob([content], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  }, []);
 
   const taskTemplate = JSON.stringify(
     {
@@ -198,25 +181,19 @@ export default function DatasetUploadPage() {
           name: "positive",
           description: "INSERT DEFINITION",
           keywords: ["INSERT YOUR KEYWORDS"],
-          guidelines: [
-            "Any initial guidelines you have created for annotating this label",
-          ],
+          guidelines: ["Any initial guidelines you have created for annotating this label"],
         },
         {
           name: "negative",
           description: "INSERT DEFINITION",
           keywords: ["INSERT YOUR KEYWORDS"],
-          guidelines: [
-            "Any initial guidelines you have created for annotating this label",
-          ],
+          guidelines: ["Any initial guidelines you have created for annotating this label"],
         },
         {
           name: "neutral",
           description: "INSERT DEFINITION",
           keywords: ["INSERT YOUR KEYWORDS"],
-          guidelines: [
-            "Any initial guidelines you have created for annotating this label",
-          ],
+          guidelines: ["Any initial guidelines you have created for annotating this label"],
         },
       ],
     },
@@ -224,34 +201,16 @@ export default function DatasetUploadPage() {
     2,
   );
 
-  const introModalStyles = {
-    content: {
-      backgroundColor: isLight ? "#ffffff" : "rgba(20, 28, 34, 0.98)",
-      border: isLight
-        ? "1px solid rgba(15, 20, 24, 0.12)"
-        : "1px solid rgba(124, 231, 225, 0.25)",
-      boxShadow: isLight
-        ? "0 24px 60px rgba(0, 0, 0, 0.15)"
-        : "0 24px 60px rgba(0, 0, 0, 0.35)",
-      color: isLight ? "#0f1418" : "#e8eef1",
-    },
-    header: { backgroundColor: "transparent" },
-    title: { color: isLight ? "#0f1418" : "#e8eef1", fontWeight: 600 },
-    close: { color: isLight ? "#0f1418" : "#e8eef1" },
-  } as const;
+  const dividerColor = isLight ? "rgba(15, 20, 24, 0.12)" : "rgba(255, 255, 255, 0.08)";
 
-  const introOverlayColor = isLight ? "#f7fafb" : "#11171c";
-  const dividerColor = isLight
-    ? "rgba(15, 20, 24, 0.12)"
-    : "rgba(255, 255, 255, 0.08)";
-  const handleUpload = async () => {
+  const handleUpload = useCallback(async () => {
     if (
       !dValFile ||
       !dAllFile ||
       !taskJsonFile ||
       !labelsJsonFile ||
-      !labelColumn ||
-      !selectedModel
+      !config.labelColumn ||
+      !config.selectedModel
     ) {
       setError(
         "Please provide all four files and label column as well as preferred model before continuing.",
@@ -268,12 +227,14 @@ export default function DatasetUploadPage() {
         dAllFile,
         taskJsonFile,
         labelsJsonFile,
-        textColumn,
-        labelColumn,
-        modelName: selectedModel ?? "",
+        textColumn: config.textColumn,
+        labelColumn: config.labelColumn,
+        modelName: config.selectedModel ?? "",
         coverageN:
-          typeof coverageSampleSize === "number" ? coverageSampleSize : 150,
-        useRepresentativeSampling,
+          typeof config.coverageSampleSize === "number"
+            ? config.coverageSampleSize
+            : 150,
+        useRepresentativeSampling: config.useRepresentativeSampling,
       });
 
       if (!response.success || !response.taskId) {
@@ -287,6 +248,7 @@ export default function DatasetUploadPage() {
       } else {
         toast.success("Task created. Sampling is pending.");
       }
+
       window.dispatchEvent(new Event("tasks:updated"));
       navigate(`/auto-annotate/${response.taskId}`, {
         state: {
@@ -294,19 +256,27 @@ export default function DatasetUploadPage() {
           fileName: response.fileName,
         },
       });
-    } catch (err: any) {
-      setError(err?.message || "Failed to upload files.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "Failed to upload files.");
+      } else {
+        setError("Failed to upload files.");
+      }
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [
+    config,
+    dAllFile,
+    dValFile,
+    labelsJsonFile,
+    navigate,
+    taskJsonFile,
+  ]);
 
   return (
-    <Box
-      className={styles.page}
-      style={{ minHeight: "100dvh", overflowX: "hidden", overflowY: "auto" }}
-    >
-      <div className={styles.orbOne} />
+    <Box className={styles.page} style={{minHeight: "100dvh", overflowX: "hidden", overflowY: "auto"}}>
+      <div className={styles.orbOne}/>
       <Container fluid className={styles.hero}>
         <Badge className={styles.kicker} variant="light" color="gray">
           New Task Setup
@@ -315,593 +285,252 @@ export default function DatasetUploadPage() {
           <Title className={styles.title}>Upload Your Task Files</Title>
         </Group>
         <Text className={styles.subtitle}>
-          Upload your labeled examples, the remaining unlabeled data, and the
-          task definition files to get started.
+          Upload your labeled examples, the remaining unlabeled data, and the task definition files to get
+          started.
         </Text>
       </Container>
-      <Container
-        fluid
-        className={styles.tableSection}
-        style={{ height: "auto", overflow: "visible" }}
-      >
-        <StepTrackerBanner currentStep={1} onHelp={handleHelp} />
-        <Modal
+
+      <Container fluid className={styles.tableSection} style={{height: "auto", overflow: "visible"}}>
+        <StepTrackerBanner currentStep={1} onHelp={handleHelp}/>
+
+        <PageIntro
+          mode={introMode}
           opened={introOpen}
-          onClose={handleCloseIntro}
-          centered
+          onClose={() => setIntroOpen(false)}
           title="Step 1: Upload your task files"
-          overlayProps={{ blur: 2, opacity: 0.5, color: introOverlayColor }}
-          styles={introModalStyles}
-        >
-          <Stack gap="sm">
-            <Text>
-              Upload the labeled dataset, the unlabeled dataset, and the two
-              JSON files. We will validate and move you to AI review.
-            </Text>
-            {introShowCheckbox && (
-              <Checkbox
-                className={styles.introCheckbox}
-                label="Don't show again"
-                checked={introDontShow}
-                onChange={(event) =>
-                  setIntroDontShow(event.currentTarget.checked)
-                }
-              />
+          description="Upload the labeled dataset, the unlabeled dataset, and the two JSON files. We will validate and move you to AI review."
+          storageKey="hideStep1Intro"
+          onStart={() => setTourOpen(true)}
+        />
+
+        <GuidedTour open={tourOpen} onClose={() => setTourOpen(false)}>
+          <Stack gap="md">
+            <Grid gutter="md" align="stretch">
+              <Grid.Col span={{base: 12, md: 7}}>
+                <Paper className={styles.dropCard} radius="lg" h="100%">
+                  <Stack gap="sm">
+                    <Title order={4} className={styles.tableTitle}>
+                      Task config
+                    </Title>
+                    <Text size="sm" className={styles.tableMeta}>
+                      Configure model and dataset columns before upload.
+                    </Text>
+                    <Divider my={4} color={dividerColor}/>
+                    <NumberInput
+                      label="Coverage sample size"
+                      description="How many samples to include in the guide set. 150 by default."
+                      value={config.coverageSampleSize}
+                      min={1}
+                      onChange={(value) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          coverageSampleSize:
+                            typeof value === "number" ? value : "",
+                        }))
+                      }
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                        input: styles.configInput,
+                      }}
+                    />
+                    <Switch
+                      label="Enable representative sampling"
+                      description="Off by default for this pilot. When enabled, we run representative sampling before coverage."
+                      checked={config.useRepresentativeSampling}
+                      onChange={(event) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          useRepresentativeSampling: event.currentTarget.checked,
+                        }))
+                      }
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                      }}
+                    />
+                    <Select
+                      label="Model"
+                      description="Choose the model to use for AI annotation."
+                      placeholder="Select a model…"
+                      value={config.selectedModel}
+                      onChange={(value) =>
+                        setConfig((prev) => ({...prev, selectedModel: value}))
+                      }
+                      data={[
+                        {value: "gemma3:1b", label: "Gemma3-1B"},
+                        {value: "qwen3.5:2b", label: "Qwen3.5-2B"},
+                        {value: "mistral:7b", label: "Mistral-7B"},
+                        {value: "qwen:32b", label: "Qwen-32B"},
+                        {value: "llama3.3:70b", label: "Llama3.3-70B"},
+                      ]}
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                        input: styles.configInput,
+                        dropdown: styles.configDropdown,
+                      }}
+                    />
+                    <TextInput
+                      label="Text column name"
+                      description="The column in your CSV that contains the text to annotate."
+                      placeholder="e.g. text, translated_text, content…"
+                      value={config.textColumn}
+                      onChange={(event) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          textColumn: event.currentTarget.value,
+                        }))
+                      }
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                        input: styles.configInput,
+                      }}
+                    />
+                    <TextInput
+                      label="Label column name"
+                      description="The column in your CSV that contains the human-annotated labels."
+                      placeholder="e.g. annotations, final label, labels"
+                      value={config.labelColumn}
+                      onChange={(event) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          labelColumn: event.currentTarget.value,
+                        }))
+                      }
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                        input: styles.configInput,
+                      }}
+                    />
+                  </Stack>
+                </Paper>
+              </Grid.Col>
+              <Grid.Col span={{base: 12, md: 5}}>
+                <Paper className={styles.dropCard} radius="lg" h="100%">
+                  <Stack gap="sm">
+                    <Title order={4} className={styles.tableTitle}>
+                      Required files
+                    </Title>
+                    <Text size="sm" className={styles.tableMeta}>
+                      Upload both CSVs and both JSON files to continue.
+                    </Text>
+                    <Divider my={4} color={dividerColor}/>
+                    <GuidedTourStep
+                      order={1}
+                      title="Upload labeled data"
+                      description='A subset of the dataset with labels. It should include "text" and "task_label" columns.'
+                    >
+                      <RequiredFileCard
+                        inputId="labeled-dataset"
+                        accept=".csv,text/csv"
+                        icon={<IconFileTypeCsv size={18}/>}
+                        label="Labeled dataset"
+                        selectLabel="Select CSV"
+                        hint="CSV with text + task_label columns"
+                        file={dValFile}
+                        onFileChange={setDValFile}
+                      />
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
+                      order={2}
+                      title="Upload unlabeled data"
+                      description='The remaining dataset without labels. It should include a "text".'
+                    >
+                      <RequiredFileCard
+                        inputId="unlabeled-dataset"
+                        accept=".csv,text/csv"
+                        icon={<IconFileTypeCsv size={18}/>}
+                        label="Unlabeled dataset"
+                        selectLabel="Select CSV"
+                        hint="CSV with text column only"
+                        file={dAllFile}
+                        onFileChange={setDAllFile}
+                      />
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
+                      order={3}
+                      title="Task details"
+                      description="Provide the task name and description in JSON."
+                    >
+                      <RequiredFileCard
+                        inputId="task-json"
+                        accept=".json,application/json"
+                        icon={<IconBraces size={18}/>}
+                        label="Task details"
+                        selectLabel="Select JSON"
+                        hint="JSON with taskname + description"
+                        file={taskJsonFile}
+                        onFileChange={setTaskJsonFile}
+                        templateAction={{
+                          label: "Download template",
+                          onClick: () => downloadContent("task.json", taskTemplate),
+                        }}
+                      />
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
+                      order={4}
+                      title="Labels JSON"
+                      description="Provide the label list with name, description, keywords, and guidelines."
+                    >
+                      <RequiredFileCard
+                        inputId="labels-json"
+                        accept=".json,application/json"
+                        icon={<IconBraces size={18}/>}
+                        label="Label set"
+                        selectLabel="Select JSON"
+                        hint="JSON labels with name, keywords, guidelines"
+                        file={labelsJsonFile}
+                        onFileChange={setLabelsJsonFile}
+                        templateAction={{
+                          label: "Download template",
+                          onClick: () => downloadContent("labels.json", labelsTemplate),
+                        }}
+                      />
+                    </GuidedTourStep>
+                  </Stack>
+                </Paper>
+              </Grid.Col>
+            </Grid>
+
+            {error && (
+              <Alert icon={<IconAlertCircle size={16}/>} color="red" variant="light">
+                {error}
+              </Alert>
             )}
-            <Group justify="space-between" mt={10}>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  handleCloseIntro();
-                  endTour(true);
-                }}
-              >
-                Skip tour
+
+
+            <Group justify="space-between" mt={2}>
+              <Button variant="light" className={styles.secondaryCta} onClick={handleReset}>
+                Reset
               </Button>
-              <Button
-                variant="light"
-                leftSection={<IconHelpCircle size={16} />}
-                onClick={() => {
-                  handleCloseIntro();
-                  startTour();
-                }}
-              >
-                Start tour
-              </Button>
-            </Group>
-          </Stack>
-        </Modal>
-        <Stack gap="md">
-          <Grid gutter="md" align="stretch">
-            <Grid.Col span={{ base: 12, md: 7 }}>
-              <Paper className={styles.dropCard} radius="lg" h="100%">
-                <Stack gap="sm">
-                  <Title order={4} className={styles.tableTitle}>
-                    Task config
-                  </Title>
-                  <Text size="sm" className={styles.tableMeta}>
-                    Configure model and dataset columns before upload.
-                  </Text>
-                  <Divider my={4} color={dividerColor} />
-                  <NumberInput
-                    label="Coverage sample size"
-                    description="How many samples to include in the guide set. 150 by default."
-                    value={coverageSampleSize}
-                    min={1}
-                    onChange={(value) =>
-                      setCoverageSampleSize(typeof value === "number" ? value : "")
-                    }
-                    styles={{
-                      label: {
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                        fontWeight: 600,
-                      },
-                      description: {
-                        color: isLight
-                          ? "rgba(15,20,24,0.6)"
-                          : "rgba(232,238,241,0.6)",
-                      },
-                      input: {
-                        background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
-                        border: isLight
-                          ? "1px solid rgba(124, 231, 225, 0.55)"
-                          : "1px solid rgba(124, 231, 225, 0.3)",
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                        borderRadius: 10,
-                      },
-                    }}
-                  />
-                  <Switch
-                    label="Enable representative sampling"
-                    description="Off by default for this pilot. When enabled, we run representative sampling before coverage."
-                    checked={useRepresentativeSampling}
-                    onChange={(event) =>
-                      setUseRepresentativeSampling(event.currentTarget.checked)
-                    }
-                    styles={{
-                      label: {
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                        fontWeight: 600,
-                      },
-                      description: {
-                        color: isLight
-                          ? "rgba(15,20,24,0.6)"
-                          : "rgba(232,238,241,0.6)",
-                      },
-                    }}
-                  />
-                  <Select
-                    label="Model"
-                    description="Choose the model to use for AI annotation."
-                    placeholder="Select a model…"
-                    value={selectedModel}
-                    onChange={setSelectedModel}
-                    data={[
-                      { value: "gemma3:1b", label: "Gemma3-1B" },
-                      { value: "qwen3.5:2b", label: "Qwen3.5-2B" },
-                      { value: "mistral:7b", label: "Mistral-7B" },
-                      { value: "qwen:32b", label: "Qwen-32B" },
-                      { value: "llama3.3:70b", label: "Llama3.3-70B" },
-                    ]}
-                    styles={{
-                      label: {
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                        fontWeight: 600,
-                      },
-                      description: {
-                        color: isLight
-                          ? "rgba(15,20,24,0.6)"
-                          : "rgba(232,238,241,0.6)",
-                      },
-                      input: {
-                        background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
-                        border: isLight
-                          ? "1px solid rgba(124, 231, 225, 0.55)"
-                          : "1px solid rgba(124, 231, 225, 0.3)",
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                        borderRadius: 10,
-                      },
-                      dropdown: {
-                        background: isLight ? "#ffffff" : "rgba(18, 24, 29, 0.98)",
-                        border: isLight
-                          ? "1px solid rgba(124, 231, 225, 0.4)"
-                          : "1px solid rgba(124, 231, 225, 0.3)",
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                      },
-                    }}
-                  />
-                  <TextInput
-                    label="Text column name"
-                    description="The column in your CSV that contains the text to annotate."
-                    placeholder="e.g. text, translated_text, content…"
-                    value={textColumn}
-                    onChange={(e) => setTextColumn(e.currentTarget.value)}
-                    styles={{
-                      label: {
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                        fontWeight: 600,
-                      },
-                      description: {
-                        color: isLight
-                          ? "rgba(15,20,24,0.6)"
-                          : "rgba(232,238,241,0.6)",
-                      },
-                      input: {
-                        background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
-                        border: isLight
-                          ? "1px solid rgba(124, 231, 225, 0.55)"
-                          : "1px solid rgba(124, 231, 225, 0.3)",
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                        borderRadius: 10,
-                      },
-                    }}
-                  />
-                  <TextInput
-                    label="Label column name"
-                    description="The column in your CSV that contains the human-annotated labels."
-                    placeholder="e.g. annotations, final label, labels"
-                    value={labelColumn}
-                    onChange={(e) => setLabelColumn(e.currentTarget.value)}
-                    styles={{
-                      label: {
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                        fontWeight: 600,
-                      },
-                      description: {
-                        color: isLight
-                          ? "rgba(15,20,24,0.6)"
-                          : "rgba(232,238,241,0.6)",
-                      },
-                      input: {
-                        background: isLight ? "#ffffff" : "rgba(12, 18, 23, 0.8)",
-                        border: isLight
-                          ? "1px solid rgba(124, 231, 225, 0.55)"
-                          : "1px solid rgba(124, 231, 225, 0.3)",
-                        color: isLight ? "#0f1418" : "#e8eef1",
-                        borderRadius: 10,
-                      },
-                    }}
-                  />
-                </Stack>
-              </Paper>
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, md: 5 }}>
-              <Paper className={styles.dropCard} radius="lg" h="100%">
-                <Stack gap="sm">
-                  <Title order={4} className={styles.tableTitle}>
-                    Required files
-                  </Title>
-                  <Text size="sm" className={styles.tableMeta}>
-                    Upload both CSVs and both JSON files to continue.
-                  </Text>
-                  <Divider my={4} color={dividerColor} />
-
-                  <Popover
-                    opened={tourOpen && tourStep === 0}
-                    position="right"
-                    withArrow
-                    withinPortal
-                    shadow="md"
-                  >
-                    <Popover.Target>
-                      <div
-                        ref={labeledRef}
-                        className={`${styles.fileRow} ${tourOpen && tourStep === 0 ? styles.tourHighlight : ""}`}
-                      >
-                    <input
-                      id="labeled-dataset"
-                      className={styles.fileInput}
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={(event) =>
-                        setDValFile(event.currentTarget.files?.[0] || null)
-                      }
-                    />
-                    <Group justify="space-between" w="100%" wrap="nowrap">
-                      <Group gap={8} wrap="nowrap">
-                        <IconFileTypeCsv size={18} />
-                        <Text fw={600} className={styles.fileLabel}>
-                          Labeled dataset
-                        </Text>
-                      </Group>
-                      <label htmlFor="labeled-dataset" className={styles.fileButton}>
-                        <IconUpload size={14} />
-                        Select CSV
-                      </label>
-                    </Group>
-                    <Text size="xs" className={styles.fileHint}>
-                      CSV with text + task_label columns
-                    </Text>
-                    <Text
-                      size="xs"
-                      className={`${styles.fileName} ${
-                        dValFile ? styles.fileNameSelected : styles.fileNameMissing
-                      }`}
-                    >
-                      {dValFile ? dValFile.name : "No file selected"}
-                    </Text>
-                      </div>
-                    </Popover.Target>
-                    <Popover.Dropdown className={styles.tourBubble}>
-                      <Stack gap="xs">
-                        <Text fw={600}>{tourSteps[0].title}</Text>
-                        <Text size="sm" c="dimmed">
-                          {tourSteps[0].description}
-                        </Text>
-                        <Group justify="space-between">
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            onClick={() => endTour(true)}
-                          >
-                            Skip
-                          </Button>
-                          <Button size="xs" onClick={() => setTourStep(1)}>
-                            Next
-                          </Button>
-                        </Group>
-                      </Stack>
-                    </Popover.Dropdown>
-                  </Popover>
-
-                  <Popover
-                    opened={tourOpen && tourStep === 1}
-                    position="right"
-                    withArrow
-                    withinPortal
-                    shadow="md"
-                  >
-                    <Popover.Target>
-                      <div
-                        ref={unlabeledRef}
-                        className={`${styles.fileRow} ${tourOpen && tourStep === 1 ? styles.tourHighlight : ""}`}
-                      >
-                    <input
-                      id="unlabeled-dataset"
-                      className={styles.fileInput}
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={(event) =>
-                        setDAllFile(event.currentTarget.files?.[0] || null)
-                      }
-                    />
-                    <Group justify="space-between" w="100%" wrap="nowrap">
-                      <Group gap={8} wrap="nowrap">
-                        <IconFileTypeCsv size={18} />
-                        <Text fw={600} className={styles.fileLabel}>
-                          Unlabeled dataset
-                        </Text>
-                      </Group>
-                      <label htmlFor="unlabeled-dataset" className={styles.fileButton}>
-                        <IconUpload size={14} />
-                        Select CSV
-                      </label>
-                    </Group>
-                    <Text size="xs" className={styles.fileHint}>
-                      CSV with text column only
-                    </Text>
-                    <Text
-                      size="xs"
-                      className={`${styles.fileName} ${
-                        dAllFile ? styles.fileNameSelected : styles.fileNameMissing
-                      }`}
-                    >
-                      {dAllFile ? dAllFile.name : "No file selected"}
-                    </Text>
-                      </div>
-                    </Popover.Target>
-                    <Popover.Dropdown className={styles.tourBubble}>
-                      <Stack gap="xs">
-                        <Text fw={600}>{tourSteps[1].title}</Text>
-                        <Text size="sm" c="dimmed">
-                          {tourSteps[1].description}
-                        </Text>
-                        <Group justify="space-between">
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            onClick={() => endTour(true)}
-                          >
-                            Skip
-                          </Button>
-                          <Button size="xs" onClick={() => setTourStep(2)}>
-                            Next
-                          </Button>
-                        </Group>
-                      </Stack>
-                    </Popover.Dropdown>
-                  </Popover>
-
-                  <Popover
-                    opened={tourOpen && tourStep === 2}
-                    position="right"
-                    withArrow
-                    withinPortal
-                    shadow="md"
-                  >
-                    <Popover.Target>
-                      <div
-                        ref={taskJsonRef}
-                        className={`${styles.fileRow} ${tourOpen && tourStep === 2 ? styles.tourHighlight : ""}`}
-                      >
-                    <input
-                      id="task-json"
-                      className={styles.fileInput}
-                      type="file"
-                      accept=".json,application/json"
-                      onChange={(event) =>
-                        setTaskJsonFile(event.currentTarget.files?.[0] || null)
-                      }
-                    />
-                    <Group justify="space-between" w="100%" wrap="nowrap">
-                      <Group gap={8} wrap="nowrap">
-                        <IconBraces size={18} />
-                        <Text fw={600} className={styles.fileLabel}>
-                          Task details
-                        </Text>
-                      </Group>
-                      <label htmlFor="task-json" className={styles.fileButton}>
-                        <IconUpload size={14} />
-                        Select JSON
-                      </label>
-                    </Group>
-                    <Text size="xs" className={styles.fileHint}>
-                      JSON with taskname + description
-                    </Text>
-                    <Group className={styles.fileMetaRow} wrap="nowrap">
-                      <Text
-                        size="xs"
-                        className={`${styles.fileName} ${
-                          taskJsonFile
-                            ? styles.fileNameSelected
-                            : styles.fileNameMissing
-                        }`}
-                      >
-                        {taskJsonFile ? taskJsonFile.name : "No file selected"}
-                      </Text>
-                      <Button
-                        size="compact-xs"
-                        variant="light"
-                        className={styles.fileTemplateButton}
-                        onClick={() => downloadTemplate("task.json", taskTemplate)}
-                      >
-                        Download template
-                      </Button>
-                    </Group>
-                      </div>
-                    </Popover.Target>
-                    <Popover.Dropdown className={styles.tourBubble}>
-                      <Stack gap="xs">
-                        <Text fw={600}>{tourSteps[2].title}</Text>
-                        <Text size="sm" c="dimmed">
-                          {tourSteps[2].description}
-                        </Text>
-                        <Group justify="space-between">
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            onClick={() => endTour(true)}
-                          >
-                            Skip
-                          </Button>
-                          <Button size="xs" onClick={() => setTourStep(3)}>
-                            Next
-                          </Button>
-                        </Group>
-                      </Stack>
-                    </Popover.Dropdown>
-                  </Popover>
-
-                  <Popover
-                    opened={tourOpen && tourStep === 3}
-                    position="right"
-                    withArrow
-                    withinPortal
-                    shadow="md"
-                  >
-                    <Popover.Target>
-                      <div
-                        ref={labelsJsonRef}
-                        className={`${styles.fileRow} ${tourOpen && tourStep === 3 ? styles.tourHighlight : ""}`}
-                      >
-                    <input
-                      id="labels-json"
-                      className={styles.fileInput}
-                      type="file"
-                      accept=".json,application/json"
-                      onChange={(event) =>
-                        setLabelsJsonFile(
-                          event.currentTarget.files?.[0] || null,
-                        )
-                      }
-                    />
-                    <Group justify="space-between" w="100%" wrap="nowrap">
-                      <Group gap={8} wrap="nowrap">
-                        <IconBraces size={18} />
-                        <Text fw={600} className={styles.fileLabel}>
-                          Label set
-                        </Text>
-                      </Group>
-                      <label htmlFor="labels-json" className={styles.fileButton}>
-                        <IconUpload size={14} />
-                        Select JSON
-                      </label>
-                    </Group>
-                    <Text size="xs" className={styles.fileHint}>
-                      JSON labels with name, keywords, guidelines
-                    </Text>
-                    <Group className={styles.fileMetaRow} wrap="nowrap">
-                      <Text
-                        size="xs"
-                        className={`${styles.fileName} ${
-                          labelsJsonFile
-                            ? styles.fileNameSelected
-                            : styles.fileNameMissing
-                        }`}
-                      >
-                        {labelsJsonFile ? labelsJsonFile.name : "No file selected"}
-                      </Text>
-                      <Button
-                        size="compact-xs"
-                        variant="light"
-                        className={styles.fileTemplateButton}
-                        onClick={() =>
-                          downloadTemplate("labels.json", labelsTemplate)
-                        }
-                      >
-                        Download template
-                      </Button>
-                    </Group>
-                      </div>
-                    </Popover.Target>
-                    <Popover.Dropdown className={styles.tourBubble}>
-                      <Stack gap="xs">
-                        <Text fw={600}>{tourSteps[3].title}</Text>
-                        <Text size="sm" c="dimmed">
-                          {tourSteps[3].description}
-                        </Text>
-                        <Group justify="space-between">
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            onClick={() => endTour(true)}
-                          >
-                            Skip
-                          </Button>
-                          <Button size="xs" onClick={() => setTourStep(4)}>
-                            Next
-                          </Button>
-                        </Group>
-                      </Stack>
-                    </Popover.Dropdown>
-                  </Popover>
-                </Stack>
-              </Paper>
-            </Grid.Col>
-          </Grid>
-
-          {error && (
-            <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
-              {error}
-            </Alert>
-          )}
-
-          <Popover
-            opened={tourOpen && tourStep === 4}
-            position="top"
-            withArrow
-            withinPortal
-            shadow="md"
-          >
-            <Popover.Target>
-              <Group justify="space-between" mt={2}>
-                <Button
-                  variant="light"
-                  className={styles.secondaryCta}
-                  onClick={handleReset}
-                >
-                  Reset
-                </Button>
-                <div
-                  ref={submitRef}
-                  className={tourOpen && tourStep === 4 ? styles.tourHighlight : ""}
+              <div>
+                <GuidedTourStep
+                  order={5}
+                  title="Start the upload"
+                  description="When all files are selected, upload to continue."
+                  position="top"
                 >
                   <Button
                     className={styles.primaryCta}
-                    leftSection={<IconUpload size={18} />}
-                    rightSection={<IconArrowRight size={16} />}
+                    leftSection={<IconUpload size={18}/>}
+                    rightSection={<IconArrowRight size={16}/>}
                     loading={isUploading}
                     disabled={!isReady}
                     onClick={handleUpload}
                   >
                     Upload bundle
                   </Button>
-                </div>
-              </Group>
-            </Popover.Target>
-            <Popover.Dropdown className={styles.tourBubble}>
-              <Stack gap="xs">
-                <Text fw={600}>{tourSteps[4].title}</Text>
-                <Text size="sm" c="dimmed">
-                  {tourSteps[4].description}
-                </Text>
-                <Group justify="space-between">
-                  <Button variant="outline" size="xs" onClick={() => endTour(true)}>
-                    Skip
-                  </Button>
-                  <Button
-                    size="xs"
-                    onClick={() => {
-                      endTour(true);
-                    }}
-                  >
-                    Finish
-                  </Button>
-                </Group>
-              </Stack>
-            </Popover.Dropdown>
-          </Popover>
-        </Stack>
+                </GuidedTourStep>
+              </div>
+            </Group>
+          </Stack>
+        </GuidedTour>
       </Container>
     </Box>
   );

@@ -142,6 +142,48 @@
   height: 100%;
 }
 
+.configLabel {
+  color: #e8eef1;
+  font-weight: 600;
+}
+
+.configDescription {
+  color: rgba(232, 238, 241, 0.6);
+}
+
+.configInput {
+  background: rgba(12, 18, 23, 0.8);
+  border: 1px solid rgba(124, 231, 225, 0.3);
+  color: #e8eef1;
+  border-radius: 10px;
+}
+
+.configDropdown {
+  background: rgba(18, 24, 29, 0.98);
+  border: 1px solid rgba(124, 231, 225, 0.3);
+  color: #e8eef1;
+}
+
+:global([data-mantine-color-scheme="light"]) .configLabel {
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .configDescription {
+  color: rgba(15, 20, 24, 0.6);
+}
+
+:global([data-mantine-color-scheme="light"]) .configInput {
+  background: #ffffff;
+  border: 1px solid rgba(124, 231, 225, 0.55);
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .configDropdown {
+  background: #ffffff;
+  border: 1px solid rgba(124, 231, 225, 0.4);
+  color: #0f1418;
+}
+
 .fileRow {
   padding: 10px;
   border-radius: 12px;
@@ -157,20 +199,6 @@
   gap: 3px;
 }
 
-.tourHighlight {
-  box-shadow:
-    0 0 0 2px rgba(124, 231, 225, 0.9),
-    0 0 18px rgba(124, 231, 225, 0.35);
-  border-radius: 12px;
-  transition: box-shadow 0.2s ease;
-}
-
-.tourBubble {
-  background: rgba(22, 32, 38, 0.98);
-  border: 1px solid rgba(124, 231, 225, 0.65);
-  color: #e8eef1;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
-}
 
 .fileInput {
   position: absolute;
@@ -276,10 +304,6 @@
 .fileMeta {
   width: 100%;
   padding-left: 4px;
-}
-
-.introCheckbox {
-  align-self: flex-start;
 }
 
 .infoCard {
