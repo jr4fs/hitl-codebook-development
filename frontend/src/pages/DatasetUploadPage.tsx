@@ -243,9 +243,7 @@ export default function DatasetUploadPage() {
     <Box className={styles.page} style={{minHeight: "100dvh", overflowX: "hidden", overflowY: "auto"}}>
       <div className={styles.orbOne}/>
       <Container fluid className={styles.hero}>
-        <Badge className={styles.kicker} variant="light" color="gray">
-          New Task Setup
-        </Badge>
+        <StepTrackerBanner currentStep={1} onHelp={handleHelp}/>
         <Group justify="space-between" align="center" wrap="nowrap">
           <Title className={styles.title}>Upload Your Task Files</Title>
         </Group>
@@ -256,7 +254,6 @@ export default function DatasetUploadPage() {
       </Container>
 
       <Container fluid className={styles.tableSection} style={{height: "auto", overflow: "visible"}}>
-        <StepTrackerBanner currentStep={1} onHelp={handleHelp}/>
 
         <PageIntro
           mode={introMode}
