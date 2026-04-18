@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { CreateTaskRequest, Task } from "@common/types/tasks";
+import { EmbedDatasetRequest } from "@common/types/embedding";
 import { AnonymizeConfig } from "@common/types/anonymize";
 import { AnnotationItem } from "@common/types/annotations";
 import { getCollection } from "./database.service";
@@ -21,6 +22,7 @@ import Papa from "papaparse";
 import fs from "fs/promises";
 import path from "path";
 import dotenv from "dotenv";
+import axios from "axios";
 dotenv.config();
 
 interface TaskValidation {
@@ -44,6 +46,7 @@ const ANNOTATION_COLLECTION =
 
 const TASK_JSON_REQUIRED_KEYS = ["taskname", "description"];
 const GENERATED_CODEBOOKS_DIR = "generated_codebooks";
+const ML_BASE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
 
 /** Built-in "not relevant" label added by default to all upload-task-bundle tasks */
 const NOT_RELEVANT_LABEL = {
@@ -233,6 +236,37 @@ function getColumnsFromRows(rows: Array<Record<string, unknown>>): string[] {
   return clean_cols;
 }
 
+async function triggerSamplingInBackground(
+  params: {
+    taskId: string;
+    userID: string;
+    payload: EmbedDatasetRequest;
+  },
+) {
+  const taskDetailsCollection = getCollection<Task>(TASKS_COLLECTION);
+  const filter = { _id: new ObjectId(params.taskId) as any, userID: params.userID };
+
+  try {
+    await axios.post(`${ML_BASE_URL}/embedding/sample`, params.payload);
+    await taskDetailsCollection.updateOne(filter, {
+      $set: {
+        status: "ready",
+        updatedAt: new Date().toISOString(),
+      } as Partial<Task>,
+    });
+    console.log(`[sampling] Completed taskId=${params.taskId}`);
+  } catch (error: any) {
+    const detail = error?.response?.data?.detail || error?.message || "Unknown sampling error";
+    console.error(`[sampling] Failed taskId=${params.taskId}: ${detail}`);
+    await taskDetailsCollection.updateOne(filter, {
+      $set: {
+        status: "sampling_error",
+        updatedAt: new Date().toISOString(),
+      } as Partial<Task>,
+    });
+  }
+}
+
 // Validates task creation request payload
 function validateTaskPayload(payload: CreateTaskRequest): TaskValidation {
   const errors: string[] = [];
@@ -348,6 +382,12 @@ export async function createTask(req: AuthRequest, res: Response) {
       userID: userID,
       labelColumn: "",
       modelName: "",
+      status:
+        req.body.status === "sampling_pending" ||
+        req.body.status === "sampling_error" ||
+        req.body.status === "ready"
+          ? req.body.status
+          : "ready",
       createdAt: req.body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -362,6 +402,7 @@ export async function createTask(req: AuthRequest, res: Response) {
         file: taskData.file,
         columns: taskData.columns,
         userID: taskData.userID,
+        status: taskData.status,
         updatedAt: taskData.updatedAt,
       };
 
@@ -441,11 +482,15 @@ export async function getUserTasks(req: AuthRequest, res: Response) {
     const tasks = await taskDetailsCollection
       .find({ userID: userID })
       .toArray();
+    const tasksWithStatus = tasks.map((task) => ({
+      ...task,
+      status: task.status ?? "ready",
+    }));
 
     return res.status(200).json({
       success: true,
-      tasks,
-      count: tasks.length,
+      tasks: tasksWithStatus,
+      count: tasksWithStatus.length,
     });
   } catch (error: any) {
     console.error("Error retrieving tasks:", error);
@@ -490,7 +535,10 @@ export async function getTaskByID(req: AuthRequest, res: Response) {
 
     return res.status(200).json({
       success: true,
-      task,
+      task: {
+        ...task,
+        status: task.status ?? "ready",
+      },
     });
   } catch (error: any) {
     console.error("Error retrieving task:", error);
@@ -833,6 +881,7 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       userID: userID,
       labelColumn: labelColumn,
       modelName: modelName ?? "",
+      status: "sampling_pending",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -896,10 +945,29 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       );
     }
 
+    const samplingPayload: EmbedDatasetRequest = {
+      file_path: uploadFilename,
+      text_col: [textColumn ?? "text"],
+      label_col: labelColumn,
+      model_name: modelName ?? "",
+      labels: taskData.labels,
+      taskId,
+      userId: userID,
+      coverage_n: Number(req.body.coverage_n) > 0 ? Number(req.body.coverage_n) : 150,
+      use_representative_sampling:
+        String(req.body.use_representative_sampling).toLowerCase() === "true",
+    };
+
+    void triggerSamplingInBackground({
+      taskId,
+      userID,
+      payload: samplingPayload,
+    });
+
     console.log("[uploadTaskBundle] Bundle upload completed successfully.");
     return res.status(200).json({
       success: true,
-      message: "Bundle uploaded successfully",
+      message: "Task created successfully. Sampling has been queued.",
       taskId,
       fileName: uploadFilename,
       restFileName: uploadFilename,

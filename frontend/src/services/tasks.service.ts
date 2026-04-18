@@ -68,6 +68,8 @@ export async function uploadTaskBundle(params: {
   textColumn: string;
   labelColumn: string;
   modelName: string;
+  coverageN?: number;
+  useRepresentativeSampling?: boolean;
 }): Promise<{
   success: boolean;
   message?: string;
@@ -93,8 +95,13 @@ export async function uploadTaskBundle(params: {
   formData.append("text_column", String(params.textColumn));
   formData.append("label_column", String(params.labelColumn));
   formData.append("model_name", String(params.modelName));
+  formData.append("coverage_n", String(params.coverageN ?? 150));
+  formData.append(
+    "use_representative_sampling",
+    String(Boolean(params.useRepresentativeSampling)),
+  );
 
-  const { data } = await apiClient.post("/api/tasks/upload-bundle", formData, {
+  const { data } = await apiClient.post("/api/tasks/create", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },

@@ -1,9 +1,29 @@
 .banner {
   background: rgba(18, 24, 29, 0.75);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 16px 20px;
+  border-radius: 12px;
+  padding: 8px 12px;
   backdrop-filter: blur(6px);
+  width: fit-content;
+  max-width: 280px;
+  overflow: hidden;
+  transition: max-width 220ms ease;
+}
+
+.banner:hover,
+.banner:focus-within {
+  max-width: min(100%, 980px);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.summary {
+  flex-shrink: 0;
 }
 
 .kicker {
@@ -11,16 +31,33 @@
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: rgba(232, 238, 241, 0.7);
-  font-size: 0.75rem;
+  font-size: 0.68rem;
 }
 
 .steps {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: nowrap;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
   scrollbar-width: none;
+  min-width: 0;
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-6px);
+  transition:
+    max-width 220ms ease,
+    opacity 180ms ease,
+    transform 220ms ease;
+}
+
+.banner:hover .steps,
+.banner:focus-within .steps {
+  max-width: 820px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .steps::-webkit-scrollbar {
@@ -28,12 +65,18 @@
 }
 
 .pill {
+  display: inline-flex;
+  align-items: center;
   white-space: nowrap;
-  padding: 6px 12px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(124, 231, 225, 0.1);
-  color: rgba(232, 238, 241, 0.7);
-  font-size: 0.85rem;
+  border: 1px dashed rgba(232, 238, 241, 0.36);
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(232, 238, 241, 0.62);
+  font-size: 0.74rem;
+  line-height: 1.15;
+  font-weight: 500;
+  box-shadow: none;
 }
 
 .helpButton {
@@ -45,15 +88,16 @@
 }
 
 .pillActive {
-  background: rgba(124, 231, 225, 0.3);
   color: #e8f9f7;
-  border: 1px solid rgba(124, 231, 225, 0.55);
-  box-shadow: 0 0 0 1px rgba(124, 231, 225, 0.2);
   font-weight: 600;
+  border: 1px solid rgba(124, 231, 225, 0.7);
+  background: rgba(124, 231, 225, 0.14);
 }
 
 .pillComplete {
-  color: rgba(232, 238, 241, 0.9);
+  color: rgba(232, 238, 241, 0.75);
+  border: 1px solid rgba(232, 238, 241, 0.26);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 :global([data-mantine-color-scheme="light"]) .banner {
@@ -70,5 +114,18 @@
 
 :global([data-mantine-color-scheme="light"]) .pillActive {
   color: #0f1418;
-  border-color: rgba(54, 194, 179, 0.45);
+  border-color: rgba(54, 194, 179, 0.65);
+  background: rgba(54, 194, 179, 0.18);
+}
+
+:global([data-mantine-color-scheme="light"]) .pill {
+  border: 1px dashed rgba(15, 20, 24, 0.4);
+  background: rgba(15, 20, 24, 0.02);
+  color: rgba(15, 20, 24, 0.6);
+}
+
+:global([data-mantine-color-scheme="light"]) .pillComplete {
+  border: 1px solid rgba(15, 20, 24, 0.28);
+  background: rgba(15, 20, 24, 0.04);
+  color: rgba(15, 20, 24, 0.68);
 }

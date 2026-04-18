@@ -1,5 +1,5 @@
 // hooks/useTaskData.ts
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { getTaskById, getCsvData } from "../services/tasks.service";
 import { getTaskAnnotations } from "../services/annotations.service";
@@ -36,8 +36,7 @@ export const useTaskData = () => {
   const [task, setTask] = useState<Task | null>(null);
   const [annotations, setAnnotations] = useState<AnnotationItem[]>([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = useCallback(async () => {
       const hasNavState = Boolean(
         navProps?.csvData ||
         navProps?.headers ||
@@ -135,10 +134,11 @@ export const useTaskData = () => {
       } finally {
         setLoading(false);
       }
-    };
+    }, [taskId, navProps]);
 
+  useEffect(() => {
     fetchData();
-  }, [taskId]);
+  }, [fetchData]);
 
   return {
     loading,
@@ -150,5 +150,6 @@ export const useTaskData = () => {
     fileName,
     task,
     annotations,
+    refreshTaskData: fetchData,
   };
 };

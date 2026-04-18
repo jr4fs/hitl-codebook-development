@@ -1,4 +1,4 @@
-import { LabelItem } from "./tasks";
+import type { LabelItem } from "./tasks";
 
 export interface EmbedDatasetRequest {
   file_path: string;
@@ -12,6 +12,7 @@ export interface EmbedDatasetRequest {
   userId: string;
   label_col: string;
   coverage_n?: number;
+  use_representative_sampling?: boolean;
 }
 
 export interface EmbedDatasetResponse {
@@ -21,4 +22,3 @@ export interface EmbedDatasetResponse {
   file_name: string;
   val_data: Record<string, any>[];
 }
-

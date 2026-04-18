@@ -57,6 +57,7 @@ import {
 } from "../services/metrics.service";
 import { toast } from "../lib/toast";
 import { v4 as uuidv4 } from "uuid";
+import { getTaskById } from "../services/tasks.service";
 
 interface CsvRow {
   [key: string]: string;
@@ -75,7 +76,12 @@ export default function AnnotationPage() {
   const borderStrong = isLight
     ? "rgba(15, 20, 24, 0.18)"
     : "var(--app-border-strong)";
-  const { loading, task, guideData } = useTaskData();
+  const { loading, task, guideData, refreshTaskData } = useTaskData();
+  const [samplingStatus, setSamplingStatus] = useState<
+    "sampling_pending" | "ready" | "sampling_error" | null
+  >(null);
+  const [samplingErrorMsg, setSamplingErrorMsg] = useState<string | null>(null);
+  const samplingNotifiedRef = useRef(false);
   console.log("guidedata length: ", guideData.length);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [generatedLabels, setGeneratedLabels] = useState<string[]>([
@@ -220,6 +226,60 @@ export default function AnnotationPage() {
   useEffect(() => {
     setCurrentBatchUUID(generateBatchUUID());
   }, [currentBatchIndex]);
+
+  useEffect(() => {
+    setSamplingStatus(
+      (task?.status as "sampling_pending" | "ready" | "sampling_error") ?? null,
+    );
+  }, [task?.status]);
+
+  useEffect(() => {
+    if (!task?._id) return;
+    const currentStatus =
+      samplingStatus ??
+      (task.status as "sampling_pending" | "ready" | "sampling_error" | undefined);
+    if (currentStatus === "ready" || currentStatus === "sampling_error") return;
+
+    let mounted = true;
+    const pollStatus = async () => {
+      try {
+        const response = await getTaskById(task._id as string);
+        const latestStatus = (response.task?.status ??
+          "sampling_pending") as "sampling_pending" | "ready" | "sampling_error";
+        if (!mounted) return;
+        setSamplingStatus(latestStatus);
+
+        if (latestStatus === "ready") {
+          await refreshTaskData();
+          window.dispatchEvent(new Event("tasks:updated"));
+          if (!samplingNotifiedRef.current) {
+            toast.success("Sampling completed. Task is ready.");
+            samplingNotifiedRef.current = true;
+          }
+        } else if (latestStatus === "sampling_error") {
+          setSamplingErrorMsg(
+            "Sampling failed in the backend. Please retry task creation or check backend logs.",
+          );
+          if (!samplingNotifiedRef.current) {
+            toast.error("Sampling failed for this task.");
+            samplingNotifiedRef.current = true;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to poll task status:", error);
+      }
+    };
+
+    void pollStatus();
+    const intervalId = window.setInterval(() => {
+      void pollStatus();
+    }, 60_000);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, [task?._id, task?.status, samplingStatus, refreshTaskData]);
 
   useEffect(() => {
     if (task?.codebook && task.codebook.length > 0 && codebook.length === 0) {
@@ -457,6 +517,36 @@ export default function AnnotationPage() {
           <Text c={isLight ? "#0f1418" : "white"}>
             Loading annotation data...
           </Text>
+        </Stack>
+      </Center>
+    );
+  }
+
+  const effectiveStatus =
+    samplingStatus ??
+    (task?.status as "sampling_pending" | "ready" | "sampling_error" | undefined);
+
+  if (effectiveStatus === "sampling_pending") {
+    return (
+      <Center h="100vh" bg="var(--app-bg)">
+        <Stack align="center" gap="md">
+          <LoadingOverlay visible={true} overlayProps={{ blur: 2 }} />
+          <Text c={isLight ? "#0f1418" : "white"}>
+            Task created. Sampling is in progress. This page checks status once every minute.
+          </Text>
+        </Stack>
+      </Center>
+    );
+  }
+
+  if (effectiveStatus === "sampling_error") {
+    return (
+      <Center h="100vh" bg="var(--app-bg)">
+        <Stack align="center" gap="md">
+          <Text c={isLight ? "#0f1418" : "white"}>
+            {samplingErrorMsg || "Sampling failed for this task."}
+          </Text>
+          <Button onClick={() => navigate("/")}>Go Home</Button>
         </Stack>
       </Center>
     );
@@ -786,7 +876,7 @@ export default function AnnotationPage() {
         </Modal>
         <StepTrackerBanner
           currentStep={2}
-          activeSteps={[2, 3]}
+          activeSteps={[2]}
           onHelp={handleHelp}
         />
         <Grid gutter={0} style={{ flex: 1, minHeight: 0 }}>

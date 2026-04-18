@@ -218,26 +218,16 @@ async def run_rule_synthesis(request: RuleSynthesisRequest):
         raise HTTPException(status_code=500, detail=str(e))
 from services.managedata.data_manager_service import DataManagerService
 
-@embedding_router.post("/representative")
-async def representative_sampling(request: EmbedDatasetRequest):
+@embedding_router.post("/sample")
+async def run_sampling(request: EmbedDatasetRequest):
     """
-    Perform representative sampling (keyword-based)
-    """
-    try:
-        service = DataManagerService(request)
-        service.upsample()
-        return {"success": True, "message": "Representative sampling completed"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@embedding_router.post("/coverage")
-async def coverage_sampling(request: EmbedDatasetRequest):
-    """
-    Perform coverage-based sampling (diversity-maximized)
+    Unified sampling flow.
+    If use_representative_sampling is true, representative sampling runs first,
+    then coverage sampling creates the guide set.
     """
     try:
         service = DataManagerService(request)
-        service.coverage_sample()
-        return {"success": True, "message": "Coverage sampling completed"}
+        service.run_sampling()
+        return {"success": True, "message": "Sampling completed"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
