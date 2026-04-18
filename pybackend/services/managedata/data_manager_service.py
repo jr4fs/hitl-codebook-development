@@ -10,6 +10,7 @@ from .coverage_sampling import CoverageBasedSampling
 from .model_singleton import get_embedding_model
 from ..database.database_service import get_collection
 from datetime import datetime, timezone
+from utils.runtime_config import is_ui_dev_mode
 
 class DataManagerService:
     def __init__(self, request: EmbedDatasetRequest):
@@ -37,9 +38,50 @@ class DataManagerService:
         upsampled_result.to_csv(self.rest_file_path, index=False)
 
     def run_sampling(self):
+        if is_ui_dev_mode():
+            self.random_sample_for_ui_dev()
+            return
         if self.request.use_representative_sampling:
             self.upsample()
         self.coverage_sample()
+
+    def random_sample_for_ui_dev(self):
+        source_path = self.project_root / 'shared_uploads' / self.request.file_path
+        df = pd.read_csv(source_path)
+        df.to_csv(self.rest_file_path, index=False)
+
+        sample_n = min(self.request.coverage_n or 150, len(df))
+        guide_df = df.sample(n=sample_n, random_state=42).reset_index(drop=True)
+        guide_df.to_csv(self.guide_file_path, index=False)
+
+        if self.request.taskId and self.request.userId:
+            try:
+                records = guide_df.replace({np.nan: None}).to_dict(orient='records')
+                annotations_to_insert = []
+                for idx, row in enumerate(records):
+                    clean_row = {str(k): str(v) for k, v in row.items() if v is not None}
+                    annotation = {
+                        "taskId": self.request.taskId,
+                        "sampleId": idx + 1,
+                        "sampleContent": clean_row,
+                        "labels": [],
+                        "source": "guide",
+                        "aiAnnotation": None,
+                        "createdBy": self.request.userId,
+                        "createdAt": datetime.now(timezone.utc).isoformat()
+                    }
+                    annotations_to_insert.append(annotation)
+
+                collection = get_collection("AnnotationDetails")
+                collection.delete_many({
+                    "taskId": self.request.taskId,
+                    "source": "guide"
+                })
+                if annotations_to_insert:
+                    collection.insert_many(annotations_to_insert)
+                    print(f"Successfully inserted {len(annotations_to_insert)} random guide annotations into MongoDB.")
+            except Exception as e:
+                print(f"Failed to insert random guide annotations to MongoDB: {e}")
     
     def coverage_sample(self):
         rest_path = Path(self.rest_file_path)
