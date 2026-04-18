@@ -48,6 +48,15 @@ export default function CodebookLandingPage() {
           >
             Start a new task
           </Button>
+          <Button
+            size="md"
+            radius="xl"
+            variant="light"
+            className={styles.secondaryCta}
+            onClick={() => navigate("/")}
+          >
+            Back to workflow selection
+          </Button>
         </Group>
       </Container>
 
