@@ -28,6 +28,7 @@ import {
   RuleSynthesisItem,
   RuleSynthesisRequest,
 } from "@common/types/ruleSynthesis";
+import { AnnotationItem } from "@common/types/annotations";
 import { useAITaskData } from "../hooks/useAITaskData";
 import { ruleSynthesis } from "../services/ruleSynthesis.service";
 import {
@@ -78,6 +79,9 @@ export default function AnnotationPage() {
     ? "rgba(15, 20, 24, 0.18)"
     : "var(--app-border-strong)";
   const { loading, task, guideAnnotations, refreshTaskData } = useAITaskData();
+  const [localGuideAnnotations, setLocalGuideAnnotations] = useState<
+    AnnotationItem[]
+  >([]);
   const [samplingStatus, setSamplingStatus] = useState<
     "sampling_pending" | "ready" | "sampling_error" | null
   >(null);
@@ -196,8 +200,14 @@ export default function AnnotationPage() {
   //   setFallbackAnnotations(generated);
   // }, [annotations, guideData, task?._id, fallbackAnnotations.length]);
 
+  useEffect(() => {
+    setLocalGuideAnnotations(guideAnnotations || []);
+  }, [guideAnnotations]);
+
   const annotationsForReview =
-    guideAnnotations && guideAnnotations.length > 0 ? guideAnnotations : [];
+    localGuideAnnotations && localGuideAnnotations.length > 0
+      ? localGuideAnnotations
+      : [];
 
   // Persist the 10/90 split in localStorage so a page refresh restores the same
   // partition. Keyed by taskId to avoid cross-task collisions.
@@ -639,6 +649,17 @@ export default function AnnotationPage() {
           labels: resolvedLabels,
           aiAnnotation: enrichedAIResult,
         });
+        setLocalGuideAnnotations((prev) =>
+          prev.map((annotation) =>
+            annotation.sampleId === currentAnnotation.sampleId
+              ? {
+                  ...annotation,
+                  labels: resolvedLabels,
+                  aiAnnotation: enrichedAIResult,
+                }
+              : annotation,
+          ),
+        );
       }
     } catch (error) {
       console.error("Failed to update guide annotation:", error);
