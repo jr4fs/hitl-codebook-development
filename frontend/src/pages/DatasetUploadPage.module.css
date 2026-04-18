@@ -106,11 +106,11 @@
 .hero {
   position: relative;
   z-index: 1;
-  padding: 72px 24px 16px;
+  padding: 26px 24px 4px;
   animation: fadeUp 700ms ease both;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -137,19 +137,24 @@
   background: rgba(18, 24, 29, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
-  padding: 12px;
+  padding: 14px;
   backdrop-filter: blur(6px);
+  height: 100%;
 }
 
 .fileRow {
-  padding: 12px;
+  padding: 10px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(12, 18, 23, 0.7);
+  border: 1px solid rgba(124, 231, 225, 0.25);
+  background: linear-gradient(
+    120deg,
+    rgba(12, 18, 23, 0.84),
+    rgba(14, 21, 27, 0.72)
+  );
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 3px;
 }
 
 .tourHighlight {
@@ -182,12 +187,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 999px;
+  gap: 6px;
+  padding: 4px 10px;
+  min-height: 28px;
+  border-radius: 8px;
   border: 1px solid rgba(124, 231, 225, 0.4);
   color: #e8eef1;
   background: rgba(20, 30, 36, 0.9);
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -203,11 +210,34 @@
 }
 
 .fileName {
-  color: rgba(232, 238, 241, 0.7);
   align-self: flex-start;
   text-align: left;
-  width: 100%;
-  padding-left: 4px;
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  padding-left: 2px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileNameMissing {
+  color: #ff6b6b;
+}
+
+.fileNameSelected {
+  color: #5aa9ff;
+}
+
+.fileLabel {
+  line-height: 1.2;
+}
+
+.fileHint {
+  color: rgba(232, 238, 241, 0.58);
+  line-height: 1.2;
+  padding-left: 2px;
 }
 
 .fileSubtext {
@@ -216,18 +246,31 @@
   text-align: left;
   width: 100%;
   padding-left: 4px;
+  font-size: 0.85rem;
 }
 
 .fileActions {
-  flex-wrap: wrap;
-  width: 100%;
-  justify-content: space-between;
-  align-items: center;
+  width: auto;
+  align-self: flex-end;
+  justify-content: flex-end;
+  align-items: flex-end;
   display: flex;
+  margin-top: -1px;
 }
 
-.fileActionRight {
-  margin-left: auto;
+.fileMetaRow {
+  width: 100%;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  margin-bottom: -2px;
+}
+
+.fileTemplateButton {
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-bottom: 0;
 }
 
 .fileMeta {
@@ -282,10 +325,10 @@
 .tableSection {
   position: relative;
   z-index: 1;
-  padding: 48px 24px 72px;
+  padding: 6px 24px 36px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -340,6 +383,6 @@
 
 @media (max-width: 768px) {
   .hero {
-    padding-top: 56px;
+    padding-top: 22px;
   }
 }
