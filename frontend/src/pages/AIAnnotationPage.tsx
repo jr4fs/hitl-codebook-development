@@ -876,7 +876,7 @@ export default function AnnotationPage() {
         </Modal>
         <StepTrackerBanner
           currentStep={2}
-          activeSteps={[2, 3]}
+          activeSteps={[2]}
           onHelp={handleHelp}
         />
         <Grid gutter={0} style={{ flex: 1, minHeight: 0 }}>
