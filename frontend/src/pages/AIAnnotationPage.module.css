@@ -1,6 +1,7 @@
 .page {
   position: relative;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
   background:
     radial-gradient(1200px 800px at 10% 20%, rgba(124, 231, 225, 0.16), transparent 60%),
     radial-gradient(900px 600px at 90% 0%, rgba(243, 165, 120, 0.18), transparent 55%),
@@ -45,29 +46,57 @@
 .hero {
   position: relative;
   z-index: 1;
-  padding: 26px 24px 8px;
+  padding: 14px 24px 6px;
   animation: fadeUp 700ms ease both;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-.title {
-  font-size: clamp(30px, 3vw, 46px);
+.taskHeader {
+  background: rgba(18, 24, 29, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  backdrop-filter: blur(6px);
+}
+
+.taskInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.taskTitle {
+  font-size: 0.96rem;
+  line-height: 1.2;
   font-weight: 650;
-  line-height: 1.1;
+  color: #e8eef1;
 }
 
-.subtitle {
-  max-width: 680px;
-  color: rgba(232, 238, 241, 0.7);
-  font-size: 1.05rem;
+.taskDescription {
+  margin-top: 2px;
+  color: rgba(232, 238, 241, 0.72);
+  font-size: 0.84rem;
+  line-height: 1.25;
 }
 
-:global([data-mantine-color-scheme="light"]) .subtitle {
-  color: rgba(15, 20, 24, 0.75);
+.taskMetrics {
+  align-self: center;
+  flex-shrink: 0;
+}
+
+:global([data-mantine-color-scheme="light"]) .taskHeader {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 20, 24, 0.08);
+}
+
+:global([data-mantine-color-scheme="light"]) .taskTitle {
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .taskDescription {
+  color: rgba(15, 20, 24, 0.7);
 }
 
 .tableSection {
@@ -75,11 +104,23 @@
   z-index: 1;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 24px 24px;
+  padding: 0 24px 12px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .annotationGrid {
-  margin-top: 4px;
+  margin-top: 2px;
+  flex: 1;
+  min-height: 0;
+}
+
+.annotationGrid :global(.mantine-Grid-inner) {
+  height: 100%;
+  min-height: 0;
 }
 
 .dropCard {
@@ -89,6 +130,9 @@
   padding: 10px;
   backdrop-filter: blur(6px);
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 :global([data-mantine-color-scheme="light"]) .dropCard {
@@ -99,6 +143,92 @@
 .mainColumn,
 .sidebarColumn {
   min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.leftPanelScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.rightPanelStack {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.codebookTop {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: inherit;
+}
+
+.codebookTopDivider {
+  margin-top: 8px;
+}
+
+.codebookMiddle {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.codebookList {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.addRuleSection {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: inherit;
+  padding-top: 2px;
+}
+
+.codebookBottomDivider {
+  margin-bottom: 8px;
+}
+
+.sampleBox {
+  max-height: 74px;
+  overflow: hidden;
+  transition: max-height 180ms ease;
+  cursor: pointer;
+}
+
+.sampleBox:hover {
+  max-height: none;
+  overflow: visible;
+}
+
+.samplePreviewText {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sampleBox:hover .samplePreviewText {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 @keyframes fadeUp {

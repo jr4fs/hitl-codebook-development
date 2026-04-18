@@ -1,12 +1,10 @@
 import {
   Text,
   Paper,
-  Title,
   Group,
   Button,
   Textarea,
   Stack,
-  ScrollArea,
   LoadingOverlay,
   Loader,
   Center,
@@ -43,8 +41,6 @@ import {
   IconEdit,
   IconDownload,
   IconInfoCircle,
-  IconThumbUp,
-  IconThumbDown,
 } from "@tabler/icons-react";
 import { InferenceRequest, InferenceResponse } from "@common/types/inference";
 import StepTrackerBanner from "../components/StepTrackerBanner";
@@ -676,6 +672,7 @@ export default function AnnotationPage() {
       ? annotationsForReview[currentIndex]
       : null;
   const currentSample = currentAnnotation?.sampleContent ?? null;
+  const currentSampleText = getSampleText(currentSample) || "No text available";
 
   const totalSamples = annotationsForReview.length;
 
@@ -843,6 +840,54 @@ export default function AnnotationPage() {
     }
   };
 
+  const handleNextOrCommit = async () => {
+    const shouldGenerateMetrics = isLastBatch;
+    let committedCodebook: string[] = [];
+    if (currentBatchProgress === actualBatchSize) {
+      committedCodebook = await handleCommitBatch();
+      if (task?._id) {
+        try {
+          await saveTaskCodebook(task._id, committedCodebook);
+        } catch (error: any) {
+          toast.error(
+            error?.message ||
+              "Failed to auto-save codebook after batch commit",
+          );
+        }
+      }
+    }
+    await handleNextClick();
+    if (shouldGenerateMetrics && task?._id) {
+      const [sampleRes, metadataRes, batchRes] =
+        await Promise.all([
+          generateSampleMetrics(task._id),
+          generateMetadataMetrics(task._id),
+          generateBatchMetrics(task._id),
+        ]);
+      setMetricsFiles({
+        sample: sampleRes.filename,
+        metadata: metadataRes.filename,
+        batch: batchRes.filename,
+      });
+      try {
+        await exportCodebookSnapshot(
+          task._id,
+          committedCodebook.length > 0
+            ? committedCodebook
+            : codebook,
+          lastPromptUsed,
+        );
+      } catch (error: any) {
+        console.error("Failed to export codebook:", error);
+        toast.error(
+          error?.message ||
+            "Failed to export codebook on server",
+        );
+      }
+      setMetricsModalOpen(true);
+    }
+  };
+
   const handleCommitBatch = async (): Promise<string[]> => {
     setIsLoading(true);
     let committedCodebook = codebook;
@@ -961,7 +1006,7 @@ export default function AnnotationPage() {
   // };
 
   return (
-    <Box className={styles.page} style={{ minHeight: "100dvh", overflowX: "hidden", overflowY: "auto" }}>
+    <Box className={styles.page} style={{ height: "100dvh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div className={styles.orbOne} />
       <Container fluid className={styles.hero}>
         <StepTrackerBanner
@@ -969,15 +1014,65 @@ export default function AnnotationPage() {
           activeSteps={[2]}
           onHelp={handleHelp}
         />
-        <Group justify="space-between" align="center" wrap="nowrap">
-          <Title className={styles.title}>AI Assisted Annotation</Title>
-        </Group>
-        <Text className={styles.subtitle}>
-          Review model suggestions, provide feedback, and evolve the live codebook before finalizing your task.
-        </Text>
+        <Paper className={styles.taskHeader} radius="md">
+          <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
+            <div className={styles.taskInfo}>
+              <Text className={styles.taskTitle} lineClamp={1}>
+                Codebook Creation Task: {task.name}
+              </Text>
+              <Text className={styles.taskDescription} lineClamp={2}>
+                {task.description}
+              </Text>
+            </div>
+            <Group gap="xs" className={styles.taskMetrics} wrap="nowrap">
+              <Tooltip
+                label={`Current Accuracy: ${totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : 0}% (${totalCorrect}/${totalAttempted})`}
+              >
+                <Badge
+                  variant="filled"
+                  color={
+                    totalAttempted === 0
+                      ? "gray"
+                      : totalCorrect / totalAttempted > 0.8
+                        ? "green"
+                        : "orange"
+                  }
+                  size="xl"
+                  fz="xs"
+                  circle
+                  style={{ border: `1px solid ${borderColor}` }}
+                >
+                  {totalAttempted > 0
+                    ? Math.round((totalCorrect / totalAttempted) * 100)
+                    : "—"}
+                </Badge>
+              </Tooltip>
+              <Tooltip label="Unseen Data Accuracy (Predicted)">
+                <Badge
+                  variant="outline"
+                  color={
+                    predictedAccuracy === null
+                      ? "gray"
+                      : predictedAccuracy > 0.8
+                        ? "green"
+                        : "orange"
+                  }
+                  size="xl"
+                  fz="xs"
+                  circle
+                  style={{ border: `1px solid ${borderColor}` }}
+                >
+                  {predictedAccuracy === null
+                    ? "—"
+                    : Math.round(predictedAccuracy * 100)}
+                </Badge>
+              </Tooltip>
+            </Group>
+          </Group>
+        </Paper>
       </Container>
 
-      <Container fluid className={styles.tableSection} style={{ height: "auto", overflow: "visible" }}>
+      <Container fluid className={styles.tableSection}>
         <Modal
           opened={metricsModalOpen}
           onClose={() => setMetricsModalOpen(false)}
@@ -1089,95 +1184,74 @@ export default function AnnotationPage() {
             className={styles.mainColumn}
           >
             <Paper className={styles.dropCard} radius="lg" h="100%">
-              <Stack h="100%" p="md" gap="md">
-              {/* Header / Batch Ribbon */}
-              <Group justify="space-between">
-                <Group gap="sm">
-                  <Stack gap={0}>
-                    <Title order={3} c={isLight ? "#0f1418" : "white"}>
-                      AI Assisted Annotation
-                    </Title>
-                    <Text size="xs" c={mutedColor}>
-                      Task: {task.name}
-                    </Text>
-                    <Text size="xs" c={mutedColor}>
-                      {task.description}
-                    </Text>
-                  </Stack>
-
-                  <Group gap="xs" ml="xs">
-                    <Tooltip
-                      label={`Current Accuracy: ${totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : 0}% (${totalCorrect}/${totalAttempted})`}
-                    >
-                      <Badge
-                        variant="filled"
-                        color={
-                          totalAttempted === 0
-                            ? "gray"
-                            : totalCorrect / totalAttempted > 0.8
-                              ? "green"
-                              : "orange"
-                        }
-                        size="xl"
-                        fz="xs"
-                        circle
-                        style={{ border: `1px solid ${borderColor}` }}
-                      >
-                        {totalAttempted > 0
-                          ? Math.round((totalCorrect / totalAttempted) * 100)
-                          : "—"}
-                      </Badge>
-                    </Tooltip>
-                    <Tooltip label="Unseen Data Accuracy (Predicted)">
-                      <Badge
-                        variant="outline"
-                        color={
-                          predictedAccuracy === null
-                            ? "gray"
-                            : predictedAccuracy > 0.8
-                              ? "green"
-                              : "orange"
-                        }
-                        size="xl"
-                        fz="xs"
-                        circle
-                        style={{ border: `1px solid ${borderColor}` }}
-                      >
-                        {predictedAccuracy === null
-                          ? "—"
-                          : Math.round(predictedAccuracy * 100)}
-                      </Badge>
-                    </Tooltip>
-                  </Group>
+              <Stack h="100%" p="md" gap="md" className={styles.leftPanelScroll}>
+              <Group justify="space-between" align="center" wrap="nowrap">
+                <Group gap="sm" wrap="nowrap">
+                  <Text size="sm" fw={600}>
+                    Batch {currentBatchProgress}/{actualBatchSize}
+                  </Text>
+                  <Text size="sm" c={mutedColor}>
+                    Overall {currentIndex + 1}/{totalSamples}
+                  </Text>
+                </Group>
+                <Group gap="xs" wrap="nowrap">
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    leftSection={<IconArrowLeft size={16} />}
+                    disabled={currentIndex <= currentBatchStartIndex || isLoading}
+                    onClick={() =>
+                      setCurrentIndex((prev) =>
+                        Math.max(prev - 1, currentBatchStartIndex),
+                      )
+                    }
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    rightSection={
+                      currentBatchProgress === actualBatchSize ? (
+                        <IconBook size={16} />
+                      ) : (
+                        <IconArrowRight size={16} />
+                      )
+                    }
+                    color={
+                      currentBatchProgress === actualBatchSize
+                        ? "blue"
+                        : "indigo"
+                    }
+                    disabled={
+                      isLoading ||
+                      batchResults[currentIndex]?.isCorrect == null ||
+                      (batchResults[currentIndex]?.isCorrect === false &&
+                        (!batchResults[currentIndex]?.feedback?.trim() ||
+                          !batchResults[currentIndex]?.correctLabel)) ||
+                      spanTextFeedback === undefined ||
+                      reasoningFeedback === undefined
+                    }
+                    loading={isLoading}
+                    onClick={handleNextOrCommit}
+                  >
+                    {currentBatchProgress === actualBatchSize
+                      ? "Commit Batch"
+                      : "Next Sample"}
+                  </Button>
                 </Group>
               </Group>
 
-              <Divider color={borderColor} />
-
-              {/* Progress in Batch */}
-              <Group justify="space-between">
-                <Text size="sm" fw={500}>
-                  Batch Progress: {currentBatchProgress} / {actualBatchSize}
-                </Text>
-                <Text size="sm" c={mutedColor}>
-                  Overall: {currentIndex + 1} / {totalSamples}
-                </Text>
-              </Group>
-
-              <Text size="sm" fw={600} c={isLight ? "#0f1418" : "white"}>
-                Final Text
-              </Text>
               <Paper
                 bg={surface}
-                p="md"
+                p="sm"
                 radius="md"
-                style={{ border: `1px solid ${borderColor}`, flex: 1 }}
+                style={{ border: `1px solid ${borderColor}` }}
+                className={styles.sampleBox}
               >
-                <ScrollArea h="150">
-                  <Text size="lg" style={{ whiteSpace: "pre-wrap" }}>
-                    {getSampleText(currentSample) || "No text available"}
-                  </Text>
-                </ScrollArea>
+                <div
+                  className={styles.samplePreviewText}
+                >
+                  {currentSampleText}
+                </div>
               </Paper>
 
               {/* AI Output Section */}
@@ -1194,25 +1268,85 @@ export default function AnnotationPage() {
                 <Stack gap="xs">
                   <Group justify="space-between">
                     <Group gap={6} align="center">
-                      <Title order={5} c={isLight ? "#0f1418" : "white"}>
+                      <Text size="md" fw={700} c={isLight ? "#0f1418" : "white"}>
                         AI Suggestion
-                      </Title>
+                      </Text>
                       {infoIcon("The model's proposed labels and rationale.")}
                     </Group>
                   </Group>
 
-                  <Group gap="sm">
-                    <Text fw={700}>Labels:</Text>
-                    {generatedLabels.map((label) => (
-                      <Badge size="lg" variant="filled" color="green">
-                        {label || "..."}
-                      </Badge>
-                    ))}
+                  <Group gap="sm" align="flex-start" wrap="nowrap" w="100%">
+                    <Group gap="sm" style={{ flex: 1, minWidth: 0 }}>
+                      <Text size="md" fw={700}>Labels:</Text>
+                      {generatedLabels.map((label) => (
+                        <Badge
+                          size="lg"
+                          variant="filled"
+                          color={isLight ? "teal" : "cyan"}
+                          styles={{
+                            root: {
+                              border: `1px solid ${borderColor}`,
+                              boxShadow: isLight
+                                ? "0 1px 6px rgba(18, 130, 120, 0.2)"
+                                : "0 1px 8px rgba(124, 231, 225, 0.2)",
+                            },
+                            label: {
+                              fontWeight: 700,
+                              letterSpacing: "0.01em",
+                            },
+                          }}
+                        >
+                          {label || "..."}
+                        </Badge>
+                      ))}
+                    </Group>
+                    <Group gap="xs" style={{ flexShrink: 0 }}>
+                      <ActionIcon
+                        size="md"
+                        variant={batchResults[currentIndex]?.isCorrect === true ? "filled" : "outline"}
+                        color="green"
+                        style={{ opacity: batchResults[currentIndex]?.isCorrect === true ? 1 : 0.55 }}
+                        onClick={() =>
+                          setBatchResults(
+                            (sample: Record<number, AIAssisted>) => ({
+                              ...sample,
+                              [currentIndex]: {
+                                ...sample[currentIndex],
+                                isCorrect: true,
+                                correctLabel:
+                                  sample[currentIndex]?.label?.[0] ??
+                                  generatedLabels?.[0] ??
+                                  null,
+                              },
+                            }),
+                          )
+                        }
+                      >
+                        <IconCheck size={18} />
+                      </ActionIcon>
+                      <ActionIcon
+                        size="md"
+                        variant={batchResults[currentIndex]?.isCorrect === false ? "filled" : "outline"}
+                        color="red"
+                        style={{ opacity: batchResults[currentIndex]?.isCorrect === false ? 1 : 0.55 }}
+                        onClick={() =>
+                          setBatchResults((prev) => ({
+                            ...prev,
+                            [currentIndex]: {
+                              ...prev[currentIndex],
+                              isCorrect: false,
+                            },
+                          }))
+                        }
+                      >
+                        <IconX size={18} />
+                      </ActionIcon>
+                    </Group>
                   </Group>
 
                   <Stack gap={4}>
                     <Group gap={6} align="center">
-                      <Text fw={700} size="sm">
+                      <Text fw={700} size="md">
                         Span Text:
                       </Text>
                       {infoIcon(
@@ -1222,9 +1356,13 @@ export default function AnnotationPage() {
                     <Group gap="sm" align="flex-start" wrap="nowrap" w="100%">
                       <Text
                         size="sm"
-                        bg={isLight ? "#e6ecf0" : "var(--app-chip)"}
+                        bg={surface}
                         p="xs"
-                        style={{ flex: 1, borderRadius: "4px" }}
+                        style={{
+                          flex: 1,
+                          borderRadius: "6px",
+                          border: `1px solid ${borderColor}`,
+                        }}
                       >
                         {generatedSpanText || "..."}
                       </Text>
@@ -1232,22 +1370,24 @@ export default function AnnotationPage() {
                         <ActionIcon
                           size="md"
                           variant={
-                            spanTextFeedback === true ? "filled" : "light"
+                            spanTextFeedback === true ? "filled" : "outline"
                           }
                           color="green"
+                          style={{ opacity: spanTextFeedback === true ? 1 : 0.55 }}
                           onClick={() => setSpanTextFeedback(true)}
                         >
-                          <IconThumbUp size={18} />
+                          <IconCheck size={18} />
                         </ActionIcon>
                         <ActionIcon
                           size="md"
                           variant={
-                            spanTextFeedback === false ? "filled" : "light"
+                            spanTextFeedback === false ? "filled" : "outline"
                           }
                           color="red"
+                          style={{ opacity: spanTextFeedback === false ? 1 : 0.55 }}
                           onClick={() => setSpanTextFeedback(false)}
                         >
-                          <IconThumbDown size={18} />
+                          <IconX size={18} />
                         </ActionIcon>
                       </Group>
                     </Group>
@@ -1255,7 +1395,7 @@ export default function AnnotationPage() {
 
                   <Stack gap={4}>
                     <Group gap={6} align="center">
-                      <Text fw={700} size="sm">
+                      <Text fw={700} size="md">
                         Reasoning:
                       </Text>
                       {infoIcon("Short explanation produced by the model.")}
@@ -1273,22 +1413,24 @@ export default function AnnotationPage() {
                         <ActionIcon
                           size="md"
                           variant={
-                            reasoningFeedback === true ? "filled" : "light"
+                            reasoningFeedback === true ? "filled" : "outline"
                           }
                           color="green"
+                          style={{ opacity: reasoningFeedback === true ? 1 : 0.55 }}
                           onClick={() => setReasoningFeedback(true)}
                         >
-                          <IconThumbUp size={18} />
+                          <IconCheck size={18} />
                         </ActionIcon>
                         <ActionIcon
                           size="md"
                           variant={
-                            reasoningFeedback === false ? "filled" : "light"
+                            reasoningFeedback === false ? "filled" : "outline"
                           }
                           color="red"
+                          style={{ opacity: reasoningFeedback === false ? 1 : 0.55 }}
                           onClick={() => setReasoningFeedback(false)}
                         >
-                          <IconThumbDown size={18} />
+                          <IconX size={18} />
                         </ActionIcon>
                       </Group>
                     </Group>
@@ -1299,117 +1441,101 @@ export default function AnnotationPage() {
               {/* User Controls */}
               <Paper p="md" bg={surface3} radius="md">
                 <Stack gap="md">
-                  <Group justify="center" gap="xl">
-                    <Button
-                      leftSection={<IconCheck size={20} />}
-                      color="green"
-                      variant={
-                        batchResults[currentIndex]?.isCorrect === true
-                          ? "filled"
-                          : "light"
-                      }
-                      onClick={() =>
-                        setBatchResults(
-                          (sample: Record<number, AIAssisted>) => ({
-                            ...sample,
-                            [currentIndex]: {
-                              ...sample[currentIndex],
-                              isCorrect: true,
-                            },
-                          }),
-                        )
-                      }
-                    >
-                      Correct
-                    </Button>
-                    <Button
-                      leftSection={<IconX size={20} />}
-                      color="red"
-                      variant={
-                        batchResults[currentIndex]?.isCorrect === false
-                          ? "filled"
-                          : "light"
-                      }
-                      onClick={() =>
-                        setBatchResults((prev) => ({
-                          ...prev,
-                          [currentIndex]: {
-                            ...prev[currentIndex],
-                            isCorrect: false,
-                          },
-                        }))
-                      }
-                    >
-                      Incorrect
-                    </Button>
-                  </Group>
-
                   {(batchResults[currentIndex]?.isCorrect === false ||
                     spanTextFeedback === false ||
                     reasoningFeedback === false) && (
                     <Stack gap="xs">
-                      <Group gap="xs" align="center">
-                        <Text size="sm" fw={600}>
-                          Task Labels:
-                        </Text>
-                        {infoIcon(
-                          "Labels defined in the task definition stage",
-                        )}
-                        <Group gap={4}>
-                          {task?.labels?.length ? (
-                            task.labels.map((l) => (
-                              <Badge key={l.name} variant="light" color="gray">
-                                {l.name}
-                              </Badge>
-                            ))
-                          ) : (
-                            <Text size="xs" c={mutedColor}>
-                              Error retrieving task labels.
+                      {batchResults[currentIndex]?.isCorrect === false && (
+                        <>
+                          <Group gap="xs" align="center">
+                            <Text size="sm" fw={500}>
+                              Task Labels:
                             </Text>
-                          )}
-                        </Group>
-                      </Group>
-                      <Select
-                        label="Correct label"
-                        placeholder="Select the correct label"
-                        data={(task?.labels || []).map((l) => ({
-                          value: l.name,
-                          label: l.name,
-                        }))}
-                        value={batchResults[currentIndex]?.correctLabel ?? null}
-                        onChange={(value) =>
-                          setBatchResults(
-                            (sample: Record<number, AIAssisted>) => ({
-                              ...sample,
-                              [currentIndex]: {
-                                ...sample[currentIndex],
-                                correctLabel: value ?? null,
+                            {infoIcon(
+                              "Labels defined in the task definition stage",
+                            )}
+                            <Group gap={4}>
+                              {task?.labels?.length ? (
+                                task.labels.map((l) => (
+                                  <Tooltip
+                                    key={l.name}
+                                    withArrow
+                                    multiline
+                                    w={280}
+                                    label={(l as { description?: string; definition?: string }).description || l.definition || "No label description available."}
+                                  >
+                                    <Badge
+                                      variant="light"
+                                      color="gray"
+                                      style={{ cursor: "pointer" }}
+                                      onClick={() =>
+                                        setBatchResults(
+                                          (sample: Record<number, AIAssisted>) => ({
+                                            ...sample,
+                                            [currentIndex]: {
+                                              ...sample[currentIndex],
+                                              correctLabel: l.name,
+                                            },
+                                          }),
+                                        )
+                                      }
+                                    >
+                                      {l.name}
+                                    </Badge>
+                                  </Tooltip>
+                                ))
+                              ) : (
+                                <Text size="xs" c={mutedColor}>
+                                  Error retrieving task labels.
+                                </Text>
+                              )}
+                            </Group>
+                          </Group>
+                          <Select
+                            label="Correct label"
+                            placeholder="Select the correct label"
+                            data={(task?.labels || []).map((l) => ({
+                              value: l.name,
+                              label: l.name.toUpperCase(),
+                            }))}
+                            value={batchResults[currentIndex]?.correctLabel ?? null}
+                            onChange={(value) =>
+                              setBatchResults(
+                                (sample: Record<number, AIAssisted>) => ({
+                                  ...sample,
+                                  [currentIndex]: {
+                                    ...sample[currentIndex],
+                                    correctLabel: value ?? null,
+                                  },
+                                }),
+                              )
+                            }
+                            required
+                            allowDeselect={false}
+                            styles={{
+                              label: {
+                                color: isLight ? "#0f1418" : "var(--app-text)",
                               },
-                            }),
-                          )
-                        }
-                        required
-                        allowDeselect={false}
-                        styles={{
-                          label: {
-                            color: isLight ? "#0f1418" : "var(--app-text)",
-                          },
-                          input: {
-                            background: surface2,
-                            color: isLight ? "#0f1418" : "var(--app-text)",
-                          },
-                        }}
-                      />
+                              input: {
+                                background: surface2,
+                                color: isLight ? "#0f1418" : "var(--app-text)",
+                              },
+                            }}
+                          />
+                        </>
+                      )}
                       <Textarea
                         label="Feedback"
                         mt={4}
                         placeholder="Why was the AI wrong? (This will help the rule synthesizer)"
-                        variant="filled"
+                        variant="default"
                         size="sm"
                         value={batchResults[currentIndex]?.feedback ?? ""}
                         required
                         styles={{
                           input: {
+                            background: surface,
+                            border: `1px solid ${borderColor}`,
                             color: isLight ? "#0f1418" : "var(--app-text)",
                           },
                         }}
@@ -1428,98 +1554,6 @@ export default function AnnotationPage() {
                       />
                     </Stack>
                   )}
-
-                  <Group justify="space-between" mt="sm">
-                    <Button
-                      variant="subtle"
-                      color="gray"
-                      leftSection={<IconArrowLeft size={16} />}
-                      disabled={currentIndex <= currentBatchStartIndex || isLoading}
-                      onClick={() =>
-                        setCurrentIndex((prev) =>
-                          Math.max(prev - 1, currentBatchStartIndex),
-                        )
-                      }
-                    >
-                      Previous
-                    </Button>
-
-                    <Button
-                      rightSection={
-                        currentBatchProgress === actualBatchSize ? (
-                          <IconBook size={16} />
-                        ) : (
-                          <IconArrowRight size={16} />
-                        )
-                      }
-                      color={
-                        currentBatchProgress === actualBatchSize
-                          ? "blue"
-                          : "indigo"
-                      }
-                      disabled={
-                        isLoading ||
-                        batchResults[currentIndex]?.isCorrect == null ||
-                        (batchResults[currentIndex]?.isCorrect === false &&
-                          (!batchResults[currentIndex]?.feedback?.trim() ||
-                            !batchResults[currentIndex]?.correctLabel)) ||
-                        spanTextFeedback === undefined ||
-                        reasoningFeedback === undefined
-                      }
-                      loading={isLoading}
-                      onClick={async () => {
-                        const shouldGenerateMetrics = isLastBatch;
-                        let committedCodebook: string[] = [];
-                        if (currentBatchProgress === actualBatchSize) {
-                          committedCodebook = await handleCommitBatch();
-                          if (task?._id) {
-                            try {
-                              await saveTaskCodebook(task._id, committedCodebook);
-                            } catch (error: any) {
-                              toast.error(
-                                error?.message ||
-                                  "Failed to auto-save codebook after batch commit",
-                              );
-                            }
-                          }
-                        }
-                        await handleNextClick();
-                        if (shouldGenerateMetrics && task?._id) {
-                          const [sampleRes, metadataRes, batchRes] =
-                            await Promise.all([
-                              generateSampleMetrics(task._id),
-                              generateMetadataMetrics(task._id),
-                              generateBatchMetrics(task._id),
-                            ]);
-                          setMetricsFiles({
-                            sample: sampleRes.filename,
-                            metadata: metadataRes.filename,
-                            batch: batchRes.filename,
-                          });
-                          try {
-                            await exportCodebookSnapshot(
-                              task._id,
-                              committedCodebook.length > 0
-                                ? committedCodebook
-                                : codebook,
-                              lastPromptUsed,
-                            );
-                          } catch (error: any) {
-                            console.error("Failed to export codebook:", error);
-                            toast.error(
-                              error?.message ||
-                                "Failed to export codebook on server",
-                            );
-                          }
-                          setMetricsModalOpen(true);
-                        }
-                      }}
-                    >
-                      {currentBatchProgress === actualBatchSize
-                        ? "Commit Batch"
-                        : "Next Sample"}
-                    </Button>
-                  </Group>
                 </Stack>
               </Paper>
               </Stack>
@@ -1527,170 +1561,173 @@ export default function AnnotationPage() {
           </Grid.Col>
 
           {/* Sidebar: Live Codebook */}
-          <Grid.Col span={{ base: 12, md: 4 }} h="100%">
+          <Grid.Col span={{ base: 12, md: 4 }} h="100%" className={styles.sidebarColumn}>
             <Paper className={styles.dropCard} radius="lg" h="100%" bg={panelBg}>
-              <Stack h="100%" p="md" gap="md">
-              <Group justify="space-between">
-                <Group gap="xs">
-                  <IconBook color="var(--app-text)" />
-                  <Title order={4} c={isLight ? "#0f1418" : "white"}>
-                    Live Codebook
-                  </Title>
-                </Group>
-                <Group gap="xs">
-                  <Button
-                    variant="filled"
-                    color="blue"
-                    size="xs"
-                    radius="xl"
-                    onClick={handleExportCodebook}
-                    leftSection={<IconDownload size={14} />}
-                    disabled={codebook.length === 0}
-                  >
-                    Export Codebook
-                  </Button>
-                  <Tooltip label="These rules guide the AI for future batches">
-                    <IconInfoCircle size={18} color="gray" />
-                  </Tooltip>
-                </Group>
-              </Group>
-
-              <Divider color={borderColor} />
-
-              <Stack gap="sm" style={{ flex: 1, overflowY: "auto" }}>
-                {codebook.length === 0 && stagedRules.length === 0 ? (
-                  <Center h={200}>
-                    <Text c={mutedColor} size="sm" ta="center">
-                      No rules generated yet.
-                      <br />
-                      Complete a batch to see AI synthesis.
-                    </Text>
-                  </Center>
-                ) : (
-                  <>
-                    {codebook.map((rule, idx) => (
-                      <Paper
-                        key={idx}
-                        p="sm"
-                        bg={surface}
-                        radius="sm"
-                        style={{
-                          border: `1px solid ${stagedRulesDeletion.includes(rule) ? "crimson" : borderColor}`,
-                          opacity: stagedRulesDeletion.includes(rule) ? 0.5 : 1,
-                        }}
+              <div className={styles.rightPanelStack}>
+                <div className={styles.codebookTop}>
+                  <Group justify="space-between">
+                    <Group gap="xs">
+                      <IconBook color="var(--app-text)" />
+                      <Text size="md" fw={700} c={isLight ? "#0f1418" : "white"}>
+                        Live Codebook
+                      </Text>
+                    </Group>
+                    <Group gap="xs">
+                      <Button
+                        variant="filled"
+                        color="blue"
+                        size="xs"
+                        radius="xl"
+                        onClick={handleExportCodebook}
+                        leftSection={<IconDownload size={14} />}
+                        disabled={codebook.length === 0}
                       >
-                        <Group align="flex-start" wrap="nowrap">
-                          <Text
-                            size="sm"
-                            style={{
-                              textDecoration: stagedRulesDeletion.includes(rule)
-                                ? "line-through"
-                                : "none",
-                            }}
-                          >
-                            {rule}
-                          </Text>
-                          <ActionIcon
-                            size="sm"
-                            color="green"
-                            variant="subtle"
-                            onClick={() => {
-                              if (!stagedRulesDeletion.includes(rule)) {
-                                setStagedRulesDeletion((prev) => [
-                                  ...prev,
-                                  rule,
-                                ]);
-                              }
-                              setNewRule(rule);
-                            }}
-                          >
-                            <IconEdit size={14} />
-                          </ActionIcon>
-                          <ActionIcon
-                            size="sm"
-                            color="red"
-                            variant="subtle"
-                            onClick={() => {
-                              if (stagedRulesDeletion.includes(rule)) {
-                                // Toggle off if already staged
-                                setStagedRulesDeletion((prev) =>
-                                  prev.filter((r) => r !== rule),
-                                );
-                              } else {
-                                setStagedRulesDeletion((prev) => [
-                                  ...prev,
-                                  rule,
-                                ]);
-                              }
-                            }}
-                          >
-                            <IconTrash size={14} />
-                          </ActionIcon>
-                        </Group>
-                      </Paper>
-                    ))}
+                        Export
+                      </Button>
+                      <Tooltip label="These rules guide the AI for future batches">
+                        <IconInfoCircle size={18} color="gray" />
+                      </Tooltip>
+                    </Group>
+                  </Group>
+                  <Divider color={borderColor} className={styles.codebookTopDivider} />
+                </div>
 
-                    {stagedRules.length > 0 && (
-                      <>
-                        <Text size="xs" fw={700} c="orange" tt="uppercase">
-                          Pending (added on batch commit)
+                <div className={styles.codebookMiddle}>
+                  <Stack gap="sm" className={styles.codebookList}>
+                    {codebook.length === 0 && stagedRules.length === 0 ? (
+                      <Center h={200}>
+                        <Text c={mutedColor} size="sm" ta="center">
+                          No rules generated yet.
+                          <br />
+                          Complete a batch to see AI synthesis.
                         </Text>
-                        {stagedRules.map((rule, idx) => (
+                      </Center>
+                    ) : (
+                      <>
+                        {codebook.map((rule, idx) => (
                           <Paper
-                            key={`staged-${idx}`}
+                            key={idx}
                             p="sm"
+                            bg={surface}
                             radius="sm"
                             style={{
-                              border: `1px dashed orange`,
-                              opacity: 0.8,
+                              border: `1px solid ${stagedRulesDeletion.includes(rule) ? "crimson" : borderColor}`,
+                              opacity: stagedRulesDeletion.includes(rule) ? 0.5 : 1,
                             }}
                           >
                             <Group align="flex-start" wrap="nowrap">
-                              <Text size="sm" style={{ flex: 1 }}>
+                              <Text
+                                size="sm"
+                                style={{
+                                  textDecoration: stagedRulesDeletion.includes(rule)
+                                    ? "line-through"
+                                    : "none",
+                                }}
+                              >
                                 {rule}
                               </Text>
                               <ActionIcon
                                 size="sm"
+                                color="green"
+                                variant="subtle"
+                                onClick={() => {
+                                  if (!stagedRulesDeletion.includes(rule)) {
+                                    setStagedRulesDeletion((prev) => [
+                                      ...prev,
+                                      rule,
+                                    ]);
+                                  }
+                                  setNewRule(rule);
+                                }}
+                              >
+                                <IconEdit size={14} />
+                              </ActionIcon>
+                              <ActionIcon
+                                size="sm"
                                 color="red"
                                 variant="subtle"
-                                onClick={() =>
-                                  setStagedRules((prev) =>
-                                    prev.filter((_, i) => i !== idx),
-                                  )
-                                }
+                                onClick={() => {
+                                  if (stagedRulesDeletion.includes(rule)) {
+                                    setStagedRulesDeletion((prev) =>
+                                      prev.filter((r) => r !== rule),
+                                    );
+                                  } else {
+                                    setStagedRulesDeletion((prev) => [
+                                      ...prev,
+                                      rule,
+                                    ]);
+                                  }
+                                }}
                               >
                                 <IconTrash size={14} />
                               </ActionIcon>
                             </Group>
                           </Paper>
                         ))}
+
+                        {stagedRules.length > 0 && (
+                          <>
+                            <Text size="xs" fw={700} c="orange" tt="uppercase">
+                              Pending (added on batch commit)
+                            </Text>
+                            {stagedRules.map((rule, idx) => (
+                              <Paper
+                                key={`staged-${idx}`}
+                                p="sm"
+                                radius="sm"
+                                style={{
+                                  border: `1px dashed orange`,
+                                  opacity: 0.8,
+                                }}
+                              >
+                                <Group align="flex-start" wrap="nowrap">
+                                  <Text size="sm" style={{ flex: 1 }}>
+                                    {rule}
+                                  </Text>
+                                  <ActionIcon
+                                    size="sm"
+                                    color="red"
+                                    variant="subtle"
+                                    onClick={() =>
+                                      setStagedRules((prev) =>
+                                        prev.filter((_, i) => i !== idx),
+                                      )
+                                    }
+                                  >
+                                    <IconTrash size={14} />
+                                  </ActionIcon>
+                                </Group>
+                              </Paper>
+                            ))}
+                          </>
+                        )}
                       </>
                     )}
-                  </>
-                )}
-              </Stack>
+                  </Stack>
+                </div>
 
-              <Divider color={borderColor} />
-
-              <Stack gap="xs">
-                <Text size="xs" fw={700} c={mutedColor} tt="uppercase">
-                  Add Codebook Rule
-                </Text>
-                <Group gap="xs">
-                  <Textarea
-                    placeholder="Enter a custom rule..."
-                    variant="filled"
-                    size="sm"
-                    style={{ flex: 1 }}
-                    value={newRule}
-                    onChange={(e) => setNewRule(e.currentTarget.value)}
-                  />
-                  <ActionIcon size="lg" color="blue" onClick={addRule}>
-                    <IconPlus size={20} />
-                  </ActionIcon>
-                </Group>
-              </Stack>
-              </Stack>
+                <div className={styles.addRuleSection}>
+                  <Divider color={borderColor} className={styles.codebookBottomDivider} />
+                  <Stack gap="xs">
+                    <Text size="sm" fw={700} c={mutedColor} tt="uppercase">
+                      Add Codebook Rule
+                    </Text>
+                    <Group gap="xs">
+                      <Textarea
+                        placeholder="Enter a custom rule..."
+                        variant="filled"
+                        size="sm"
+                        style={{ flex: 1 }}
+                        value={newRule}
+                        onChange={(e) => setNewRule(e.currentTarget.value)}
+                      />
+                      <ActionIcon size="lg" color="blue" onClick={addRule}>
+                        <IconPlus size={20} />
+                      </ActionIcon>
+                    </Group>
+                  </Stack>
+                </div>
+              </div>
             </Paper>
           </Grid.Col>
         </Grid>
