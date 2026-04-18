@@ -36,16 +36,24 @@
     color 0.2s ease;
 }
 
-.sidebar-home-icon {
+.sidebar-home-logo {
   transition:
-    transform 0.2s ease,
-    color 0.2s ease;
-  color: var(--app-sidebar-text);
+    transform 0.2s ease;
+  display: block;
 }
 
-.sidebar-home-button:hover .sidebar-home-icon,
-.sidebar-home-button:focus-visible .sidebar-home-icon {
-  color: #7ce7e1;
+.sidebar-home-logo-collapsed {
+  width: 34px;
+  height: 34px;
+}
+
+.sidebar-home-logo-expanded {
+  width: 30px;
+  height: 30px;
+}
+
+.sidebar-home-button:hover .sidebar-home-logo,
+.sidebar-home-button:focus-visible .sidebar-home-logo {
   transform: translateY(-2px) scale(1.05);
 }
 

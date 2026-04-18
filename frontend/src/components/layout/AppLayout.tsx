@@ -17,7 +17,7 @@ export const AppLayout = () => {
       padding={0}
       transitionDuration={700} // Adjust this value (in ms)
       transitionTimingFunction="ease" // Adjust easing
-      bg="var(--mantine-color-body)"
+      bg="var(--app-sidebar-bg)"
     >
       {/* NAVBAR (collapsible sidebar) */}
       <AppShell.Navbar>

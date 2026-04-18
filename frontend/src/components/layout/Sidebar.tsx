@@ -15,7 +15,6 @@ import {
   IconUserCircle,
   IconFile,
   IconHistory,
-  IconHome2,
 } from "@tabler/icons-react";
 import "./styles/Sidebar.css";
 import { useState, useEffect } from "react";
@@ -114,7 +113,11 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           bd="0px"
           classNames={{ root: "sidebar-button-collapsed sidebar-home-button" }}
         >
-          <IconHome2 size={34} stroke={1.5} className="sidebar-home-icon" />
+          <img
+            src="/annotate-icon.svg"
+            alt="Annotate logo"
+            className="sidebar-home-logo sidebar-home-logo-collapsed"
+          />
         </Button>
         <ActionIcon
           onClick={() => {
@@ -176,7 +179,11 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
               title="Home"
               className="sidebar-home-button"
             >
-              <IconHome2 size={30} stroke={1.5} className="sidebar-home-icon" />
+              <img
+                src="/annotate-icon.svg"
+                alt="Annotate logo"
+                className="sidebar-home-logo sidebar-home-logo-expanded"
+              />
             </ActionIcon>
             <ActionIcon
               variant="transparent"
