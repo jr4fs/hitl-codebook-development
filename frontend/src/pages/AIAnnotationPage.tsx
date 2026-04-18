@@ -8,6 +8,7 @@ import {
   Stack,
   ScrollArea,
   LoadingOverlay,
+  Loader,
   Center,
   Box,
   Grid,
@@ -517,17 +518,36 @@ export default function AnnotationPage() {
     totalSamples - Math.floor(currentIndex / batchSize) * batchSize,
   );
 
+  const renderPageLoadingOverlay = (message: string) => (
+    <Box
+      mih="100dvh"
+      bg={isLight ? "#f7fafb" : "var(--app-bg)"}
+      style={{ position: "relative" }}
+    >
+      <LoadingOverlay
+        visible
+        zIndex={1}
+        overlayProps={{
+          blur: 2,
+          color: isLight ? "#f7fafb" : "#0f1418",
+          opacity: isLight ? 0.78 : 0.72,
+        }}
+        loaderProps={{
+          children: (
+            <Stack align="center" gap="xs">
+              <Loader color={isLight ? "blue" : "cyan"} />
+              <Text c={isLight ? "#0f1418" : "white"} fw={500} ta="center">
+                {message}
+              </Text>
+            </Stack>
+          ),
+        }}
+      />
+    </Box>
+  );
+
   if (loading) {
-    return (
-      <Center h="100vh" bg="var(--app-bg)">
-        <Stack align="center" gap="md">
-          <LoadingOverlay visible={true} overlayProps={{ blur: 2 }} />
-          <Text c={isLight ? "#0f1418" : "white"}>
-            Loading annotation data...
-          </Text>
-        </Stack>
-      </Center>
-    );
+    return renderPageLoadingOverlay("Loading annotation data...");
   }
 
   const effectiveStatus =
@@ -535,15 +555,8 @@ export default function AnnotationPage() {
     (task?.status as "sampling_pending" | "ready" | "sampling_error" | undefined);
 
   if (effectiveStatus === "sampling_pending") {
-    return (
-      <Center h="100vh" bg="var(--app-bg)">
-        <Stack align="center" gap="md">
-          <LoadingOverlay visible={true} overlayProps={{ blur: 2 }} />
-          <Text c={isLight ? "#0f1418" : "white"}>
-            Task created. Sampling is in progress. This page checks status once every minute.
-          </Text>
-        </Stack>
-      </Center>
+    return renderPageLoadingOverlay(
+      "Task created. Sampling is in progress. This page checks status once every minute.",
     );
   }
 
