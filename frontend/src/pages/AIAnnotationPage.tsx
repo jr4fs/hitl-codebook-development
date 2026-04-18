@@ -1160,29 +1160,6 @@ export default function AnnotationPage() {
                     </Tooltip>
                   </Group>
                 </Group>
-                <Group gap="xs" align="center">
-                  {Array.from({ length: Math.min(totalBatches, 5) }).map(
-                    (_, i) => (
-                      <Badge
-                        key={i}
-                        variant={i === currentBatchIndex ? "filled" : "outline"}
-                        color={i < currentBatchIndex ? "green" : "gray"}
-                        size="lg"
-                        style={{ cursor: "pointer" }}
-                      >
-                        Batch {i + 1}
-                      </Badge>
-                    ),
-                  )}
-                  {infoIcon(
-                    "Batch groups reviewed samples to build the live codebook.",
-                  )}
-                  {totalBatches > 5 && (
-                    <Text size="xs" c={mutedColor}>
-                      ...
-                    </Text>
-                  )}
-                </Group>
               </Group>
 
               <Divider color={borderColor} />
