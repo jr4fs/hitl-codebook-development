@@ -9,6 +9,8 @@ import { PublicRoute } from "./components/auth/PublicRoute";
 import AnnotationPage from "./pages/AIAnnotationPage";
 import NewAnnotationTaskPage from "./pages/NewAnnotationTaskPage";
 import AnnotateDatasetPage from "./pages/AnnotateDatasetPage";
+import CodebookLandingPage from "./pages/CodebookLandingPage";
+import AnnotateDatasetLandingPage from "./pages/AnnotateDatasetLandingPage";
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +40,10 @@ export const router = createBrowserRouter([
             element: <LandingPage />,
           },
           {
+            path: "/codebook-landing",
+            element: <CodebookLandingPage />,
+          },
+          {
             path: "/new-codebook",
             element: <DatasetUploadPage />,
           },
@@ -52,6 +58,10 @@ export const router = createBrowserRouter([
           {
             path: "/annotate-dataset/:id",
             element: <AnnotateDatasetPage />,
+          },
+          {
+            path: "/annotate-dataset-landing",
+            element: <AnnotateDatasetLandingPage />,
           },
         ],
       },
