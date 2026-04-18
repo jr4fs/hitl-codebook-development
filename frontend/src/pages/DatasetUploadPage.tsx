@@ -18,12 +18,12 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import {IconAlertCircle, IconArrowRight, IconBraces, IconFileTypeCsv, IconUpload,} from "@tabler/icons-react";
-import {type ReactNode, useCallback, useEffect, useState} from "react";
+import {type ReactNode, useCallback, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import GuidedTour, {GuidedTourStep} from "../components/common/GuidedTour";
-import PageIntro from "../components/common/PageIntro";
-import {shouldShowPageIntro} from "../components/common/pageIntroStorage";
+import PageIntro, {usePageIntroTour} from "../components/common/PageIntro";
+import {LABELS_TEMPLATE, TASK_TEMPLATE, modelOptions} from "../constants/datasetUpload.constants";
 import {toast} from "../lib/toast";
 import {uploadTaskBundle} from "../services/tasks.service";
 import {downloadContent} from "../utils/downloadContent";
@@ -137,23 +137,25 @@ export default function DatasetUploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [introOpen, setIntroOpen] = useState(false);
-  const [introMode, setIntroMode] = useState<"firstRun" | "help">("firstRun");
-  const [tourOpen, setTourOpen] = useState(false);
+  const {
+    introOpen,
+    introMode,
+    tourOpen,
+    setIntroOpen,
+    setTourOpen,
+    openHelpIntro,
+  } = usePageIntroTour("hideStep1Intro");
 
   const isReady = Boolean(dValFile && dAllFile && taskJsonFile && labelsJsonFile);
 
-  useEffect(() => {
-    if (shouldShowPageIntro("hideStep1Intro")) {
-      setIntroMode("firstRun");
-      setIntroOpen(true);
-    }
-  }, []);
+  const handleHelp = openHelpIntro;
 
-  const handleHelp = () => {
-    setIntroMode("help");
-    setIntroOpen(true);
-  };
+  const setConfigField = useCallback(
+    <K extends keyof UploadConfig>(key: K, value: UploadConfig[K]) => {
+      setConfig((prev) => ({...prev, [key]: value}));
+    },
+    [],
+  );
 
   const handleReset = useCallback(() => {
     setDValFile(null);
@@ -163,43 +165,6 @@ export default function DatasetUploadPage() {
     setConfig(defaultUploadConfig);
     setError(null);
   }, []);
-
-  const taskTemplate = JSON.stringify(
-    {
-      taskname: "INSERT_TASK_NAME_HERE",
-      description:
-        "Provide clear, step-by-step instructions explaining how to perform this task. Write the description as if you are teaching someone for the first time. Include the objective, and any necessary context, this will go straight into the prompt of the language model",
-    },
-    null,
-    2,
-  );
-
-  const labelsTemplate = JSON.stringify(
-    {
-      labels: [
-        {
-          name: "positive",
-          description: "INSERT DEFINITION",
-          keywords: ["INSERT YOUR KEYWORDS"],
-          guidelines: ["Any initial guidelines you have created for annotating this label"],
-        },
-        {
-          name: "negative",
-          description: "INSERT DEFINITION",
-          keywords: ["INSERT YOUR KEYWORDS"],
-          guidelines: ["Any initial guidelines you have created for annotating this label"],
-        },
-        {
-          name: "neutral",
-          description: "INSERT DEFINITION",
-          keywords: ["INSERT YOUR KEYWORDS"],
-          guidelines: ["Any initial guidelines you have created for annotating this label"],
-        },
-      ],
-    },
-    null,
-    2,
-  );
 
   const dividerColor = isLight ? "rgba(15, 20, 24, 0.12)" : "rgba(255, 255, 255, 0.08)";
 
@@ -322,11 +287,10 @@ export default function DatasetUploadPage() {
                       value={config.coverageSampleSize}
                       min={1}
                       onChange={(value) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          coverageSampleSize:
-                            typeof value === "number" ? value : "",
-                        }))
+                        setConfigField(
+                          "coverageSampleSize",
+                          typeof value === "number" ? value : "",
+                        )
                       }
                       classNames={{
                         label: styles.configLabel,
@@ -339,10 +303,10 @@ export default function DatasetUploadPage() {
                       description="Off by default for this pilot. When enabled, we run representative sampling before coverage."
                       checked={config.useRepresentativeSampling}
                       onChange={(event) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          useRepresentativeSampling: event.currentTarget.checked,
-                        }))
+                        setConfigField(
+                          "useRepresentativeSampling",
+                          event.currentTarget.checked,
+                        )
                       }
                       classNames={{
                         label: styles.configLabel,
@@ -354,16 +318,8 @@ export default function DatasetUploadPage() {
                       description="Choose the model to use for AI annotation."
                       placeholder="Select a model…"
                       value={config.selectedModel}
-                      onChange={(value) =>
-                        setConfig((prev) => ({...prev, selectedModel: value}))
-                      }
-                      data={[
-                        {value: "gemma3:1b", label: "Gemma3-1B"},
-                        {value: "qwen3.5:2b", label: "Qwen3.5-2B"},
-                        {value: "mistral:7b", label: "Mistral-7B"},
-                        {value: "qwen:32b", label: "Qwen-32B"},
-                        {value: "llama3.3:70b", label: "Llama3.3-70B"},
-                      ]}
+                      onChange={(value) => setConfigField("selectedModel", value)}
+                      data={modelOptions}
                       classNames={{
                         label: styles.configLabel,
                         description: styles.configDescription,
@@ -376,12 +332,7 @@ export default function DatasetUploadPage() {
                       description="The column in your CSV that contains the text to annotate."
                       placeholder="e.g. text, translated_text, content…"
                       value={config.textColumn}
-                      onChange={(event) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          textColumn: event.currentTarget.value,
-                        }))
-                      }
+                      onChange={(event) => setConfigField("textColumn", event.currentTarget.value)}
                       classNames={{
                         label: styles.configLabel,
                         description: styles.configDescription,
@@ -393,12 +344,7 @@ export default function DatasetUploadPage() {
                       description="The column in your CSV that contains the human-annotated labels."
                       placeholder="e.g. annotations, final label, labels"
                       value={config.labelColumn}
-                      onChange={(event) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          labelColumn: event.currentTarget.value,
-                        }))
-                      }
+                      onChange={(event) => setConfigField("labelColumn", event.currentTarget.value)}
                       classNames={{
                         label: styles.configLabel,
                         description: styles.configDescription,
@@ -468,7 +414,7 @@ export default function DatasetUploadPage() {
                         onFileChange={setTaskJsonFile}
                         templateAction={{
                           label: "Download template",
-                          onClick: () => downloadContent("task.json", taskTemplate),
+                          onClick: () => downloadContent("task.json", TASK_TEMPLATE),
                         }}
                       />
                     </GuidedTourStep>
@@ -489,7 +435,7 @@ export default function DatasetUploadPage() {
                         onFileChange={setLabelsJsonFile}
                         templateAction={{
                           label: "Download template",
-                          onClick: () => downloadContent("labels.json", labelsTemplate),
+                          onClick: () => downloadContent("labels.json", LABELS_TEMPLATE),
                         }}
                       />
                     </GuidedTourStep>

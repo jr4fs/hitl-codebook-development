@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   Button,
   Checkbox,
@@ -9,7 +10,8 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import { IconHelpCircle } from "@tabler/icons-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { shouldShowPageIntro } from "./pageIntroStorage";
 import styles from "./PageIntro.module.css";
 
 interface PageIntroProps {
@@ -23,6 +25,26 @@ interface PageIntroProps {
   startLabel?: string;
   onSkip?: () => void;
   onStart?: () => void;
+}
+
+export function usePageIntroTour(storageKey: string) {
+  const [introOpen, setIntroOpen] = useState(() => shouldShowPageIntro(storageKey));
+  const [introMode, setIntroMode] = useState<"firstRun" | "help">("firstRun");
+  const [tourOpen, setTourOpen] = useState(false);
+
+  const openHelpIntro = useCallback(() => {
+    setIntroMode("help");
+    setIntroOpen(true);
+  }, []);
+
+  return {
+    introOpen,
+    introMode,
+    tourOpen,
+    setIntroOpen,
+    setTourOpen,
+    openHelpIntro,
+  };
 }
 
 export default function PageIntro({
