@@ -161,6 +161,7 @@ export default function AnnotationPage() {
   >({});
   const skipInferenceRef = useRef(false);
   const resumeInitializedRef = useRef(false);
+  const prevTaskIdRef = useRef<string | null>(null);
 
   const resetAISuggestion = () => {
     setGeneratedLabels(["Generating suggestion..."]);
@@ -370,10 +371,24 @@ export default function AnnotationPage() {
   }, [task?._id, task?.status, samplingStatus, refreshTaskData]);
 
   useEffect(() => {
-    if (task?.codebook && task.codebook.length > 0 && codebook.length === 0) {
-      setCodebook(task.codebook);
-    }
-  }, [task, codebook.length]);
+    const nextTaskId = task?._id ?? null;
+    if (!nextTaskId || prevTaskIdRef.current === nextTaskId) return;
+
+    prevTaskIdRef.current = nextTaskId;
+    setCodebook(Array.isArray(task?.codebook) ? task.codebook : []);
+    setLastPromptUsed("");
+    setNewRule("");
+    setStagedRules([]);
+    setStagedRulesDeletion([]);
+    setBatchResults({});
+    sampleStartsRef.current = {};
+    setCurrentIndex(0);
+    setGeneratedLabels(["Click next to generate this content"]);
+    setGeneratedSpanText("Click next to generate this content");
+    setGeneratedReasoning("Click next to generate this content");
+    setSpanTextFeedback(undefined);
+    setReasoningFeedback(undefined);
+  }, [task?._id, task?.codebook]);
 
   const getCodebookSnapshot = () => [...codebook, ...stagedRules];
 
