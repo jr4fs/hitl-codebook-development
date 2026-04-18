@@ -3,7 +3,7 @@
   --accent-strong: #36c2b3;
   --accent-warm: #f3a578;
   position: relative;
-  min-height: 100%;
+  min-height: 100dvh;
   background:
     radial-gradient(
       1200px 800px at 10% 20%,
@@ -17,7 +17,7 @@
     ),
     linear-gradient(180deg, #11171c 0%, #080c10 100%);
   color: #e8eef1;
-  overflow: hidden;
+  overflow-x: hidden;
   font-family: "Space Grotesk", system-ui, sans-serif;
 }
 
@@ -37,7 +37,6 @@
   color: #0f1418;
 }
 
-:global([data-mantine-color-scheme="light"]) .stepCard,
 :global([data-mantine-color-scheme="light"]) .walkthroughSection,
 :global([data-mantine-color-scheme="light"]) .walkthroughCard {
   background: rgba(255, 255, 255, 0.9);
@@ -47,18 +46,18 @@
 :global([data-mantine-color-scheme="light"]) .subtitle,
 :global([data-mantine-color-scheme="light"]) .secondaryCta,
 :global([data-mantine-color-scheme="light"]) .sectionHint,
-:global([data-mantine-color-scheme="light"]) .stepIcon,
-:global([data-mantine-color-scheme="light"]) .stepDescription,
-:global([data-mantine-color-scheme="light"]) .walkthroughLabel {
+:global([data-mantine-color-scheme="light"]) .walkthroughText,
+:global([data-mantine-color-scheme="light"]) .walkthroughFootnote {
   color: rgba(15, 20, 24, 0.78);
 }
 
-:global([data-mantine-color-scheme="light"]) .stepCta {
-  color: #0f1418;
-}
-
-:global([data-mantine-color-scheme="light"]) .stepTitle,
-:global([data-mantine-color-scheme="light"]) .walkthroughValue {
+:global([data-mantine-color-scheme="light"]) .fileChip,
+:global([data-mantine-color-scheme="light"]) .exampleLabel,
+:global([data-mantine-color-scheme="light"]) .walkthroughTitle,
+:global([data-mantine-color-scheme="light"]) .mockPrompt,
+:global([data-mantine-color-scheme="light"]) .summaryChip,
+:global([data-mantine-color-scheme="light"]) .predictionPill,
+:global([data-mantine-color-scheme="light"]) .statusPill {
   color: #0f1418;
 }
 
@@ -96,8 +95,8 @@
 .hero {
   position: relative;
   z-index: 1;
-  padding: 60px 24px 36px;
-  max-width: 1400px;
+  padding: 32px 24px 14px;
+  max-width: 1200px;
   margin: 0 auto;
   animation: fadeUp 700ms ease both;
 }
@@ -109,24 +108,15 @@
 }
 
 .title {
-  font-size: clamp(36px, 3.6vw, 62px);
+  font-size: clamp(30px, 3vw, 46px);
   font-weight: 650;
   line-height: 1.05;
-  max-width: 620px;
 }
 
 .subtitle {
-  max-width: none;
+  max-width: 720px;
   color: rgba(232, 238, 241, 0.7);
-  font-size: 1.1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sparkle {
-  color: var(--accent);
-  opacity: 0.8;
+  font-size: 1rem;
 }
 
 .primaryCta {
@@ -142,113 +132,165 @@
 .flowSection {
   position: relative;
   z-index: 1;
-  padding: 32px 24px 72px;
-  max-width: 1400px;
+  padding: 14px 24px 28px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
 .sectionTitle {
-  font-size: clamp(24px, 2.4vw, 36px);
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .sectionHint {
   color: rgba(232, 238, 241, 0.55);
-}
-
-.stepCard {
-  background: rgba(18, 24, 29, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  padding: 20px 22px 24px;
-  backdrop-filter: blur(6px);
-  min-height: 240px;
-  animation: riseIn 700ms ease both;
-  transition:
-    transform 200ms ease,
-    border-color 200ms ease,
-    box-shadow 200ms ease;
-}
-
-.stepCard:hover {
-  transform: translateY(-6px);
-  border-color: rgba(124, 231, 225, 0.5);
-  box-shadow: 0 18px 40px rgba(4, 8, 12, 0.4);
-}
-
-.stepNumber {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 2rem;
-  letter-spacing: 0.2em;
-  color: rgba(124, 231, 225, 0.85);
-}
-
-.stepIcon {
-  color: rgba(232, 238, 241, 0.7);
-}
-
-.stepTitle {
-  color: var(--app-text);
-  font-size: 1.32rem;
-}
-
-.stepDescription {
-  color: rgba(232, 238, 241, 0.65);
-  font-size: 1.08rem;
-}
-
-.stepCta {
-  margin-top: 18px;
-  background: rgba(124, 231, 225, 0.15);
-  color: #baf3ee;
+  font-size: 0.92rem;
 }
 
 .walkthroughSection {
-  padding: 22px 24px;
-  border-radius: 18px;
-  background: rgba(14, 20, 26, 0.7);
+  background: rgba(14, 20, 26, 0.68);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
 }
 
 .walkthroughRow {
   display: grid;
   grid-template-columns: 1fr auto 1fr auto 1fr;
-  gap: 16px;
+  gap: 14px;
   align-items: stretch;
+  margin-top: 8px;
+}
+
+.walkthroughCard {
+  background: rgba(18, 24, 29, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+  min-height: 220px;
 }
 
 .walkthroughArrow {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(124, 231, 225, 0.8);
+  color: rgba(124, 231, 225, 0.84);
 }
 
-.walkthroughCard {
-  background: rgba(18, 24, 29, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 18px 20px;
-  min-height: 200px;
-  height: 100%;
-  box-shadow: 0 16px 32px rgba(6, 10, 14, 0.4);
+.walkthroughIcon {
+  color: rgba(124, 231, 225, 0.92);
 }
 
-.walkthroughStep {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(124, 231, 225, 0.9);
-  font-size: 0.86rem;
+.exampleIcon {
+  color: rgba(124, 231, 225, 0.86);
 }
 
-.walkthroughLabel {
-  color: rgba(232, 238, 241, 0.6);
-  font-size: 0.92rem;
-}
-
-.walkthroughValue {
+.walkthroughTitle {
+  font-size: 1rem;
+  font-weight: 600;
   color: var(--app-text);
-  font-size: 1.05rem;
+}
+
+.walkthroughText {
+  color: rgba(232, 238, 241, 0.7);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.fileChipGroup {
+  margin-top: 4px;
+}
+
+.fileChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(124, 231, 225, 0.35);
+  background: rgba(124, 231, 225, 0.11);
+  font-size: 0.76rem;
+  color: #c9f6f2;
+}
+
+.mockPanel {
+  margin-top: 4px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 13, 18, 0.44);
+}
+
+.mockRow {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.mockRow:last-child {
+  margin-bottom: 0;
+}
+
+.mockPrompt {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: rgba(232, 238, 241, 0.84);
+  margin-bottom: 8px;
+}
+
+.predictionPill,
+.statusPill {
+  display: inline-flex;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.predictionPill {
+  background: rgba(124, 231, 225, 0.13);
+  color: #c9f6f2;
+  border-color: rgba(124, 231, 225, 0.3);
+}
+
+.statusPill {
+  background: rgba(139, 230, 163, 0.14);
+  color: #d2f5dc;
+  border-color: rgba(139, 230, 163, 0.35);
+}
+
+.summaryChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: rgba(232, 238, 241, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.exportButtonMock {
+  margin-top: 8px;
+  width: fit-content;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #031016;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+}
+
+.exampleLabel {
+  font-size: 0.84rem;
+  color: rgba(232, 238, 241, 0.86);
+}
+
+.walkthroughFootnote {
+  margin-top: 10px;
+  color: rgba(232, 238, 241, 0.58);
+  font-size: 0.82rem;
 }
 
 @keyframes fadeUp {
@@ -275,18 +317,19 @@
 
 @media (max-width: 768px) {
   .hero {
-    padding-top: 48px;
+    padding-top: 28px;
   }
 
-  .primaryCta,
-  .secondaryCta {
-    width: 100%;
-  }
   .walkthroughRow {
     grid-template-columns: 1fr;
   }
 
   .walkthroughArrow {
     display: none;
+  }
+
+  .primaryCta,
+  .secondaryCta {
+    width: 100%;
   }
 }

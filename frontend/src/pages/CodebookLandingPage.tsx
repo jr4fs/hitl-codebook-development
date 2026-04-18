@@ -5,39 +5,21 @@ import {
   Container,
   Group,
   Paper,
-  SimpleGrid,
   Stack,
   Text,
   Title,
 } from "@mantine/core";
 import {
   IconArrowRight,
+  IconBraces,
   IconBook2,
+  IconChecklist,
+  IconFileText,
   IconRobot,
   IconUpload,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import styles from "./CodebookLandingPage.module.css";
-
-const steps = [
-  {
-    title: "Upload task bundle",
-    description:
-      "Upload a subset of the data (labeled), the remaining unlabeled data, and the task and labels definition files to start in one step.",
-    icon: IconUpload,
-  },
-  {
-    title: "AI annotation review",
-    description:
-      "Review suggestions, approve labels, and capture improvements in the codebook.",
-    icon: IconRobot,
-  },
-  {
-    title: "Codebook completion",
-    description: "Lock in the final guidance and export the finished labels.",
-    icon: IconBook2,
-  },
-];
 
 export default function CodebookLandingPage() {
   const navigate = useNavigate();
@@ -54,7 +36,7 @@ export default function CodebookLandingPage() {
           <Title className={styles.title}>Annotation Assistant</Title>
         </Group>
         <Text className={styles.subtitle} mt="sm">
-          Convert free-text into structured data for analysis and reporting.
+          Build and refine a codebook from labeled and unlabeled datasets.
         </Text>
         <Group mt="lg" gap="sm">
           <Button
@@ -70,116 +52,100 @@ export default function CodebookLandingPage() {
       </Container>
 
       <Container fluid id="flow" className={styles.flowSection}>
-        <Group justify="space-between" align="center" wrap="wrap">
-          <Title order={2} className={styles.sectionTitle}>
-            The path from upload to codebook
-          </Title>
-          <Text className={styles.sectionHint}>
-            Use the left sidebar anytime to revisit tasks.
-          </Text>
-        </Group>
-
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg" mt="lg">
-          {steps.map((step, index) => {
-            const Icon = step.icon;
-            return (
-              <Paper
-                key={step.title}
-                className={styles.stepCard}
-                style={{ animationDelay: `${index * 80}ms` }}
-              >
-                <Group justify="space-between" align="center">
-                  <Text className={styles.stepNumber}>{index + 1}</Text>
-                  <Icon size={22} className={styles.stepIcon} />
-                </Group>
-                <Title order={4} className={styles.stepTitle} mt="sm">
-                  {step.title}
-                </Title>
-                <Text className={styles.stepDescription} mt="xs">
-                  {step.description}
-                </Text>
-                {index === 0 && (
-                  <Button
-                    size="xs"
-                    radius="xl"
-                    variant="light"
-                    className={styles.stepCta}
-                    rightSection={<IconArrowRight size={14} />}
-                    onClick={() => navigate("/new-codebook")}
-                  >
-                    Upload bundle
-                  </Button>
-                )}
-              </Paper>
-            );
-          })}
-        </SimpleGrid>
-
-        <Stack className={styles.walkthroughSection} mt="xl" gap="md">
-          <Group justify="space-between" align="center" wrap="wrap">
-            <Title order={3} className={styles.sectionTitle}>
-              Example walkthrough
+        <Paper className={styles.walkthroughSection} mt="md">
+          <Group justify="space-between" align="center" wrap="wrap" mb="xs">
+            <Title order={4} className={styles.sectionTitle}>
+              Example workflow
             </Title>
             <Text className={styles.sectionHint}>
-              See what a finished task looks like from start to review.
+              A realistic path from files to final codebook.
             </Text>
           </Group>
           <div className={styles.walkthroughRow}>
             <Paper className={styles.walkthroughCard}>
-              <Stack gap="xs">
-                <Text className={styles.walkthroughStep}>1. Upload files</Text>
-                <Text className={styles.walkthroughLabel}>Labeled data</Text>
-                <Text className={styles.walkthroughValue}>
-                  labeled_examples.csv
+              <Stack gap={8}>
+                <Group gap={8}>
+                  <IconUpload size={18} className={styles.walkthroughIcon} />
+                  <Text className={styles.walkthroughTitle}>1. Upload task bundle</Text>
+                </Group>
+                <Text className={styles.walkthroughText}>
+                  Upload `labeled_examples.csv`, `remaining_notes.csv`, `task.json`, and `labels.json`.
                 </Text>
-                <Text className={styles.walkthroughLabel}>Unlabeled data</Text>
-                <Text className={styles.walkthroughValue}>
-                  remaining_notes.csv
-                </Text>
-                <Text className={styles.walkthroughLabel}>Task + labels</Text>
-                <Text className={styles.walkthroughValue}>
-                  task.json + labels.json
-                </Text>
+                <div className={styles.mockPanel}>
+                  <div className={styles.mockRow}>
+                    <span className={styles.fileChip}><IconFileText size={12} /> labeled_examples.csv</span>
+                  </div>
+                  <div className={styles.mockRow}>
+                    <span className={styles.fileChip}><IconFileText size={12} /> remaining_notes.csv</span>
+                  </div>
+                  <div className={styles.mockRow}>
+                    <span className={styles.fileChip}><IconBraces size={12} /> task.json</span>
+                    <span className={styles.fileChip}><IconBraces size={12} /> labels.json</span>
+                  </div>
+                </div>
               </Stack>
             </Paper>
+
             <div className={styles.walkthroughArrow}>
-              <IconArrowRight size={24} />
+              <IconArrowRight size={22} />
             </div>
+
             <Paper className={styles.walkthroughCard}>
-              <Stack gap="xs">
-                <Text className={styles.walkthroughStep}>
-                  2. Review AI output
+              <Stack gap={8}>
+                <Group gap={8}>
+                  <IconRobot size={18} className={styles.walkthroughIcon} />
+                  <Text className={styles.walkthroughTitle}>2. Review and refine</Text>
+                </Group>
+                <Text className={styles.walkthroughText}>
+                  Check AI predictions, mark correctness, and update rules in the codebook panel.
                 </Text>
-                <Text className={styles.walkthroughLabel}>Final text</Text>
-                <Text className={styles.walkthroughValue}>
-                  “Client reports improved sleep after two weeks.”
-                </Text>
-                <Text className={styles.walkthroughLabel}>AI annotation</Text>
-                <Text className={styles.walkthroughValue}>
-                  Sleep improvement
-                </Text>
+                <div className={styles.mockPanel}>
+                  <Text className={styles.mockPrompt}>
+                    “Client reports improved sleep after two weeks.”
+                  </Text>
+                  <Group justify="space-between" gap={6} wrap="nowrap">
+                    <span className={styles.predictionPill}>Predicted: Sleep improvement</span>
+                    <span className={styles.statusPill}>Marked: Correct</span>
+                  </Group>
+                  <Text className={styles.exampleLabel}>
+                    Rule added: If note mentions improved sleep -&gt; Sleep improvement
+                  </Text>
+                </div>
               </Stack>
             </Paper>
+
             <div className={styles.walkthroughArrow}>
-              <IconArrowRight size={24} />
+              <IconArrowRight size={22} />
             </div>
+
             <Paper className={styles.walkthroughCard}>
-              <Stack gap="xs">
-                <Text className={styles.walkthroughStep}>
-                  3. Confirm codebook
+              <Stack gap={8}>
+                <Group gap={8}>
+                  <IconBook2 size={18} className={styles.walkthroughIcon} />
+                  <Text className={styles.walkthroughTitle}>3. Export final codebook</Text>
+                </Group>
+                <Text className={styles.walkthroughText}>
+                  Export the updated rules and labels for downstream dataset annotation tasks.
                 </Text>
-                <Text className={styles.walkthroughLabel}>New rule</Text>
-                <Text className={styles.walkthroughValue}>
-                  “If note mentions better sleep, label as Sleep improvement.”
-                </Text>
-                <Text className={styles.walkthroughLabel}>Labels</Text>
-                <Text className={styles.walkthroughValue}>
-                  Sleep improvement
-                </Text>
+                <div className={styles.mockPanel}>
+                  <Group gap={8}>
+                    <IconChecklist size={15} className={styles.exampleIcon} />
+                    <Text className={styles.exampleLabel}>codebook_v3.json ready</Text>
+                  </Group>
+                  <Group gap={6}>
+                    <span className={styles.summaryChip}>14 labels</span>
+                    <span className={styles.summaryChip}>36 rules</span>
+                    <span className={styles.summaryChip}>updated today</span>
+                  </Group>
+                  <div className={styles.exportButtonMock}>Export Codebook</div>
+                </div>
               </Stack>
             </Paper>
           </div>
-        </Stack>
+          <Text className={styles.walkthroughFootnote}>
+            Existing tasks remain accessible from the left sidebar.
+          </Text>
+        </Paper>
       </Container>
     </Box>
   );
