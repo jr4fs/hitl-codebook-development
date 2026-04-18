@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { CreateTaskRequest, Task } from "@common/types/tasks";
 import { EmbedDatasetRequest } from "@common/types/embedding";
 import { AnonymizeConfig } from "@common/types/anonymize";
-import { AnnotationItem } from "@common/types/annotations";
 import { getCollection } from "./database.service";
 import {
   fileExists,
@@ -41,8 +40,6 @@ export interface AuthRequest extends Request {
 const TASKS_COLLECTION = process.env.TASKS_COLLECTION_NAME || "TaskDetails";
 const ANONYMIZE_CONFIG_COLLECTION = "AnonymizeConfig";
 const CONFIG_DOC_ID = "global";
-const ANNOTATION_COLLECTION =
-  process.env.ANNOTATION_COLLECTION_NAME || "AnnotationDetails";
 
 const TASK_JSON_REQUIRED_KEYS = ["taskname", "description"];
 const GENERATED_CODEBOOKS_DIR = "generated_codebooks";
@@ -740,7 +737,7 @@ export async function uploadTaskFile(req: AuthRequest, res: Response) {
 /*
  * Uploads D_val, D_all, task JSON, and labels JSON
  * D_all in rest_datasets, D_val in val_datasets
- * Creates the task and seeds annotations from D_val
+ * Creates the task and queues sampling
  */
 export async function uploadTaskBundle(req: AuthRequest, res: Response) {
   const userID = req.user?.userId;
@@ -889,61 +886,6 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const insertResult = await taskDetailsCollection.insertOne(taskData);
     const taskId = insertResult.insertedId.toString();
     console.log("[uploadTaskBundle] Task created with ID:", taskId);
-
-    // seed annotations
-    console.log("[uploadTaskBundle] Seeding annotations from D_val...");
-    const annotations: AnnotationItem[] = valRows
-      .map((row, idx) => {
-        const rawLabel = labelColumn
-          ? (row[labelColumn] ?? "")
-          : (row.task_label ?? row.taskLabel ?? "");
-        const labels = String(rawLabel)
-          .split(",")
-          .map((label: string) => label.trim())
-          .filter(Boolean);
-
-        const textValue = textColumn
-          ? typeof row[textColumn] === "string"
-            ? (row[textColumn] as string).trim()
-            : ""
-          : getRowTextValue(row);
-
-        if (!textValue || labels.length === 0) {
-          return null;
-        }
-
-        const sampleContent = {
-          ...row,
-          text_combined: textValue,
-        } as Record<string, string>;
-
-        return {
-          taskId,
-          sampleId: idx + 1,
-          sampleContent,
-          labels,
-          source: "val",
-          aiAnnotation: null,
-          createdBy: userID,
-          createdAt: new Date().toISOString(),
-        } as AnnotationItem;
-      })
-      .filter((row): row is AnnotationItem => row !== null);
-
-    if (annotations.length > 0) {
-      console.log(
-        `[uploadTaskBundle] Inserting ${annotations.length} annotations...`,
-      );
-      const annotationCollection = getCollection<AnnotationItem>(
-        ANNOTATION_COLLECTION,
-      );
-      await annotationCollection.insertMany(annotations);
-      console.log("[uploadTaskBundle] Annotations inserted.");
-    } else {
-      console.warn(
-        "[uploadTaskBundle] No valid annotations found in D_val to seed.",
-      );
-    }
 
     const samplingPayload: EmbedDatasetRequest = {
       file_path: uploadFilename,
