@@ -231,27 +231,3 @@ async def run_sampling(request: EmbedDatasetRequest):
         return {"success": True, "message": "Sampling completed"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@embedding_router.post("/representative")
-async def representative_sampling(request: EmbedDatasetRequest):
-    """
-    Perform representative sampling (keyword-based)
-    """
-    try:
-        service = DataManagerService(request)
-        service.upsample()
-        return {"success": True, "message": "Representative sampling completed"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@embedding_router.post("/coverage")
-async def coverage_sampling(request: EmbedDatasetRequest):
-    """
-    Perform coverage-based sampling (diversity-maximized)
-    """
-    try:
-        service = DataManagerService(request)
-        service.coverage_sample()
-        return {"success": True, "message": "Coverage sampling completed"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
