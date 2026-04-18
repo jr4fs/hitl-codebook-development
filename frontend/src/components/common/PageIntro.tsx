@@ -10,7 +10,7 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import { IconHelpCircle } from "@tabler/icons-react";
-import { useCallback, useState } from "react";
+import { Dispatch, SetStateAction, useCallback, useState } from "react";
 import { shouldShowPageIntro } from "./pageIntroStorage";
 import styles from "./PageIntro.module.css";
 
@@ -25,6 +25,11 @@ interface PageIntroProps {
   startLabel?: string;
   onSkip?: () => void;
   onStart?: () => void;
+  showSecondaryAction?: boolean;
+  primaryOnlyLabel?: string;
+  showDontShowAgain?: boolean;
+  dontShowAgainChecked?: boolean;
+  onDontShowAgainChange?: Dispatch<SetStateAction<boolean>>;
 }
 
 export function usePageIntroTour(storageKey: string) {
@@ -58,10 +63,16 @@ export default function PageIntro({
   startLabel = "Start tour",
   onSkip,
   onStart,
+  showSecondaryAction = true,
+  primaryOnlyLabel = "Got it",
+  showDontShowAgain,
+  dontShowAgainChecked,
+  onDontShowAgainChange,
 }: PageIntroProps) {
   const { colorScheme } = useMantineColorScheme();
   const isLight = colorScheme === "light";
-  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [internalDontShowAgain, setInternalDontShowAgain] = useState(false);
+  const dontShowAgain = dontShowAgainChecked ?? internalDontShowAgain;
 
   const modalStyles: ModalProps["styles"] = {
     content: {
@@ -79,10 +90,10 @@ export default function PageIntro({
     close: { color: isLight ? "#0f1418" : "#e8eef1" },
   };
   const overlayColor = isLight ? "#f7fafb" : "#11171c";
-  const showDontShowAgain = mode === "firstRun";
+  const shouldShowDontShowAgain = showDontShowAgain ?? mode === "firstRun";
 
   const closeWithPersistence = () => {
-    if (mode === "firstRun" && dontShowAgain) {
+    if (mode === "firstRun" && dontShowAgain && !onDontShowAgainChange) {
       localStorage.setItem(storageKey, "true");
     }
     onClose();
@@ -99,24 +110,35 @@ export default function PageIntro({
     >
       <Stack gap="sm">
         <Text>{description}</Text>
-        {showDontShowAgain && (
+        {shouldShowDontShowAgain && (
           <Checkbox
             className={styles.checkbox}
             label="Don't show again"
             checked={dontShowAgain}
-            onChange={(event) => setDontShowAgain(event.currentTarget.checked)}
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
+              if (onDontShowAgainChange) {
+                onDontShowAgainChange(checked);
+              } else {
+                setInternalDontShowAgain(checked);
+              }
+            }}
           />
         )}
         <Group justify="space-between" mt={10}>
-          <Button
-            variant="outline"
-            onClick={() => {
-              closeWithPersistence();
-              onSkip?.();
-            }}
-          >
-            {skipLabel}
-          </Button>
+          {showSecondaryAction ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                closeWithPersistence();
+                onSkip?.();
+              }}
+            >
+              {skipLabel}
+            </Button>
+          ) : (
+            <span />
+          )}
           <Button
             variant="light"
             leftSection={<IconHelpCircle size={16} />}
@@ -125,7 +147,7 @@ export default function PageIntro({
               onStart?.();
             }}
           >
-            {startLabel}
+            {showSecondaryAction ? startLabel : primaryOnlyLabel}
           </Button>
         </Group>
       </Stack>

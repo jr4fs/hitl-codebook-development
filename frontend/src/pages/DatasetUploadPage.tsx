@@ -1,6 +1,5 @@
 import {
   Alert,
-  Badge,
   Box,
   Button,
   Container,

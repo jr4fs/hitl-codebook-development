@@ -243,9 +243,39 @@
 }
 
 @media (max-width: 900px) {
+  .page {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
   .hero,
   .tableSection {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .tableSection {
+    flex: initial;
+    min-height: auto;
+    overflow: visible;
+    padding-bottom: 20px;
+  }
+
+  .annotationGrid {
+    flex: initial;
+    min-height: auto;
+  }
+
+  .annotationGrid :global(.mantine-Grid-inner) {
+    height: auto;
+    min-height: auto;
+  }
+
+  .mainColumn,
+  .sidebarColumn,
+  .dropCard {
+    height: auto;
+    min-height: auto;
   }
 }
