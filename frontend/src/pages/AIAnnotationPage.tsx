@@ -156,6 +156,12 @@ export default function AnnotationPage() {
   >({});
   const skipInferenceRef = useRef(false);
 
+  const resetAISuggestion = () => {
+    setGeneratedLabels(["Generating suggestion..."]);
+    setGeneratedSpanText("Generating span text...");
+    setGeneratedReasoning("Generating reasoning...");
+  };
+
   // useEffect(() => {
   //   if (annotations && annotations.length > 0) {
   //     setFallbackAnnotations([]);
@@ -440,6 +446,7 @@ export default function AnnotationPage() {
       skipInferenceRef.current = false;
       return;
     }
+    resetAISuggestion();
     setSpanTextFeedback(undefined);
     setReasoningFeedback(undefined);
     const runInference = async () => {
@@ -1008,7 +1015,7 @@ export default function AnnotationPage() {
                 bg={surface2}
                 p="md"
                 radius="md"
-                style={{ border: `1px solid ${borderStrong}` }}
+                style={{ border: `1px solid ${borderStrong}`, position: "relative" }}
               >
                 <LoadingOverlay
                   visible={isLoading}
@@ -1256,7 +1263,7 @@ export default function AnnotationPage() {
                       variant="subtle"
                       color="gray"
                       leftSection={<IconArrowLeft size={16} />}
-                      disabled={currentIndex === 0}
+                      disabled={currentIndex === 0 || isLoading}
                       onClick={() => setCurrentIndex((prev) => prev - 1)}
                     >
                       Previous
@@ -1276,6 +1283,7 @@ export default function AnnotationPage() {
                           : "indigo"
                       }
                       disabled={
+                        isLoading ||
                         batchResults[currentIndex]?.isCorrect == null ||
                         (batchResults[currentIndex]?.isCorrect === false &&
                           (!batchResults[currentIndex]?.feedback?.trim() ||
