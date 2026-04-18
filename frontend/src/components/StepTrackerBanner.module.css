@@ -4,6 +4,26 @@
   border-radius: 12px;
   padding: 8px 12px;
   backdrop-filter: blur(6px);
+  width: fit-content;
+  max-width: 280px;
+  overflow: hidden;
+  transition: max-width 220ms ease;
+}
+
+.banner:hover,
+.banner:focus-within {
+  max-width: min(100%, 980px);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.summary {
+  flex-shrink: 0;
 }
 
 .kicker {
@@ -21,6 +41,23 @@
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: none;
+  min-width: 0;
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-6px);
+  transition:
+    max-width 220ms ease,
+    opacity 180ms ease,
+    transform 220ms ease;
+}
+
+.banner:hover .steps,
+.banner:focus-within .steps {
+  max-width: 820px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
 }
 
 .steps::-webkit-scrollbar {
