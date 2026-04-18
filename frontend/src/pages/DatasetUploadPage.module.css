@@ -341,6 +341,20 @@
   font-weight: 600;
 }
 
+.primaryCta:disabled,
+.primaryCta[data-disabled="true"] {
+  background: rgba(124, 231, 225, 0.2);
+  color: rgba(3, 16, 22, 0.45);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+:global([data-mantine-color-scheme="light"]) .primaryCta:disabled,
+:global([data-mantine-color-scheme="light"]) .primaryCta[data-disabled="true"] {
+  background: rgba(15, 20, 24, 0.12);
+  color: rgba(15, 20, 24, 0.45);
+}
+
 .secondaryCta {
   background: rgba(124, 231, 225, 0.12);
   color: #baf3ee;
