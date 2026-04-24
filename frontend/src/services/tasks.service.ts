@@ -130,3 +130,14 @@ export async function checkValFileExists(fileName: string): Promise<boolean> {
   );
   return data.exists;
 }
+
+export async function deleteTaskById(taskId: string): Promise<{
+  success: boolean;
+  message?: string;
+  deletedTaskId?: string;
+  deletedFilesCount?: number;
+  deletedAnnotationsCount?: number;
+}> {
+  const { data } = await apiClient.delete(`/api/tasks/delete/${taskId}`);
+  return data;
+}

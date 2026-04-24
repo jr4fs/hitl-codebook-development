@@ -165,7 +165,8 @@ export async function getTaskAnnotations(req: AuthRequest, res: Response) {
         const collection = getCollection<AnnotationItem>(ANNOTATION_COLLECTION);
         const result = await collection.find({
             "taskId": taskId,
-            "createdBy": userId
+            "createdBy": userId,
+            "source": "guide"
         }).toArray();
 
         if (!result || result.length === 0) {

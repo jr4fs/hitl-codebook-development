@@ -7,6 +7,8 @@ import DatasetUploadPage from "./pages/DatasetUploadPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
 import AnnotationPage from "./pages/AIAnnotationPage";
+import NewAnnotationTaskPage from "./pages/NewAnnotationTaskPage";
+import AnnotateDatasetPage from "./pages/AnnotateDatasetPage";
 
 export const router = createBrowserRouter([
   {
@@ -36,12 +38,20 @@ export const router = createBrowserRouter([
             element: <LandingPage />,
           },
           {
-            path: "/upload",
+            path: "/new-codebook",
             element: <DatasetUploadPage />,
           },
           {
-            path: "/auto-annotate/:taskId?",
+            path: "/codebook-creation/:taskId?",
             element: <AnnotationPage />,
+          },
+          {
+            path: "/new-annotation",
+            element: <NewAnnotationTaskPage />,
+          },
+          {
+            path: "/annotate-dataset/:id",
+            element: <AnnotateDatasetPage />,
           },
         ],
       },

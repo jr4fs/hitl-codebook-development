@@ -1,0 +1,281 @@
+.page {
+  position: relative;
+  height: 100dvh;
+  min-height: 0;
+  background:
+    radial-gradient(1200px 800px at 10% 20%, rgba(124, 231, 225, 0.16), transparent 60%),
+    radial-gradient(900px 600px at 90% 0%, rgba(243, 165, 120, 0.18), transparent 55%),
+    linear-gradient(180deg, #11171c 0%, #080c10 100%);
+  color: #e8eef1;
+  overflow-x: hidden;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+:global([data-mantine-color-scheme="light"]) .page {
+  background:
+    radial-gradient(1200px 800px at 10% 20%, rgba(54, 194, 179, 0.18), transparent 60%),
+    radial-gradient(900px 600px at 90% 0%, rgba(243, 165, 120, 0.22), transparent 55%),
+    linear-gradient(180deg, #f7fafb 0%, #eef3f5 100%);
+  color: #0f1418;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.25;
+  background-image:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.orbOne {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 999px;
+  filter: blur(0.5px);
+  opacity: 0.45;
+  background: radial-gradient(circle at 30% 30%, rgba(124, 231, 225, 0.6), transparent 70%);
+  top: -120px;
+  left: -80px;
+}
+
+.hero {
+  position: relative;
+  z-index: 1;
+  padding: 14px 24px 6px;
+  animation: fadeUp 700ms ease both;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.taskHeader {
+  background: rgba(18, 24, 29, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  backdrop-filter: blur(6px);
+}
+
+.taskInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.taskTitle {
+  font-size: 0.96rem;
+  line-height: 1.2;
+  font-weight: 650;
+  color: #e8eef1;
+}
+
+.taskDescription {
+  margin-top: 2px;
+  color: rgba(232, 238, 241, 0.72);
+  font-size: 0.84rem;
+  line-height: 1.25;
+}
+
+.taskMetrics {
+  align-self: center;
+  flex-shrink: 0;
+}
+
+:global([data-mantine-color-scheme="light"]) .taskHeader {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 20, 24, 0.08);
+}
+
+:global([data-mantine-color-scheme="light"]) .taskTitle {
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .taskDescription {
+  color: rgba(15, 20, 24, 0.7);
+}
+
+.tableSection {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px 12px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.annotationGrid {
+  margin-top: 2px;
+  flex: 1;
+  min-height: 0;
+}
+
+.annotationGrid :global(.mantine-Grid-inner) {
+  height: 100%;
+  min-height: 0;
+}
+
+.dropCard {
+  background: rgba(18, 24, 29, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 10px;
+  backdrop-filter: blur(6px);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+:global([data-mantine-color-scheme="light"]) .dropCard {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(15, 20, 24, 0.08);
+}
+
+.mainColumn,
+.sidebarColumn {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.leftPanelScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.rightPanelStack {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.codebookTop {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: inherit;
+}
+
+.codebookTopDivider {
+  margin-top: 8px;
+}
+
+.codebookMiddle {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.codebookList {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+}
+
+.addRuleSection {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: inherit;
+  padding-top: 2px;
+}
+
+.codebookBottomDivider {
+  margin-bottom: 8px;
+}
+
+.sampleBox {
+  max-height: 74px;
+  overflow: hidden;
+  transition: max-height 180ms ease;
+  cursor: pointer;
+}
+
+.sampleBox:hover {
+  max-height: none;
+  overflow: visible;
+}
+
+.samplePreviewText {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sampleBox:hover .samplePreviewText {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .page {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .hero,
+  .tableSection {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .tableSection {
+    flex: initial;
+    min-height: auto;
+    overflow: visible;
+    padding-bottom: 20px;
+  }
+
+  .annotationGrid {
+    flex: initial;
+    min-height: auto;
+  }
+
+  .annotationGrid :global(.mantine-Grid-inner) {
+    height: auto;
+    min-height: auto;
+  }
+
+  .mainColumn,
+  .sidebarColumn,
+  .dropCard {
+    height: auto;
+    min-height: auto;
+  }
+}

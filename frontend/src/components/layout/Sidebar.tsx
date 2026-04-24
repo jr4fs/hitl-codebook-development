@@ -4,49 +4,63 @@ import {
   Flex,
   Button,
   ActionIcon,
-  ScrollArea,
   Menu,
   Center,
   LoadingOverlay,
+  Tooltip,
+  useMantineColorScheme,
+  Box,
 } from "@mantine/core";
 import {
-  IconSquarePlus,
   IconLayoutSidebar,
   IconUserCircle,
-  IconFile,
-  IconHistory,
-  IconHome2,
+  IconBook2,
+  IconPencil,
+  IconDots,
+  IconTrash,
+  IconMoon,
+  IconSun,
+  IconChevronDown,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import "./styles/Sidebar.css";
-import { useState, useEffect } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  type MutableRefObject,
+} from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router";
 import { getUserTasks } from "../../services/tasks.service";
+import { deleteTaskById } from "../../services/tasks.service";
 import { IRootState } from "../../store/store";
 import { Task } from "@common/types/tasks";
 import { clearUser } from "../../store/userSlice";
+import { toast } from "../../lib/toast";
+import ConfirmActionModal from "../common/ConfirmActionModal";
 
 //Props to handle navbar collapsed/expanded state
 interface SideBarProps {
   collapsed: boolean;
   toggleCollapsed: () => void;
 }
+// eslint-disable-next-line no-unused-vars
+type TaskRouteBuilder = (task: Task) => string;
 
 export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
+  const TASK_SECTION_HEADER_HEIGHT = 32;
+  const TASK_SECTION_GAP = 6;
+  const TASK_SECTION_TOP_PADDING = 4;
   const user = useSelector((state: IRootState) => state.user.user);
   const accessToken = useSelector(
     (state: IRootState) => state.user.accessToken,
   );
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  const modelNameMap: Record<string, string> = {
-    "gemma3:1b": "Gemma3-1B",
-    "qwen3.5:2b": "Qwen3.5-2B",
-    "mistral:7b": "Mistral-7B",
-    "qwen:32b": "Qwen-32B",
-    "llama3.3:70b": "Llama3.3-70B",
-  };
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   const handleLogout = () => {
     dispatch(clearUser());
@@ -54,10 +68,121 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   };
 
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskPendingDelete, setTaskPendingDelete] = useState<Task | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>();
+  const [sectionsOpen, setSectionsOpen] = useState({
+    codebook: true,
+    annotation: true,
+  });
+  const [overflowState, setOverflowState] = useState({
+    codebook: false,
+    annotation: false,
+  });
+  const [fadeState, setFadeState] = useState({
+    codebook: false,
+    annotation: false,
+  });
+  const [listHeights, setListHeights] = useState({
+    codebook: 0,
+    annotation: 0,
+  });
+  const taskSectionsRef = useRef<HTMLDivElement | null>(null);
+  const codebookListRef = useRef<HTMLDivElement | null>(null);
+  const annotationListRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchTasks = async () => {
+  const codebookTasks = useMemo(
+    () => tasks.filter((task) => !task.codebookSourceTaskId),
+    [tasks],
+  );
+  const annotationOnlyTasks = useMemo(
+    () => tasks.filter((task) => Boolean(task.codebookSourceTaskId)),
+    [tasks],
+  );
+
+  const updateListOverflow = useCallback((list: "codebook" | "annotation") => {
+    const target =
+      list === "codebook" ? codebookListRef.current : annotationListRef.current;
+    if (!target) return;
+    const hasOverflow = target.scrollHeight > target.clientHeight + 1;
+    const canScrollMore =
+      hasOverflow &&
+      target.scrollTop + target.clientHeight < target.scrollHeight - 1;
+
+    setOverflowState((prev) =>
+      prev[list] === hasOverflow ? prev : { ...prev, [list]: hasOverflow },
+    );
+    setFadeState((prev) =>
+      prev[list] === canScrollMore ? prev : { ...prev, [list]: canScrollMore },
+    );
+  }, []);
+
+  const updateSectionLayout = useCallback(() => {
+    const container = taskSectionsRef.current;
+    if (!container) return;
+
+    const codebookOpen = sectionsOpen.codebook;
+    const annotationOpen = sectionsOpen.annotation;
+
+    const available =
+      container.clientHeight -
+      TASK_SECTION_TOP_PADDING -
+      TASK_SECTION_HEADER_HEIGHT -
+      TASK_SECTION_HEADER_HEIGHT -
+      TASK_SECTION_GAP;
+
+    if (available <= 0) {
+      setListHeights({ codebook: 0, annotation: 0 });
+      return;
+    }
+
+    if (codebookOpen && !annotationOpen) {
+      setListHeights({ codebook: available, annotation: 0 });
+      return;
+    }
+    if (!codebookOpen && annotationOpen) {
+      setListHeights({ codebook: 0, annotation: available });
+      return;
+    }
+    if (!codebookOpen && !annotationOpen) {
+      setListHeights({ codebook: 0, annotation: 0 });
+      return;
+    }
+
+    const codebookNeed = codebookListRef.current?.scrollHeight ?? 0;
+    const annotationNeed = annotationListRef.current?.scrollHeight ?? 0;
+
+    const base = available / 2;
+    let codebookAlloc = Math.min(base, codebookNeed);
+    let annotationAlloc = Math.min(base, annotationNeed);
+
+    let remainder = available - codebookAlloc - annotationAlloc;
+    if (remainder > 0) {
+      const codebookMissing = Math.max(0, codebookNeed - codebookAlloc);
+      const annotationMissing = Math.max(0, annotationNeed - annotationAlloc);
+      const totalMissing = codebookMissing + annotationMissing;
+
+      if (totalMissing > 0) {
+        const codebookExtra = Math.min(
+          codebookMissing,
+          (remainder * codebookMissing) / totalMissing,
+        );
+        codebookAlloc += codebookExtra;
+        remainder -= codebookExtra;
+
+        const annotationExtra = Math.min(annotationMissing, remainder);
+        annotationAlloc += annotationExtra;
+      }
+    }
+
+    setListHeights({
+      codebook: Math.max(0, Math.floor(codebookAlloc)),
+      annotation: Math.max(0, Math.floor(annotationAlloc)),
+    });
+  }, [sectionsOpen.annotation, sectionsOpen.codebook]);
+
+  const fetchTasks = useCallback(async () => {
     if (!accessToken) return;
 
     setLoading(true);
@@ -72,12 +197,39 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken]);
+
+  const handleDeleteTask = useCallback(async () => {
+    const task = taskPendingDelete;
+    if (!task?._id) return;
+
+    setDeleteLoading(true);
+    try {
+      await deleteTaskById(task._id);
+      toast.success(`Deleted "${task.name}"`);
+      setTaskPendingDelete(null);
+      await fetchTasks();
+
+      const currentPath = window.location.pathname;
+      const isOnDeletedTaskPath =
+        currentPath.endsWith(`/codebook-creation/${task._id}`) ||
+        currentPath.endsWith(`/annotate-dataset/${task._id}`);
+      if (isOnDeletedTaskPath) {
+        navigate("/");
+      }
+      window.dispatchEvent(new Event("tasks:updated"));
+    } catch (error: any) {
+      console.error("Failed to delete task:", error);
+      toast.error(error?.response?.data?.message || "Failed to delete task");
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [taskPendingDelete, fetchTasks, navigate]);
 
   // Fetch user tasks, updates with every access token refresh
   useEffect(() => {
     fetchTasks();
-  }, [accessToken]);
+  }, [fetchTasks]);
 
   useEffect(() => {
     const handleTaskUpdate = () => {
@@ -88,7 +240,161 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
     return () => {
       window.removeEventListener("tasks:updated", handleTaskUpdate);
     };
-  }, [accessToken]);
+  }, [fetchTasks]);
+
+  useEffect(() => {
+    updateListOverflow("codebook");
+    updateListOverflow("annotation");
+    updateSectionLayout();
+  }, [
+    tasks,
+    sectionsOpen.codebook,
+    sectionsOpen.annotation,
+    updateListOverflow,
+    updateSectionLayout,
+  ]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      updateSectionLayout();
+      updateListOverflow("codebook");
+      updateListOverflow("annotation");
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateListOverflow, updateSectionLayout]);
+
+  const renderTaskRows = useCallback(
+    (sectionTasks: Task[], routeBuilder: TaskRouteBuilder) =>
+      sectionTasks.map((task) => (
+        <div key={task._id} className="sidebar-task-row-wrap">
+          <Button
+            onClick={() => {
+              navigate(routeBuilder(task));
+            }}
+            fullWidth
+            radius="md"
+            c="var(--app-sidebar-text)"
+            px="sm"
+            h={36}
+            justify="flex-start"
+            fz="sm"
+            classNames={{ root: "sidebar-task-row" }}
+          >
+            <Text className="sidebar-task-title">{task.name}</Text>
+          </Button>
+          <Menu
+            shadow="md"
+            width={160}
+            position="bottom-end"
+            offset={6}
+            classNames={{
+              dropdown: "sidebar-menu-dropdown",
+              item: "sidebar-menu-item",
+            }}
+          >
+            <Menu.Target>
+              <button
+                type="button"
+                className="sidebar-task-menu-trigger"
+                aria-label={`Task options for ${task.name}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <IconDots size={16} stroke={1.8} />
+              </button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              <Menu.Item
+                color="red"
+                leftSection={<IconTrash size={14} stroke={1.8} />}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setTaskPendingDelete(task);
+                }}
+              >
+                Delete
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
+        </div>
+      )),
+    [navigate],
+  );
+
+  const renderTaskSection = useCallback(
+    ({
+      keyName,
+      title,
+      tasksList,
+      listRef,
+      listHeight,
+      routeBuilder,
+    }: {
+      keyName: "codebook" | "annotation";
+      title: string;
+      tasksList: Task[];
+      listRef: MutableRefObject<HTMLDivElement | null>;
+      listHeight: number;
+      routeBuilder: TaskRouteBuilder;
+    }) => (
+      <Box className="sidebar-task-group">
+        <Button
+          variant="subtle"
+          h={TASK_SECTION_HEADER_HEIGHT}
+          px="sm"
+          justify="flex-start"
+          classNames={{ root: "sidebar-task-group-toggle" }}
+          onClick={() =>
+            setSectionsOpen((prev) => ({
+              ...prev,
+              [keyName]: !prev[keyName],
+            }))
+          }
+          leftSection={
+            sectionsOpen[keyName] ? (
+              <IconChevronDown size={14} stroke={1.8} />
+            ) : (
+              <IconChevronRight size={14} stroke={1.8} />
+            )
+          }
+        >
+          <Text size="xs" fw={600}>
+            {title} ({tasksList.length})
+          </Text>
+        </Button>
+        {sectionsOpen[keyName] && (
+          <Box
+            className={`sidebar-task-list-wrap ${
+              overflowState[keyName] ? "has-overflow" : ""
+            } ${fadeState[keyName] ? "show-fade" : ""}`}
+            style={{ height: listHeight }}
+          >
+            <div
+              className="sidebar-task-list-scroll"
+              ref={listRef}
+              onScroll={() => updateListOverflow(keyName)}
+            >
+              <Stack pl="sm" pr="sm" pt={2} pb={2} gap={4}>
+                {renderTaskRows(tasksList, routeBuilder)}
+              </Stack>
+            </div>
+          </Box>
+        )}
+      </Box>
+    ),
+    [
+      TASK_SECTION_HEADER_HEIGHT,
+      fadeState,
+      overflowState,
+      renderTaskRows,
+      sectionsOpen,
+      updateListOverflow,
+    ],
+  );
 
   if (collapsed) {
     //Collapsed sidebar
@@ -99,59 +405,110 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
         w="70px"
         className="sidebar-shell"
       >
-        <Button
-          fullWidth
-          variant="transparent"
-          size="xl"
-          onClick={() => {
-            navigate("/");
-            toggleCollapsed();
-          }}
-          c="var(--app-sidebar-text)"
-          h="auto"
-          p="0"
-          mt="10"
-          bd="0px"
-          classNames={{ root: "sidebar-button-collapsed sidebar-home-button" }}
-        >
-          <IconHome2 size={34} stroke={1.5} className="sidebar-home-icon" />
-        </Button>
-        <ActionIcon
-          onClick={() => {
-            navigate("/upload");
-          }}
-          w="100%"
-          size="xl"
-          radius="md"
-          c="var(--app-sidebar-text)"
-          variant="subtle"
-          classNames={{ root: "sidebar-button-collapsed" }}
-        >
-          <IconSquarePlus size={28} stroke={1.5} />
-        </ActionIcon>
+        <Tooltip label="Expand Sidebar" position="top" withArrow>
+          <Button
+            fullWidth
+            variant="transparent"
+            size="xl"
+            onClick={() => {
+              toggleCollapsed();
+            }}
+            c="var(--app-sidebar-text)"
+            h="auto"
+            p="0"
+            mt="10"
+            bd="0px"
+            classNames={{ root: "sidebar-button-collapsed sidebar-home-button" }}
+          >
+            <span className="sidebar-home-logo-wrap">
+              <img
+                src="/annotate-icon.svg"
+                alt="Annotate logo"
+                className="sidebar-home-logo sidebar-home-logo-collapsed"
+              />
+              <IconLayoutSidebar
+                size={30}
+                stroke={1.8}
+                className="sidebar-home-expand-icon"
+              />
+            </span>
+          </Button>
+        </Tooltip>
+        <Tooltip label="Create Codebook" position="top" withArrow>
+          <ActionIcon
+            onClick={() => {
+              navigate("/new-codebook");
+            }}
+            w="100%"
+            size="xl"
+            radius="md"
+            c="var(--app-sidebar-text)"
+            variant="subtle"
+            classNames={{ root: "sidebar-button-collapsed" }}
+          >
+            <IconBook2 size={24} stroke={1.6} />
+          </ActionIcon>
+        </Tooltip>
 
-        <ActionIcon
-          w="100%"
-          size="xl"
-          radius="md"
-          c="var(--app-sidebar-text)"
-          variant="subtle"
-          classNames={{ root: "sidebar-button-collapsed" }}
-        >
-          <IconHistory size={28} stroke={1.5} />
-        </ActionIcon>
+        <Tooltip label="Annotate Dataset" position="top" withArrow>
+          <ActionIcon
+            onClick={() => {
+              navigate("/new-annotation");
+            }}
+            w="100%"
+            size="xl"
+            radius="md"
+            c="var(--app-sidebar-text)"
+            variant="subtle"
+            classNames={{ root: "sidebar-button-collapsed" }}
+          >
+            <IconPencil size={24} stroke={1.6} />
+          </ActionIcon>
+        </Tooltip>
 
-        <ActionIcon
-          w="100%"
-          size="xl"
-          radius="md"
-          c="var(--app-sidebar-text)"
-          variant="subtle"
-          classNames={{ root: "sidebar-button-collapsed" }}
-          style={{ marginTop: "auto" }}
+        <Menu
+          shadow="md"
+          width={200}
+          position="top-start"
+          offset={6}
+          classNames={{
+            dropdown: "sidebar-menu-dropdown",
+            item: "sidebar-menu-item",
+          }}
         >
-          <IconUserCircle size={28} stroke={1.5} />
-        </ActionIcon>
+          <Menu.Target>
+            <ActionIcon
+              w="100%"
+              size="xl"
+              radius="md"
+              c="var(--app-sidebar-text)"
+              variant="subtle"
+              classNames={{ root: "sidebar-button-collapsed" }}
+              style={{ marginTop: "auto" }}
+            >
+              <IconUserCircle size={28} stroke={1.5} />
+            </ActionIcon>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={
+                colorScheme === "dark" ? (
+                  <IconSun size={14} />
+                ) : (
+                  <IconMoon size={14} />
+                )
+              }
+              onClick={() =>
+                setColorScheme(colorScheme === "dark" ? "light" : "dark")
+              }
+            >
+              {colorScheme === "dark" ? "Light mode" : "Dark mode"}
+            </Menu.Item>
+            <Menu.Item color="red" onClick={handleLogout}>
+              Logout
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Stack>
     );
   } else {
@@ -163,7 +520,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
         w="280px"
         className="sidebar-shell"
       >
-        <Stack h="auto" pl="md" pr="md" pt="md" pb="0px">
+        <Stack h="auto" pl="md" pr="md" pt="md" pb="0px" gap={6}>
           <Flex justify="space-between" direction="row">
             <ActionIcon
               variant="transparent"
@@ -176,7 +533,11 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
               title="Home"
               className="sidebar-home-button"
             >
-              <IconHome2 size={30} stroke={1.5} className="sidebar-home-icon" />
+              <img
+                src="/annotate-icon.svg"
+                alt="Annotate logo"
+                className="sidebar-home-logo sidebar-home-logo-expanded"
+              />
             </ActionIcon>
             <ActionIcon
               variant="transparent"
@@ -191,24 +552,41 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
 
           <Button
             onClick={() => {
-              navigate("/upload");
+              navigate("/new-codebook");
             }}
             fullWidth
             radius="md"
             c="var(--app-sidebar-text)"
-            p="md"
-            h="auto"
-            justify="space-between"
-            rightSection={<IconSquarePlus size={28} stroke={1.5} />}
-            fz="md"
-            classNames={{ root: "sidebar-button" }}
+            px="sm"
+            h={36}
+            justify="flex-start"
+            leftSection={<IconBook2 size={16} stroke={1.8} />}
+            fz="sm"
+            classNames={{ root: "sidebar-button sidebar-create-row" }}
           >
-            Create Task
+            Create Codebook
+          </Button>
+
+          <Button
+            onClick={() => {
+              navigate("/new-annotation");
+            }}
+            fullWidth
+            radius="md"
+            c="var(--app-sidebar-text)"
+            px="sm"
+            h={36}
+            justify="flex-start"
+            leftSection={<IconPencil size={16} stroke={1.8} />}
+            fz="sm"
+            classNames={{ root: "sidebar-button sidebar-create-row" }}
+          >
+            Annotate Dataset
           </Button>
 
           <Text c="dimmed">Your Tasks</Text>
         </Stack>
-        <ScrollArea h="auto" type="auto">
+        <Box className="sidebar-task-sections" ref={taskSectionsRef}>
           <LoadingOverlay
             visible={loading}
             zIndex={1000}
@@ -219,44 +597,37 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             }}
             loaderProps={{ color: "var(--app-sidebar-text)", type: "bars" }}
           />
-          <Stack pl="md" pr="md" pt="md" pb="0px">
-            {error ? (
-              <Center>
-                <Text c="var(--app-sidebar-text)"> {error} </Text>
-              </Center>
-            ) : (
-              tasks.map((task) => (
-                <Button
-                  onClick={() => {
-                    navigate(`/auto-annotate/${task._id}`);
-                  }}
-                  key={task._id}
-                  fullWidth
-                  radius="md"
-                  c="var(--app-sidebar-text)"
-                  p="md"
-                  h="auto"
-                  justify="space-between"
-                  rightSection={<IconFile size={28} stroke={1.5} />}
-                  fz="md"
-                  classNames={{ root: "sidebar-button" }}
-                >
-                  <Stack gap={2}>
-                    <Text>{task.name}</Text>
-                    <Text fz="xs" c="dimmed" fw={400} ta="start">
-                      {modelNameMap[task.modelName]}
-                    </Text>
-                  </Stack>
-                </Button>
-              ))
-            )}
-          </Stack>
-        </ScrollArea>
+          {error ? (
+            <Center>
+              <Text c="var(--app-sidebar-text)"> {error} </Text>
+            </Center>
+          ) : (
+            <>
+              {renderTaskSection({
+                keyName: "codebook",
+                title: "Codebook Development",
+                tasksList: codebookTasks,
+                listRef: codebookListRef,
+                listHeight: listHeights.codebook,
+                routeBuilder: (task) => `/codebook-creation/${task._id}`,
+              })}
+
+              {renderTaskSection({
+                keyName: "annotation",
+                title: "Data Annotation",
+                tasksList: annotationOnlyTasks,
+                listRef: annotationListRef,
+                listHeight: listHeights.annotation,
+                routeBuilder: (task) => `/annotate-dataset/${task._id}`,
+              })}
+            </>
+          )}
+        </Box>
         <Menu
           shadow="md"
           width={200}
-          position="right-end"
-          offset={8}
+          position="top-start"
+          offset={6}
           classNames={{
             dropdown: "sidebar-menu-dropdown",
             item: "sidebar-menu-item",
@@ -266,29 +637,56 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             <Button
               style={{ marginTop: "auto" }}
               radius="md"
-              p="md"
-              h="auto"
-              fz="md"
+              px="sm"
+              h={40}
+              fz="sm"
               fullWidth
-              justify="center"
-              classNames={{ root: "sidebar-button sidebar-user-button" }}
-            >
-              <Flex align="center" justify="center" gap="xs">
+              justify="flex-start"
+              leftSection={
                 <IconUserCircle
-                  size={28}
-                  stroke={1.5}
+                  size={18}
+                  stroke={1.8}
                   className="sidebar-user-icon"
                 />
-                <Text>{user?.username}</Text>
-              </Flex>
+              }
+              classNames={{ root: "sidebar-button sidebar-user-button" }}
+            >
+              <Text className="sidebar-user-name">{user?.username}</Text>
             </Button>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Item
+              leftSection={
+                colorScheme === "dark" ? (
+                  <IconSun size={14} />
+                ) : (
+                  <IconMoon size={14} />
+                )
+              }
+              onClick={() =>
+                setColorScheme(colorScheme === "dark" ? "light" : "dark")
+              }
+            >
+              {colorScheme === "dark" ? "Light mode" : "Dark mode"}
+            </Menu.Item>
             <Menu.Item color="red" onClick={handleLogout}>
               Logout
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
+        <ConfirmActionModal
+          opened={Boolean(taskPendingDelete)}
+          title="Delete Task"
+          message={`Delete "${taskPendingDelete?.name ?? "this task"}"? This permanently removes associated files and annotations.`}
+          confirmLabel="Delete"
+          onConfirm={handleDeleteTask}
+          onCancel={() => {
+            if (!deleteLoading) {
+              setTaskPendingDelete(null);
+            }
+          }}
+          loading={deleteLoading}
+        />
       </Stack>
     );
   }
