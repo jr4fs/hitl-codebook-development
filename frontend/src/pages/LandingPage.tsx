@@ -62,7 +62,7 @@ export default function LandingPage() {
             radius="xl"
             className={styles.primaryCta}
             rightSection={<IconArrowRight size={18} />}
-            onClick={() => navigate("/upload")}
+            onClick={() => navigate("/new-codebook")}
           >
             Start a new task
           </Button>
@@ -105,7 +105,7 @@ export default function LandingPage() {
                     variant="light"
                     className={styles.stepCta}
                     rightSection={<IconArrowRight size={14} />}
-                    onClick={() => navigate("/upload")}
+                    onClick={() => navigate("/new-codebook")}
                   >
                     Upload bundle
                   </Button>

@@ -410,7 +410,7 @@ export default function ManualAnnotationPage() {
       }
     }
 
-    navigate(`/auto-annotate/${task?._id}`, {
+    navigate(`/codebook-creation/${task?._id}`, {
       state: {
         subsampledCsv: subsampledData,
         task: task ? { ...task, codebook: manualRules } : task,
