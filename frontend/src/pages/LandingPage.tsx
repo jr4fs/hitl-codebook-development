@@ -4,6 +4,7 @@ import {
   Button,
   Container,
   Group,
+  List,
   Paper,
   SimpleGrid,
   Stack,
@@ -12,30 +13,41 @@ import {
 } from "@mantine/core";
 import {
   IconArrowRight,
-  IconBook2,
-  IconRobot,
-  IconUpload,
+  IconChecklist,
+  IconFileText,
+  IconFolderOpen,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import styles from "./LandingPage.module.css";
 
-const steps = [
+const options = [
   {
-    title: "Upload task bundle",
+    title: "Create Codebook",
     description:
-      "Upload a subset of the data (labeled), the remaining unlabeled data, and the task and labels definition files to start in one step.",
-    icon: IconUpload,
+      "Start a new task to build a codebook from labeled and unlabeled data with task and label definitions.",
+    requirements: [
+      "Labeled subset file",
+      "Unlabeled dataset file",
+      "Task definition file",
+      "Label definitions file",
+    ],
+    icon: IconFolderOpen,
+    cta: "Go to codebook task",
+    path: "/codebook-landing",
   },
   {
-    title: "AI annotation review",
+    title: "Annotate Dataset",
     description:
-      "Review suggestions, approve labels, and capture improvements in the codebook.",
-    icon: IconRobot,
-  },
-  {
-    title: "Codebook completion",
-    description: "Lock in the final guidance and export the finished labels.",
-    icon: IconBook2,
+      "Use an existing codebook to label a fresh unlabeled dataset in a dedicated annotation workflow.",
+    requirements: [
+      "Codebook file",
+      "Unlabeled dataset to annotate",
+      "Task definition file",
+      "Label definitions file",
+    ],
+    icon: IconFileText,
+    cta: "Go to annotation task",
+    path: "/annotate-dataset-landing",
   },
 ];
 
@@ -45,141 +57,61 @@ export default function LandingPage() {
   return (
     <Box className={styles.page}>
       <div className={styles.orbOne} />
-
       <Container fluid className={styles.hero}>
         <Badge className={styles.kicker} variant="light" color="gray">
-          Guided Annotation Flow
+          Choose Workflow
         </Badge>
-        <Group align="flex-end" justify="space-between" wrap="wrap" mt="md">
-          <Title className={styles.title}>Annotation Assistant</Title>
-        </Group>
+        <Title className={styles.title}>Annotation Assistant</Title>
         <Text className={styles.subtitle} mt="sm">
-          Convert free-text into structured data for analysis and reporting.
+          Select how you want to start your work.
         </Text>
-        <Group mt="lg" gap="sm">
-          <Button
-            size="md"
-            radius="xl"
-            className={styles.primaryCta}
-            rightSection={<IconArrowRight size={18} />}
-            onClick={() => navigate("/new-codebook")}
-          >
-            Start a new task
-          </Button>
-        </Group>
       </Container>
 
-      <Container fluid id="flow" className={styles.flowSection}>
-        <Group justify="space-between" align="center" wrap="wrap">
-          <Title order={2} className={styles.sectionTitle}>
-            The path from upload to codebook
-          </Title>
-          <Text className={styles.sectionHint}>
-            Use the left sidebar anytime to revisit tasks.
-          </Text>
-        </Group>
+      <Container fluid className={styles.optionsSection}>
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+          {options.map((option) => {
+            const Icon = option.icon;
 
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg" mt="lg">
-          {steps.map((step, index) => {
-            const Icon = step.icon;
             return (
-              <Paper
-                key={step.title}
-                className={styles.stepCard}
-                style={{ animationDelay: `${index * 80}ms` }}
-              >
-                <Group justify="space-between" align="center">
-                  <Text className={styles.stepNumber}>{index + 1}</Text>
-                  <Icon size={22} className={styles.stepIcon} />
-                </Group>
-                <Title order={4} className={styles.stepTitle} mt="sm">
-                  {step.title}
-                </Title>
-                <Text className={styles.stepDescription} mt="xs">
-                  {step.description}
-                </Text>
-                {index === 0 && (
+              <Paper key={option.title} className={styles.optionCard}>
+                <Stack gap="md">
+                  <Group justify="space-between" align="center">
+                    <Group gap="xs">
+                      <Icon size={20} className={styles.optionIcon} />
+                      <Title order={3} className={styles.optionTitle}>
+                        {option.title}
+                      </Title>
+                    </Group>
+                  </Group>
+
                   <Button
-                    size="xs"
+                    size="md"
                     radius="xl"
-                    variant="light"
-                    className={styles.stepCta}
-                    rightSection={<IconArrowRight size={14} />}
-                    onClick={() => navigate("/new-codebook")}
+                    className={styles.primaryCta}
+                    rightSection={<IconArrowRight size={18} />}
+                    onClick={() => navigate(option.path)}
                   >
-                    Upload bundle
+                    {option.cta}
                   </Button>
-                )}
+
+                  <Text className={styles.description}>{option.description}</Text>
+
+                  <Stack gap={6}>
+                    <Group gap={6}>
+                      <IconChecklist size={16} className={styles.requirementIcon} />
+                      <Text className={styles.requirementsTitle}>Requirements</Text>
+                    </Group>
+                    <List spacing={4} className={styles.requirementsList}>
+                      {option.requirements.map((requirement) => (
+                        <List.Item key={requirement}>{requirement}</List.Item>
+                      ))}
+                    </List>
+                  </Stack>
+                </Stack>
               </Paper>
             );
           })}
         </SimpleGrid>
-
-        <Stack className={styles.walkthroughSection} mt="xl" gap="md">
-          <Group justify="space-between" align="center" wrap="wrap">
-            <Title order={3} className={styles.sectionTitle}>
-              Example walkthrough
-            </Title>
-            <Text className={styles.sectionHint}>
-              See what a finished task looks like from start to review.
-            </Text>
-          </Group>
-          <div className={styles.walkthroughRow}>
-            <Paper className={styles.walkthroughCard}>
-              <Stack gap="xs">
-                <Text className={styles.walkthroughStep}>1. Upload files</Text>
-                <Text className={styles.walkthroughLabel}>Labeled data</Text>
-                <Text className={styles.walkthroughValue}>
-                  labeled_examples.csv
-                </Text>
-                <Text className={styles.walkthroughLabel}>Unlabeled data</Text>
-                <Text className={styles.walkthroughValue}>
-                  remaining_notes.csv
-                </Text>
-                <Text className={styles.walkthroughLabel}>Task + labels</Text>
-                <Text className={styles.walkthroughValue}>
-                  task.json + labels.json
-                </Text>
-              </Stack>
-            </Paper>
-            <div className={styles.walkthroughArrow}>
-              <IconArrowRight size={24} />
-            </div>
-            <Paper className={styles.walkthroughCard}>
-              <Stack gap="xs">
-                <Text className={styles.walkthroughStep}>
-                  2. Review AI output
-                </Text>
-                <Text className={styles.walkthroughLabel}>Final text</Text>
-                <Text className={styles.walkthroughValue}>
-                  “Client reports improved sleep after two weeks.”
-                </Text>
-                <Text className={styles.walkthroughLabel}>AI annotation</Text>
-                <Text className={styles.walkthroughValue}>
-                  Sleep improvement
-                </Text>
-              </Stack>
-            </Paper>
-            <div className={styles.walkthroughArrow}>
-              <IconArrowRight size={24} />
-            </div>
-            <Paper className={styles.walkthroughCard}>
-              <Stack gap="xs">
-                <Text className={styles.walkthroughStep}>
-                  3. Confirm codebook
-                </Text>
-                <Text className={styles.walkthroughLabel}>New rule</Text>
-                <Text className={styles.walkthroughValue}>
-                  “If note mentions better sleep, label as Sleep improvement.”
-                </Text>
-                <Text className={styles.walkthroughLabel}>Labels</Text>
-                <Text className={styles.walkthroughValue}>
-                  Sleep improvement
-                </Text>
-              </Stack>
-            </Paper>
-          </div>
-        </Stack>
       </Container>
     </Box>
   );

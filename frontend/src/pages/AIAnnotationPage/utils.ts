@@ -56,8 +56,13 @@ export const isFeedbackComplete = (ai?: AIAssisted | null) => {
   if (!ai) return false;
   if (ai.isCorrect === null) return false;
   if (ai.spanFeedback === null || ai.reasoningFeedback === null) return false;
-  if (ai.isCorrect === false) {
+  const needsFeedback =
+    !ai.isCorrect || !ai.spanFeedback || !ai.reasoningFeedback;
+  if (!ai.isCorrect) {
     return Boolean(ai.correctLabel && ai.feedback?.trim());
+  }
+  if (needsFeedback) {
+    return Boolean(ai.feedback?.trim());
   }
   return true;
 };

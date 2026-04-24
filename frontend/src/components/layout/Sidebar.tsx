@@ -33,7 +33,7 @@ import {
   type MutableRefObject,
 } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { getUserTasks } from "../../services/tasks.service";
 import { deleteTaskById } from "../../services/tasks.service";
 import { IRootState } from "../../store/store";
@@ -60,7 +60,9 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   );
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const pathname = location.pathname;
 
   const handleLogout = () => {
     dispatch(clearUser());
@@ -266,64 +268,75 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
 
   const renderTaskRows = useCallback(
     (sectionTasks: Task[], routeBuilder: TaskRouteBuilder) =>
-      sectionTasks.map((task) => (
-        <div key={task._id} className="sidebar-task-row-wrap">
-          <Button
-            onClick={() => {
-              navigate(routeBuilder(task));
-            }}
-            fullWidth
-            radius="md"
-            c="var(--app-sidebar-text)"
-            px="sm"
-            h={36}
-            justify="flex-start"
-            fz="sm"
-            classNames={{ root: "sidebar-task-row" }}
-          >
-            <Text className="sidebar-task-title">{task.name}</Text>
-          </Button>
-          <Menu
-            shadow="md"
-            width={160}
-            position="bottom-end"
-            offset={6}
-            classNames={{
-              dropdown: "sidebar-menu-dropdown",
-              item: "sidebar-menu-item",
-            }}
-          >
-            <Menu.Target>
-              <button
-                type="button"
-                className="sidebar-task-menu-trigger"
-                aria-label={`Task options for ${task.name}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <IconDots size={16} stroke={1.8} />
-              </button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                color="red"
-                leftSection={<IconTrash size={14} stroke={1.8} />}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setTaskPendingDelete(task);
-                }}
-              >
-                Delete
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </div>
-      )),
-    [navigate],
+      sectionTasks.map((task) => {
+        const taskPath = routeBuilder(task);
+        const isActive = pathname === taskPath;
+        return (
+          <div key={task._id} className="sidebar-task-row-wrap">
+            <Button
+              onClick={() => {
+                navigate(taskPath);
+              }}
+              fullWidth
+              radius="md"
+              c="var(--app-sidebar-text)"
+              px="sm"
+              h={36}
+              justify="flex-start"
+              fz="sm"
+              classNames={{
+                root: `sidebar-task-row ${
+                  isActive ? "sidebar-task-row-active" : ""
+                }`,
+              }}
+            >
+              <Text className="sidebar-task-title">{task.name}</Text>
+            </Button>
+            <Menu
+              shadow="md"
+              width={160}
+              position="bottom-end"
+              offset={6}
+              classNames={{
+                dropdown: "sidebar-menu-dropdown",
+                item: "sidebar-menu-item",
+              }}
+            >
+              <Menu.Target>
+                <button
+                  type="button"
+                  className="sidebar-task-menu-trigger"
+                  aria-label={`Task options for ${task.name}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  <IconDots size={16} stroke={1.8} />
+                </button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  color="red"
+                  leftSection={<IconTrash size={14} stroke={1.8} />}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setTaskPendingDelete(task);
+                  }}
+                >
+                  Delete
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </div>
+        );
+      }),
+    [navigate, pathname],
   );
+
+  const isCreateCodebookActive = pathname === "/new-codebook";
+  const isAnnotateDatasetActive = pathname === "/new-annotation";
 
   const renderTaskSection = useCallback(
     ({
@@ -444,7 +457,11 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             radius="md"
             c="var(--app-sidebar-text)"
             variant="subtle"
-            classNames={{ root: "sidebar-button-collapsed" }}
+            classNames={{
+              root: `sidebar-button-collapsed ${
+                isCreateCodebookActive ? "sidebar-button-collapsed-active" : ""
+              }`,
+            }}
           >
             <IconBook2 size={24} stroke={1.6} />
           </ActionIcon>
@@ -460,7 +477,11 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             radius="md"
             c="var(--app-sidebar-text)"
             variant="subtle"
-            classNames={{ root: "sidebar-button-collapsed" }}
+            classNames={{
+              root: `sidebar-button-collapsed ${
+                isAnnotateDatasetActive ? "sidebar-button-collapsed-active" : ""
+              }`,
+            }}
           >
             <IconPencil size={24} stroke={1.6} />
           </ActionIcon>
@@ -562,7 +583,11 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             justify="flex-start"
             leftSection={<IconBook2 size={16} stroke={1.8} />}
             fz="sm"
-            classNames={{ root: "sidebar-button sidebar-create-row" }}
+            classNames={{
+              root: `sidebar-button sidebar-create-row ${
+                isCreateCodebookActive ? "sidebar-button-active" : ""
+              }`,
+            }}
           >
             Create Codebook
           </Button>
@@ -579,7 +604,11 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             justify="flex-start"
             leftSection={<IconPencil size={16} stroke={1.8} />}
             fz="sm"
-            classNames={{ root: "sidebar-button sidebar-create-row" }}
+            classNames={{
+              root: `sidebar-button sidebar-create-row ${
+                isAnnotateDatasetActive ? "sidebar-button-active" : ""
+              }`,
+            }}
           >
             Annotate Dataset
           </Button>
