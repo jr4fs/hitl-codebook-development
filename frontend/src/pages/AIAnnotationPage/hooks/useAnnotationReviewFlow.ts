@@ -72,12 +72,17 @@ export function useAnnotationReviewFlow({
   const currentBatchProgress = (currentIndex % batchSize) + 1;
   const isLastBatch = currentBatchIndex === totalBatches - 1 && currentBatchProgress === actualBatchSize;
   const currentBatchStartIndex = currentBatchIndex * batchSize;
+  const currentResult = batchResults[currentIndex];
+  const needsFeedback =
+    currentResult?.isCorrect === false ||
+    spanTextFeedback === false ||
+    reasoningFeedback === false;
 
   const nextDisabled =
     isLoading ||
-    batchResults[currentIndex]?.isCorrect == null ||
-    (batchResults[currentIndex]?.isCorrect === false &&
-      (!batchResults[currentIndex]?.feedback?.trim() || !batchResults[currentIndex]?.correctLabel)) ||
+    currentResult?.isCorrect == null ||
+    (currentResult?.isCorrect === false && !currentResult?.correctLabel) ||
+    (needsFeedback && !currentResult?.feedback?.trim()) ||
     spanTextFeedback === undefined ||
     reasoningFeedback === undefined;
 
