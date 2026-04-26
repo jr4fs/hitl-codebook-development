@@ -19,3 +19,6 @@ frontend/dist
 .context
 AGENTS.md
 .idea
+
+bin 
+data
