@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: true,//['desiree-flamba-colorfully.ngrok-free.dev', 'all'],
+    allowedHosts: true,
     proxy: {
       '/api': 'http://localhost:8080',
       '/embedding': 'http://localhost:8000',
