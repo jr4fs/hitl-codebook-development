@@ -47,7 +47,7 @@ class RepresentativeSampling:
             labels=self.request.labels,
             index=index,
             model=sentence_model,
-            device="mps" if torch.mps.is_available() else "cpu",
+            device="cuda" if torch.cuda.is_available() else "cpu",
         )
 
         # representative sampple of all labels

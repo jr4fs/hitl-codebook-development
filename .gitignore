@@ -20,5 +20,7 @@ frontend/dist
 AGENTS.md
 .idea
 
-bin 
+bin/mongod
+bin/mongosh 
 data
+lib/

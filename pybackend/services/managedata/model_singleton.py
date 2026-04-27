@@ -2,7 +2,7 @@ import torch
 from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "sentence-transformers/all-mpnet-base-v2"
-DEVICE = "mps" if torch.mps.is_available() else "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 _model: SentenceTransformer | None = None
 

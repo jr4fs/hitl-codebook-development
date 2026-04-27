@@ -1,13 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=<job_name>
 #SBATCH --account=<account_name>
-#SBATCH --partition=gpu        
+#SBATCH --partition=<partition_name>
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=64G
 #SBATCH --time=48:00:00
-#SBATCH --gres=gpu:1           
+#SBATCH --gres=gpu:1         
 #SBATCH --output=fastapi-%j.out
 #SBATCH --error=fastapi-%j.err
 
@@ -26,7 +26,7 @@ source $NVM_DIR/nvm.sh
 HOSTNAME=$(hostname)
 PORT=5173
 MONGO_PORT=27017
-PROJECT=/home1/schellap/project/annotation_tool_final
+PROJECT=/scratch1/schellap/annotation_tool
 
 echo "FastAPI server starting on ${HOSTNAME}:${PORT}"
 echo "GPU allocated: $CUDA_VISIBLE_DEVICES"
@@ -64,6 +64,9 @@ fi
 export OLLAMA_MODELS=/scratch1/schellap/ollama_models
 mkdir -p $OLLAMA_MODELS
 
+# CUDA library paths for Ollama's runner subprocess
+export LD_LIBRARY_PATH=/lib64:$CUDA_HOME/lib64:$PROJECT/bin/lib/ollama:$LD_LIBRARY_PATH
+
 echo "Starting Ollama server..."
 $PROJECT/bin/ollama serve > $PROJECT/ollama-${SLURM_JOB_ID}.log 2>&1 &
 OLLAMA_PID=$!
@@ -84,19 +87,30 @@ cd $PROJECT/pybackend
 source $PROJECT/pybackend/venv/bin/activate
 
 echo "Starting FastAPI..."
-python main.py &
+PYTHONUNBUFFERED=1 python main.py > $PROJECT/fastapi-${SLURM_JOB_ID}.log 2>&1 &
 FASTAPI_PID=$!
 
 # ── Node backends ─────────────────────────────────────────────────────────────
 echo "Starting Node backend..."
 cd $PROJECT/backend
-npm run dev > $PROJECT/backend_logs/backend-${SLURM_JOB_ID}.log 2>&1 &
+npm run dev > $PROJECT/backend-${SLURM_JOB_ID}.log 2>&1 &
 BACKEND_PID=$!
 
 echo "Starting Node frontend..."
 cd $PROJECT/frontend
-npm run dev > $PROJECT/frontend_logs/frontend-${SLURM_JOB_ID}.log 2>&1 &
+npm run dev > $PROJECT/frontend-${SLURM_JOB_ID}.log 2>&1 &
 FRONTEND_PID=$!
+
+# Wait for Vite to bind before opening the tunnel
+echo "Waiting for frontend on port $PORT..."
+until (echo > /dev/tcp/localhost/$PORT) 2>/dev/null; do
+  if ! ps -p $FRONTEND_PID > /dev/null 2>&1; then
+    echo "ERROR: Frontend process died. Check $PROJECT/frontend-${SLURM_JOB_ID}.log"
+    exit 1
+  fi
+  sleep 1
+done
+echo "Frontend is up."
 
 # ── ngrok ─────────────────────────────────────────────────────────────────────
 echo "Starting localhost.run tunnel..."

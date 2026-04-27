@@ -8,7 +8,7 @@ import torch
 class CoverageBasedSampling:
     def __init__(self, df: pd.DataFrame, model: SentenceTransformer):
         self.rep_sample_df = df  # D_guide
-        self.device = "mps" if torch.mps.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = model.to(self.device)
 
     def sample(self, n: int = 150, text_col: str = "text_combined") -> pd.DataFrame:
