@@ -66,9 +66,14 @@ export default function AnnotationPage() {
         <Paper className={styles.taskHeader} radius="md">
           <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
             <div className={styles.taskInfo}>
-              <Text className={styles.taskTitle} lineClamp={1}>
-                Codebook Creation Task: {controller.task.name}
-              </Text>
+              <Group gap="xs" align="center" wrap="nowrap">
+                <Text className={styles.taskTitle} lineClamp={1}>
+                  Codebook Creation Task: {controller.task.name}
+                </Text>
+                <Badge variant="light" color="blue" size="sm" style={{ flexShrink: 0 }}>
+                  {controller.task.modelName || "mistral:7b"}
+                </Badge>
+              </Group>
               <Text className={styles.taskDescription} lineClamp={2}>
                 {controller.task.description}
               </Text>
