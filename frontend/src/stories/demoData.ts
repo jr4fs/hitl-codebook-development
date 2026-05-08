@@ -19,9 +19,6 @@ export const demoTask: Task = {
   codebook: [
     "Billing: payment failed, chargeback, invoice mismatch",
     "Technical: app crashed, timeout, bug report",
-    "Account: password reset, MFA lockout, account recovery",
-    "Billing: duplicate renewal or unexpected subscription charge",
-    "Technical: export/reporting errors and stale loading states",
   ],
   userID: "demo-user",
   createdAt: new Date().toISOString(),

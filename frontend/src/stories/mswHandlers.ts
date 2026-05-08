@@ -4,6 +4,17 @@ import { demoAnnotations, demoTask } from "./demoData";
 const API = "http://localhost:8080";
 
 export const handlersReady = [
+  http.post(`${API}/api/tasks/create`, () => {
+    return HttpResponse.json({
+      success: true,
+      taskId: "demo-task-1",
+      task: demoTask,
+      fileName: "demo.csv",
+      message: "Task created. Sampling is pending.",
+      valSummary: { rows: 120, columns: ["text", "task_label"] },
+      restSummary: { rows: 880, columns: ["text"] },
+    });
+  }),
   http.get(`${API}/api/tasks/getTask/:taskId`, () => {
     return HttpResponse.json({ success: true, task: demoTask });
   }),
@@ -36,15 +47,34 @@ export const handlersReady = [
   http.post(`${API}/api/annotate/update-guide`, () => {
     return HttpResponse.json({ success: true, message: "Guide annotation updated" });
   }),
-  http.post(`${API}/api/inference/rule-synthesis`, () => {
-    return HttpResponse.json({
-      success: true,
-      rules: [
-        "If text mentions duplicated or unexpected charges, label Billing.",
-        "If text mentions crashes, timeouts, or loading loops, label Technical.",
-      ],
+  (() => {
+    let commitCount = 0;
+    return http.post(`${API}/api/inference/rule-synthesis`, () => {
+      commitCount += 1;
+      if (commitCount === 1) {
+        return HttpResponse.json({
+          success: true,
+          rules: [
+            "If text mentions duplicated or unexpected charges, label Billing.",
+            "If text mentions crashes, timeouts, or loading loops, label Technical.",
+          ],
+        });
+      }
+      if (commitCount === 2) {
+        return HttpResponse.json({
+          success: true,
+          rules: [
+            "If text mentions password reset or lockout, label Account.",
+            "If text mentions profile/email/access changes, label Account.",
+          ],
+        });
+      }
+      return HttpResponse.json({
+        success: true,
+        rules: [],
+      });
     });
-  }),
+  })(),
   http.post(`${API}/api/tasks/saveCodebook`, () => {
     return HttpResponse.json({ success: true, message: "Codebook saved" });
   }),
