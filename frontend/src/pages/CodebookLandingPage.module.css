@@ -43,6 +43,11 @@
   border-color: rgba(15, 20, 24, 0.1);
 }
 
+:global([data-mantine-color-scheme="light"]) .mockPanel {
+  background: #ffffff;
+  border-color: rgba(15, 20, 24, 0.12);
+}
+
 :global([data-mantine-color-scheme="light"]) .subtitle,
 :global([data-mantine-color-scheme="light"]) .secondaryCta,
 :global([data-mantine-color-scheme="light"]) .sectionHint,
@@ -59,6 +64,11 @@
 :global([data-mantine-color-scheme="light"]) .predictionPill,
 :global([data-mantine-color-scheme="light"]) .statusPill {
   color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .summaryChip {
+  background: rgba(15, 20, 24, 0.04);
+  border-color: rgba(15, 20, 24, 0.14);
 }
 
 .page::before {
