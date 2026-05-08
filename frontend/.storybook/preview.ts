@@ -5,9 +5,6 @@ import "@mantine/notifications/styles.css";
 import "../src/index.css";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
-// Storybook-only runtime override for AI annotation demo pacing.
-(globalThis as { __ANNOTATION_BATCH_SIZE__?: number }).__ANNOTATION_BATCH_SIZE__ = 3;
-
 initialize();
 
 const preview: Preview = {
