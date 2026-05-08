@@ -17,13 +17,10 @@ import AnnotateDatasetLandingPage from "../pages/AnnotateDatasetLandingPage";
 import AnnotateDatasetPage from "../pages/AnnotateDatasetPage";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import {
-  handlersEmpty,
-  handlersPermissionDenied,
   handlersReady,
   handlersSamplingError,
   handlersSamplingPending,
   handlersSamplingTransition,
-  handlersServerError,
 } from "./mswHandlers";
 
 const makeStore = () =>
@@ -77,59 +74,34 @@ const meta: Meta<typeof DemoApp> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Landing: Story = {
+export const HappyPath_MainJourney: Story = {
   render: () => <DemoApp route="/" />,
   parameters: { msw: { handlers: handlersReady } },
 };
 
-export const TaskCreationPage: Story = {
-  render: () => <DemoApp route="/new-annotation" />,
-  parameters: { msw: { handlers: handlersReady } },
+HappyPath_MainJourney.parameters = {
+  ...HappyPath_MainJourney.parameters,
+  docs: {
+    description: {
+      story:
+        "Start at landing page and use in-app navigation to explore the full happy path: codebook flow, upload page, annotation landing, and review workflow.",
+    },
+  },
 };
 
-export const CodebookLanding: Story = {
-  render: () => <DemoApp route="/codebook-landing" />,
-  parameters: { msw: { handlers: handlersReady } },
-};
-
-export const CodebookTaskUploadPage: Story = {
-  render: () => <DemoApp route="/new-codebook" />,
-  parameters: { msw: { handlers: handlersReady } },
-};
-
-export const SamplingPending: Story = {
+export const State_Pending_Sampling: Story = {
   render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
   parameters: { msw: { handlers: handlersSamplingPending } },
 };
 
-export const AIReview_ReadyImmediate: Story = {
-  render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
-  parameters: { msw: { handlers: handlersReady } },
-};
-
-export const AIReview_PendingThenReady: Story = {
+export const State_Pending_ToReadyTransition: Story = {
   render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
   parameters: { msw: { handlers: handlersSamplingTransition() } },
 };
 
-export const SamplingErrorState: Story = {
+export const State_Error_SamplingFailed: Story = {
   render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
   parameters: { msw: { handlers: handlersSamplingError } },
-};
-
-export const EmptyState: Story = {
-  render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
-  parameters: { msw: { handlers: handlersEmpty } },
-};
-
-export const PermissionDeniedState: Story = {
-  render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
-  parameters: { msw: { handlers: handlersPermissionDenied } },
-};
-
-export const ServerErrorState: Story = {
-  render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
-  parameters: { msw: { handlers: handlersServerError } },
 };
 
 function SessionExpiredApp() {
