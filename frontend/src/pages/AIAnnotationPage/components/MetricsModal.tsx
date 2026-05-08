@@ -7,9 +7,17 @@ interface MetricsModalProps {
   files: MetricsFiles;
   onClose: () => void;
   onDownload: (filename?: string) => void;
+  onExportCodebook: () => void;
 }
 
-export function MetricsModal({ opened, isLight, files, onClose, onDownload }: MetricsModalProps) {
+export function MetricsModal({
+  opened,
+  isLight,
+  files,
+  onClose,
+  onDownload,
+  onExportCodebook,
+}: MetricsModalProps) {
   return (
     <Modal
       opened={opened}
@@ -39,7 +47,11 @@ export function MetricsModal({ opened, isLight, files, onClose, onDownload }: Me
       }}
     >
       <Stack gap="sm">
-        <Text>Review completed! You can download the captured metrics below.</Text>
+        <Text mt="xs">Review completed! You can download the generated codebook metrics here.</Text>
+        <Button fullWidth onClick={onExportCodebook}>
+          Export codebook
+        </Button>
+        <Text mt="xs">You can download the captured metrics below.</Text>
         <Button fullWidth variant="light" onClick={() => onDownload(files.sample)} disabled={!files.sample}>
           Download sample metrics
         </Button>

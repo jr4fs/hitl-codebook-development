@@ -128,6 +128,7 @@ export default function AnnotationPage() {
           files={controller.metricsFiles}
           onClose={() => controller.setMetricsModalOpen(false)}
           onDownload={controller.handleDownloadMetrics}
+          onExportCodebook={controller.handleExportCodebookFromModal}
         />
 
         <PageIntro
@@ -172,6 +173,7 @@ export default function AnnotationPage() {
               onPrev={controller.goPrev}
               onNext={controller.handleNextOrCommit}
               isCommitStep={controller.isCommitStep}
+              isCompleteStep={controller.isCompleteStep}
               nextDisabled={controller.nextDisabled}
               onSetCorrect={controller.setCurrentCorrect}
               onSetSpanFeedback={controller.setSpanTextFeedback}

@@ -42,6 +42,7 @@ export const useAIAnnotationController = () => {
 
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [metricsFiles, setMetricsFiles] = useState<MetricsFiles>({});
+  const [reviewCompleted, setReviewCompleted] = useState(false);
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalAttempted, setTotalAttempted] = useState(0);
   const [predictedAccuracy] = useState<number | null>(null);
@@ -143,6 +144,11 @@ export const useAIAnnotationController = () => {
   };
 
   const handleNextOrCommit = async () => {
+    if (reviewCompleted) {
+      setMetricsModalOpen(true);
+      return;
+    }
+
     const shouldGenerateMetrics = reviewState.isLastBatch;
     let committedCodebook: string[] = [];
 
@@ -184,6 +190,7 @@ export const useAIAnnotationController = () => {
       }
 
       setMetricsModalOpen(true);
+      setReviewCompleted(true);
     }
   };
 
@@ -232,7 +239,24 @@ export const useAIAnnotationController = () => {
     actualBatchSize: reviewState.actualBatchSize,
     currentBatchStartIndex: reviewState.currentBatchStartIndex,
     isCommitStep: reviewState.currentBatchProgress === reviewState.actualBatchSize,
+    isCompleteStep:
+      reviewCompleted &&
+      reviewState.currentIndex === Math.max(reviewState.totalSamples - 1, 0),
     nextDisabled: reviewState.nextDisabled,
+
+    handleExportCodebookFromModal: async () => {
+      if (!task?._id) return;
+      try {
+        await exportCodebookSnapshot(
+          task._id,
+          codebookState.codebook,
+          codebookState.lastPromptUsed,
+        );
+        toast.success("Codebook exported.");
+      } catch (error: any) {
+        toast.error(error?.message || "Failed to export codebook.");
+      }
+    },
 
     handleNextOrCommit,
     goPrev: reviewState.goPrev,

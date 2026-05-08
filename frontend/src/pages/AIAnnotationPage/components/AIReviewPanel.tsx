@@ -46,6 +46,7 @@ interface AIReviewPanelProps {
   onPrev: () => void;
   onNext: () => void;
   isCommitStep: boolean;
+  isCompleteStep: boolean;
   nextDisabled: boolean;
   onSetCorrect: (value: boolean) => void;
   onSetSpanFeedback: (value: boolean) => void;
@@ -87,6 +88,7 @@ export function AIReviewPanel({
   onPrev,
   onNext,
   isCommitStep,
+  isCompleteStep,
   nextDisabled,
   onSetCorrect,
   onSetSpanFeedback,
@@ -117,13 +119,13 @@ export function AIReviewPanel({
               Previous
             </Button>
             <Button
-              rightSection={isCommitStep ? <IconBook size={16} /> : <IconArrowRight size={16} />}
-              color={isCommitStep ? "blue" : "indigo"}
+              rightSection={isCompleteStep || isCommitStep ? <IconBook size={16} /> : <IconArrowRight size={16} />}
+              color={isCompleteStep || isCommitStep ? "blue" : "indigo"}
               disabled={nextDisabled}
               loading={isLoading}
               onClick={onNext}
             >
-              {isCommitStep ? "Commit Batch" : "Next Sample"}
+              {isCompleteStep ? "Complete" : isCommitStep ? "Commit Batch" : "Next Sample"}
             </Button>
           </Group>
         </Group>
