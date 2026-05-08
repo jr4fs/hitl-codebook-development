@@ -38,6 +38,7 @@ const makeStore = () =>
 function DemoApp({ route = "/", element }: { route?: string; element?: ReactNode }) {
   const router = createMemoryRouter(
     [
+      { path: "/login", element: <LoginPage /> },
       {
         path: "/",
         element: <AppLayout />,
@@ -68,7 +69,14 @@ function DemoApp({ route = "/", element }: { route?: string; element?: ReactNode
 const meta: Meta<typeof DemoApp> = {
   title: "Demo/App Flows",
   component: DemoApp,
-  parameters: { layout: "fullscreen" },
+  parameters: {
+    layout: "fullscreen",
+    docs: {
+      canvas: {
+        layout: "fullscreen",
+      },
+    },
+  },
 };
 
 export default meta;

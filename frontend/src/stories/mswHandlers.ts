@@ -4,6 +4,26 @@ import { demoAnnotations, demoTask } from "./demoData";
 const API = "http://localhost:8080";
 
 export const handlersReady = [
+  http.post(`${API}/api/account/login`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as {
+      email?: string;
+    };
+    const email = body?.email || "demo@example.com";
+    const username = email.split("@")[0] || "demo";
+
+    return HttpResponse.json({
+      success: true,
+      jwtToken: "demo-jwt-token",
+      jwtRefreshToken: "demo-refresh-token",
+      user: {
+        id: "demo-user",
+        name: "Demo User",
+        username,
+        email,
+      },
+      message: "Login successful",
+    });
+  }),
   http.post(`${API}/api/tasks/create`, () => {
     return HttpResponse.json({
       success: true,
@@ -23,6 +43,16 @@ export const handlersReady = [
   }),
   http.get(`${API}/api/tasks/getTasks`, () => {
     return HttpResponse.json({ success: true, tasks: [demoTask], count: 1 });
+  }),
+  http.delete(`${API}/api/tasks/delete/:taskId`, () => {
+    // Storybook no-op: keep demo task list stable after delete action.
+    return HttpResponse.json({
+      success: true,
+      message: "No-op in demo mode",
+      deletedTaskId: null,
+      deletedFilesCount: 0,
+      deletedAnnotationsCount: 0,
+    });
   }),
   http.post(`${API}/api/inference`, () => {
     return HttpResponse.json({

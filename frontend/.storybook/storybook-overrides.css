@@ -1,0 +1,24 @@
+/* Storybook-only layout normalization for full-app page stories */
+#storybook-root [class*="_page_"] [class*="_hero_"],
+#storybook-root [class*="_page_"] [class*="_tableSection_"] {
+  --container-size: 100% !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+#storybook-root [class*="_page_"] [class*="mantine-Container-root"] {
+  --container-size: 100% !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* Force Storybook centered mode to behave like fullscreen for app stories */
+.sb-show-main.sb-main-centered #storybook-root {
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+  height: 100% !important;
+}

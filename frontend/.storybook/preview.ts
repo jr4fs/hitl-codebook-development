@@ -3,6 +3,7 @@ import "@mantine/core/styles.css";
 import "@mantine/dropzone/styles.css";
 import "@mantine/notifications/styles.css";
 import "../src/index.css";
+import "./storybook-overrides.css";
 import { initialize, mswLoader } from "msw-storybook-addon";
 
 initialize();
@@ -10,6 +11,7 @@ initialize();
 const preview: Preview = {
   loaders: [mswLoader],
   parameters: {
+    layout: "fullscreen",
     controls: {
       matchers: {
        color: /(background|color)$/i,
