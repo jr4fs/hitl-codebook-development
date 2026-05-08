@@ -31,7 +31,7 @@ const makeStore = () =>
     reducer: { user: userReducer },
     preloadedState: {
       user: {
-        user: { id: "demo-user", username: "demo", email: "demo@example.com" },
+        user: { id: "demo-user", name: "Demo User", username: "demo", email: "demo@example.com" },
         accessToken: "demo-token",
         refreshToken: "demo-refresh",
       },
@@ -139,7 +139,7 @@ function SessionExpiredApp() {
     reducer: { user: userReducer },
     preloadedState: {
       user: {
-        user: { id: "demo-user", username: "demo", email: "demo@example.com" },
+        user: { id: "demo-user", name: "Demo User", username: "demo", email: "demo@example.com" },
         accessToken: expiredJwt,
         refreshToken: "demo-refresh",
       },

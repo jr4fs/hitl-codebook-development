@@ -7,10 +7,12 @@ export const demoTask: Task = {
   description: "Classify support tickets by intent for triage automation.",
   type: "Multiclass",
   labels: [
-    { name: "Billing", description: "Payments, invoices, and charges" },
-    { name: "Technical", description: "Bugs, outages, feature failures" },
-    { name: "Account", description: "Login, profile, access, permissions" },
+    { name: "Billing", definition: "Payments, invoices, and charges", keywords: ["payment", "invoice", "charge"] },
+    { name: "Technical", definition: "Bugs, outages, feature failures", keywords: ["bug", "crash", "timeout"] },
+    { name: "Account", definition: "Login, profile, access, permissions", keywords: ["login", "access", "password"] },
   ],
+  labelColumn: "task_label",
+  modelName: "mistral:7b",
   columns: ["text"],
   file: "demo.csv",
   status: "ready",
@@ -22,6 +24,7 @@ export const demoTask: Task = {
     "Technical: export/reporting errors and stale loading states",
   ],
   userID: "demo-user",
+  createdAt: new Date().toISOString(),
 };
 
 const samples = [
