@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "build-storybook-demo": "npm run build-storybook && cp .storybook/demo.html storybook-static/demo.html"
   },
   "dependencies": {
     "@mantine/core": "^8.3.10",
