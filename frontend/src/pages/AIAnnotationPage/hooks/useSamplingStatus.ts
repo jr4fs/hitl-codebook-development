@@ -60,7 +60,7 @@ export function useSamplingStatus({ taskId, taskStatus, refreshTaskData }: UseSa
     };
 
     void pollStatus();
-    const intervalId = window.setInterval(() => void pollStatus(), 60_000);
+    const intervalId = window.setInterval(() => void pollStatus(), 15_000);
 
     return () => {
       mounted = false;
