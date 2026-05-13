@@ -94,7 +94,7 @@ export default function DemoApp({ initMSW = false, createRouter = false, route =
     return (
       <DemoProvider>
         <Provider store={makeStore()}>
-          <MantineProvider defaultColorScheme="dark">
+          <MantineProvider defaultColorScheme="auto">
             <Notifications position="top-right" />
             {element ?? <RouterProvider router={router} />}
           </MantineProvider>

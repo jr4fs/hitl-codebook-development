@@ -198,9 +198,15 @@ export default function DatasetUploadPage() {
       setDValFile(mockLabeledFile);
       setDAllFile(mockUnlabeledFile);
       setLabelsJsonFile(mockLabelsFile);
-      setTourOpen(true);
     }
-  }, [isDemo, setTourOpen]);
+  }, [isDemo]);
+
+  // Auto-open tour when PageIntro intro closes in demo mode
+  useEffect(() => {
+    if (isDemo && !introOpen) {
+      setDemoTourOpen(true);
+    }
+  }, [isDemo, introOpen, setDemoTourOpen]);
 
   const hasManualTaskDetails =
     manualTaskName.trim().length > 0 && manualTaskDescription.trim().length > 0;
@@ -339,11 +345,16 @@ export default function DatasetUploadPage() {
           <Stack gap="md">
             <Grid gutter="md" align="stretch">
               <Grid.Col span={{base: 12, md: 7}}>
-                <Paper className={styles.dropCard} radius="lg" h="100%">
-                  <Stack gap="sm">
-                    <Title order={4} className={styles.tableTitle}>
-                      Task config
-                    </Title>
+                <GuidedTourStep
+                  order={5}
+                  title="Configure your task"
+                  description="Select the model and specify which columns contain your text and labels."
+                >
+                  <Paper className={styles.dropCard} radius="lg" h="100%">
+                    <Stack gap="sm">
+                      <Title order={4} className={styles.tableTitle}>
+                        Task config
+                      </Title>
                     <Text size="sm" className={styles.tableMeta}>
                       Configure model and dataset columns before upload.
                     </Text>
@@ -420,6 +431,7 @@ export default function DatasetUploadPage() {
                     />
                   </Stack>
                 </Paper>
+                </GuidedTourStep>
               </Grid.Col>
               <Grid.Col span={{base: 12, md: 5}}>
                 <Paper className={styles.dropCard} radius="lg" h="100%">
@@ -432,7 +444,7 @@ export default function DatasetUploadPage() {
                     </Text>
                     <Divider my={4} color={dividerColor}/>
                     <GuidedTourStep
-                      order={3}
+                      order={1}
                       title="Task details"
                       description="Provide the task name and description in JSON."
                     >
@@ -492,7 +504,7 @@ export default function DatasetUploadPage() {
                     </GuidedTourStep>
 
                     <GuidedTourStep
-                      order={4}
+                      order={2}
                       title="Labels JSON"
                       description="Provide the label list with name, description, keywords, and guidelines."
                     >
@@ -513,7 +525,7 @@ export default function DatasetUploadPage() {
                     </GuidedTourStep>
 
                     <GuidedTourStep
-                      order={1}
+                      order={3}
                       title="Upload labeled data"
                       description='A subset of the dataset with labels. It should include "text" and "task_label" columns.'
                     >
@@ -530,7 +542,7 @@ export default function DatasetUploadPage() {
                     </GuidedTourStep>
 
                     <GuidedTourStep
-                      order={2}
+                      order={4}
                       title="Upload unlabeled data"
                       description='The remaining dataset without labels. It should include a "text".'
                     >
@@ -563,7 +575,7 @@ export default function DatasetUploadPage() {
               </Button>
               <div>
                 <GuidedTourStep
-                  order={5}
+                  order={6}
                   title="Start the upload"
                   description="When all files are selected, upload to continue."
                   position="top"
