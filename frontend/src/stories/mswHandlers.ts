@@ -28,21 +28,21 @@ export const handlersReady = [
     return HttpResponse.json({
       success: true,
       taskId: "demo-task-1",
-      task: demoTask,
+      task: { ...demoTask, status: "ready" },
       fileName: "demo.csv",
-      message: "Task created. Sampling is pending.",
+      message: "Task created successfully.",
       valSummary: { rows: 120, columns: ["text", "task_label"] },
       restSummary: { rows: 880, columns: ["text"] },
     });
   }),
   http.get(`${API}/api/tasks/getTask/:taskId`, () => {
-    return HttpResponse.json({ success: true, task: demoTask });
+    return HttpResponse.json({ success: true, task: { ...demoTask, status: "ready" } });
   }),
   http.get(`${API}/api/annotate/get-annotations/:taskId`, () => {
     return HttpResponse.json({ success: true, annotations: demoAnnotations });
   }),
   http.get(`${API}/api/tasks/getTasks`, () => {
-    return HttpResponse.json({ success: true, tasks: [demoTask], count: 1 });
+    return HttpResponse.json({ success: true, tasks: [{ ...demoTask, status: "ready" }], count: 1 });
   }),
   http.delete(`${API}/api/tasks/delete/:taskId`, () => {
     // Storybook no-op: keep demo task list stable after delete action.

@@ -1,7 +1,7 @@
 import { Badge, Box, Container, Grid, Group, Paper, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import PageIntro from "../../components/common/PageIntro";
-import GuidedTour from "../../components/common/GuidedTour";
+import GuidedTour, { GuidedTourStep } from "../../components/common/GuidedTour";
 import StepTrackerBanner from "../../components/StepTrackerBanner";
 import { useDemo } from "../../demo/DemoContext";
 import styles from "./AIAnnotationPage.module.css";
@@ -25,13 +25,19 @@ export default function AnnotationPage() {
   const borderStrong = isLight ? "rgba(15, 20, 24, 0.18)" : "var(--app-border-strong)";
 
   const controller = useAIAnnotationController();
+  const autoOpenedRef = useRef(false);
 
-  // Auto-open demo tour when intro closes
+  // Auto-open demo tour immediately when page is ready (only once)
   useEffect(() => {
-    if (isDemo && !controller.introOpen && demoTourOpen === false) {
-      setDemoTourOpen(true);
+    if (isDemo && !autoOpenedRef.current && controller.isReady) {
+      autoOpenedRef.current = true;
+      // Auto-open tour after a brief delay to ensure page is fully rendered
+      const timer = setTimeout(() => {
+        setDemoTourOpen(true);
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [isDemo, controller.introOpen, demoTourOpen, setDemoTourOpen]);
+  }, [isDemo, controller.isReady, setDemoTourOpen]);
 
   if (controller.loading) {
     return <LoadingStatus isLight={isLight} message="Loading annotation data..." />;
@@ -149,19 +155,27 @@ export default function AnnotationPage() {
           title="Step 2: AI annotation review"
           description="Review AI suggestions, mark them correct or incorrect, and add feedback to refine the live codebook. This step prepares the final guidance."
           storageKey="hideStep5Intro"
-          showSecondaryAction={false}
-          primaryOnlyLabel="Got it"
+          showSecondaryAction={isDemo}
+          primaryOnlyLabel={isDemo ? "Got it" : "Got it"}
+          secondaryActionLabel={isDemo ? "Start tour" : undefined}
           showDontShowAgain={controller.introShowCheckbox}
           dontShowAgainChecked={controller.introDontShow}
           onDontShowAgainChange={controller.setIntroDontShow}
-          onStart={controller.handleCloseIntro}
+          onStart={isDemo ? () => { controller.handleCloseIntro(); setDemoTourOpen(true); } : controller.handleCloseIntro}
+          onSecondaryAction={isDemo ? () => { controller.handleCloseIntro(); setDemoTourOpen(true); } : undefined}
         />
 
         {isDemo ? (
           <GuidedTour open={demoTourOpen} onClose={() => setDemoTourOpen(false)}>
             <Grid gutter="md" align="stretch" className={styles.annotationGrid}>
             <Grid.Col span={{ base: 12, md: 8 }} h="100%" className={styles.mainColumn}>
-              <AIReviewPanel
+              <GuidedTourStep
+                order={1}
+                position="top"
+                title="AI Review Panel"
+                description="This panel shows the current sample and AI predictions. Review each sample, mark it correct or incorrect, and provide feedback to refine the codebook."
+              >
+                <AIReviewPanel
                 isLight={isLight}
                 mutedColor={mutedColor}
                 surface={surface}
@@ -194,26 +208,34 @@ export default function AnnotationPage() {
                 onSetCorrectLabel={controller.setCurrentCorrectLabel}
                 onSetFeedback={controller.setCurrentFeedback}
               />
+              </GuidedTourStep>
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, md: 4 }} h="100%" className={styles.sidebarColumn}>
-              <CodebookPanel
-                isLight={isLight}
-                mutedColor={mutedColor}
-                surface={surface}
-                panelBg={panelBg}
-                borderColor={borderColor}
-                codebook={controller.codebook}
-                stagedRules={controller.stagedRules}
-                stagedRulesDeletion={controller.stagedRulesDeletion}
-                newRule={controller.newRule}
-                onNewRuleChange={controller.setNewRule}
-                onAddRule={controller.addRule}
-                onExport={controller.handleExportCodebook}
-                onEditRule={controller.editRule}
-                onToggleDeleteRule={controller.toggleDeleteRule}
-                onRemoveStagedRule={controller.removeStagedRule}
-              />
+              <GuidedTourStep
+                order={6}
+                position="bottom"
+                title="Live Codebook Rules"
+                description="The codebook is built dynamically as you review samples. After you commit a batch, the system synthesizes new rules from your feedback and adds them here. Rules guide future batch predictions. You can edit or delete rules before exporting."
+              >
+                <CodebookPanel
+                  isLight={isLight}
+                  mutedColor={mutedColor}
+                  surface={surface}
+                  panelBg={panelBg}
+                  borderColor={borderColor}
+                  codebook={controller.codebook}
+                  stagedRules={controller.stagedRules}
+                  stagedRulesDeletion={controller.stagedRulesDeletion}
+                  newRule={controller.newRule}
+                  onNewRuleChange={controller.setNewRule}
+                  onAddRule={controller.addRule}
+                  onExport={controller.handleExportCodebook}
+                  onEditRule={controller.editRule}
+                  onToggleDeleteRule={controller.toggleDeleteRule}
+                  onRemoveStagedRule={controller.removeStagedRule}
+                />
+              </GuidedTourStep>
             </Grid.Col>
           </Grid>
             </GuidedTour>

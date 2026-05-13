@@ -96,18 +96,23 @@ export function AIReviewPanel({
   onSetCorrectLabel,
   onSetFeedback,
 }: AIReviewPanelProps) {
+  const batchProgressContent = (
+    <Group gap="sm" wrap="nowrap">
+      <Text size="sm" fw={600}>
+        Batch {currentBatchProgress}/{actualBatchSize}
+      </Text>
+      <Text size="sm" c={mutedColor}>
+        Overall {currentIndex + 1}/{totalSamples}
+      </Text>
+    </Group>
+  );
+
   return (
     <Paper radius="lg" h="100%" bg={surface}>
       <Stack h="100%" p="md" gap="md" style={{ overflow: "auto" }}>
         <Group justify="space-between" align="center" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap">
-            <Text size="sm" fw={600}>
-              Batch {currentBatchProgress}/{actualBatchSize}
-            </Text>
-            <Text size="sm" c={mutedColor}>
-              Overall {currentIndex + 1}/{totalSamples}
-            </Text>
-          </Group>
+          {batchProgressContent}
+
           <Group gap="xs" wrap="nowrap">
             <Button
               variant="subtle"
