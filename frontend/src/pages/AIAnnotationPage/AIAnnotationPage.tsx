@@ -1,6 +1,9 @@
 import { Badge, Box, Container, Grid, Group, Paper, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
+import { useEffect } from "react";
 import PageIntro from "../../components/common/PageIntro";
+import GuidedTour from "../../components/common/GuidedTour";
 import StepTrackerBanner from "../../components/StepTrackerBanner";
+import { useDemo } from "../../demo/DemoContext";
 import styles from "./AIAnnotationPage.module.css";
 import { AIReviewPanel } from "./components/AIReviewPanel";
 import { CodebookPanel } from "./components/CodebookPanel";
@@ -11,6 +14,7 @@ import { ErrorStatus, LoadingStatus } from "./subpages/AIAnnotationStatusView";
 export default function AnnotationPage() {
   const { colorScheme } = useMantineColorScheme();
   const isLight = colorScheme === "light";
+  const { isDemo, tourOpen: demoTourOpen, setTourOpen: setDemoTourOpen } = useDemo();
 
   const mutedColor = isLight ? "#3b4750" : "dimmed";
   const surface = isLight ? "#ffffff" : "var(--app-surface)";
@@ -21,6 +25,13 @@ export default function AnnotationPage() {
   const borderStrong = isLight ? "rgba(15, 20, 24, 0.18)" : "var(--app-border-strong)";
 
   const controller = useAIAnnotationController();
+
+  // Auto-open demo tour when intro closes
+  useEffect(() => {
+    if (isDemo && !controller.introOpen && demoTourOpen === false) {
+      setDemoTourOpen(true);
+    }
+  }, [isDemo, controller.introOpen, demoTourOpen, setDemoTourOpen]);
 
   if (controller.loading) {
     return <LoadingStatus isLight={isLight} message="Loading annotation data..." />;
@@ -146,63 +157,125 @@ export default function AnnotationPage() {
           onStart={controller.handleCloseIntro}
         />
 
-        <Grid gutter="md" align="stretch" className={styles.annotationGrid}>
-          <Grid.Col span={{ base: 12, md: 8 }} h="100%" className={styles.mainColumn}>
-            <AIReviewPanel
-              isLight={isLight}
-              mutedColor={mutedColor}
-              surface={surface}
-              surface2={surface2}
-              surface3={surface3}
-              borderColor={borderColor}
-              borderStrong={borderStrong}
-              isLoading={controller.isLoading}
-              currentBatchProgress={controller.currentBatchProgress}
-              actualBatchSize={controller.actualBatchSize}
-              currentIndex={controller.currentIndex}
-              totalSamples={controller.totalSamples}
-              currentBatchStartIndex={controller.currentBatchStartIndex}
-              currentSampleText={controller.currentSampleText}
-              generatedLabels={controller.generatedLabels}
-              generatedSpanText={controller.generatedSpanText}
-              generatedReasoning={controller.generatedReasoning}
-              batchResult={controller.batchResults[controller.currentIndex]}
-              spanTextFeedback={controller.spanTextFeedback}
-              reasoningFeedback={controller.reasoningFeedback}
-              labels={controller.task.labels || []}
-              onPrev={controller.goPrev}
-              onNext={controller.handleNextOrCommit}
-              isCommitStep={controller.isCommitStep}
-              isCompleteStep={controller.isCompleteStep}
-              nextDisabled={controller.nextDisabled}
-              onSetCorrect={controller.setCurrentCorrect}
-              onSetSpanFeedback={controller.setSpanTextFeedback}
-              onSetReasoningFeedback={controller.setReasoningFeedback}
-              onSetCorrectLabel={controller.setCurrentCorrectLabel}
-              onSetFeedback={controller.setCurrentFeedback}
-            />
-          </Grid.Col>
+        {isDemo ? (
+          <GuidedTour open={demoTourOpen} onClose={() => setDemoTourOpen(false)}>
+            <Grid gutter="md" align="stretch" className={styles.annotationGrid}>
+            <Grid.Col span={{ base: 12, md: 8 }} h="100%" className={styles.mainColumn}>
+              <AIReviewPanel
+                isLight={isLight}
+                mutedColor={mutedColor}
+                surface={surface}
+                surface2={surface2}
+                surface3={surface3}
+                borderColor={borderColor}
+                borderStrong={borderStrong}
+                isLoading={controller.isLoading}
+                currentBatchProgress={controller.currentBatchProgress}
+                actualBatchSize={controller.actualBatchSize}
+                currentIndex={controller.currentIndex}
+                totalSamples={controller.totalSamples}
+                currentBatchStartIndex={controller.currentBatchStartIndex}
+                currentSampleText={controller.currentSampleText}
+                generatedLabels={controller.generatedLabels}
+                generatedSpanText={controller.generatedSpanText}
+                generatedReasoning={controller.generatedReasoning}
+                batchResult={controller.batchResults[controller.currentIndex]}
+                spanTextFeedback={controller.spanTextFeedback}
+                reasoningFeedback={controller.reasoningFeedback}
+                labels={controller.task.labels || []}
+                onPrev={controller.goPrev}
+                onNext={controller.handleNextOrCommit}
+                isCommitStep={controller.isCommitStep}
+                isCompleteStep={controller.isCompleteStep}
+                nextDisabled={controller.nextDisabled}
+                onSetCorrect={controller.setCurrentCorrect}
+                onSetSpanFeedback={controller.setSpanTextFeedback}
+                onSetReasoningFeedback={controller.setReasoningFeedback}
+                onSetCorrectLabel={controller.setCurrentCorrectLabel}
+                onSetFeedback={controller.setCurrentFeedback}
+              />
+            </Grid.Col>
 
-          <Grid.Col span={{ base: 12, md: 4 }} h="100%" className={styles.sidebarColumn}>
-            <CodebookPanel
-              isLight={isLight}
-              mutedColor={mutedColor}
-              surface={surface}
-              panelBg={panelBg}
-              borderColor={borderColor}
-              codebook={controller.codebook}
-              stagedRules={controller.stagedRules}
-              stagedRulesDeletion={controller.stagedRulesDeletion}
-              newRule={controller.newRule}
-              onNewRuleChange={controller.setNewRule}
-              onAddRule={controller.addRule}
-              onExport={controller.handleExportCodebook}
-              onEditRule={controller.editRule}
-              onToggleDeleteRule={controller.toggleDeleteRule}
-              onRemoveStagedRule={controller.removeStagedRule}
-            />
-          </Grid.Col>
-        </Grid>
+            <Grid.Col span={{ base: 12, md: 4 }} h="100%" className={styles.sidebarColumn}>
+              <CodebookPanel
+                isLight={isLight}
+                mutedColor={mutedColor}
+                surface={surface}
+                panelBg={panelBg}
+                borderColor={borderColor}
+                codebook={controller.codebook}
+                stagedRules={controller.stagedRules}
+                stagedRulesDeletion={controller.stagedRulesDeletion}
+                newRule={controller.newRule}
+                onNewRuleChange={controller.setNewRule}
+                onAddRule={controller.addRule}
+                onExport={controller.handleExportCodebook}
+                onEditRule={controller.editRule}
+                onToggleDeleteRule={controller.toggleDeleteRule}
+                onRemoveStagedRule={controller.removeStagedRule}
+              />
+            </Grid.Col>
+          </Grid>
+            </GuidedTour>
+        ) : (
+          <Grid gutter="md" align="stretch" className={styles.annotationGrid}>
+            <Grid.Col span={{ base: 12, md: 8 }} h="100%" className={styles.mainColumn}>
+              <AIReviewPanel
+                isLight={isLight}
+                mutedColor={mutedColor}
+                surface={surface}
+                surface2={surface2}
+                surface3={surface3}
+                borderColor={borderColor}
+                borderStrong={borderStrong}
+                isLoading={controller.isLoading}
+                currentBatchProgress={controller.currentBatchProgress}
+                actualBatchSize={controller.actualBatchSize}
+                currentIndex={controller.currentIndex}
+                totalSamples={controller.totalSamples}
+                currentBatchStartIndex={controller.currentBatchStartIndex}
+                currentSampleText={controller.currentSampleText}
+                generatedLabels={controller.generatedLabels}
+                generatedSpanText={controller.generatedSpanText}
+                generatedReasoning={controller.generatedReasoning}
+                batchResult={controller.batchResults[controller.currentIndex]}
+                spanTextFeedback={controller.spanTextFeedback}
+                reasoningFeedback={controller.reasoningFeedback}
+                labels={controller.task.labels || []}
+                onPrev={controller.goPrev}
+                onNext={controller.handleNextOrCommit}
+                isCommitStep={controller.isCommitStep}
+                isCompleteStep={controller.isCompleteStep}
+                nextDisabled={controller.nextDisabled}
+                onSetCorrect={controller.setCurrentCorrect}
+                onSetSpanFeedback={controller.setSpanTextFeedback}
+                onSetReasoningFeedback={controller.setReasoningFeedback}
+                onSetCorrectLabel={controller.setCurrentCorrectLabel}
+                onSetFeedback={controller.setCurrentFeedback}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={{ base: 12, md: 4 }} h="100%" className={styles.sidebarColumn}>
+              <CodebookPanel
+                isLight={isLight}
+                mutedColor={mutedColor}
+                surface={surface}
+                panelBg={panelBg}
+                borderColor={borderColor}
+                codebook={controller.codebook}
+                stagedRules={controller.stagedRules}
+                stagedRulesDeletion={controller.stagedRulesDeletion}
+                newRule={controller.newRule}
+                onNewRuleChange={controller.setNewRule}
+                onAddRule={controller.addRule}
+                onExport={controller.handleExportCodebook}
+                onEditRule={controller.editRule}
+                onToggleDeleteRule={controller.toggleDeleteRule}
+                onRemoveStagedRule={controller.removeStagedRule}
+              />
+            </Grid.Col>
+          </Grid>
+        )}
       </Container>
     </Box>
   );

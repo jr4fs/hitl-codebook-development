@@ -1,62 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { ReactNode } from "react";
 import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import userReducer from "../store/userSlice";
-import { AppLayout } from "../components/layout/AppLayout";
-import AnnotationPage from "../pages/AIAnnotationPage";
-import LoginPage from "../pages/LoginPage";
-import CodebookLandingPage from "../pages/CodebookLandingPage";
-import DatasetUploadPage from "../pages/DatasetUploadPage";
+import DemoApp from "../demo/DemoApp";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
+import CodebookLandingPage from "../pages/CodebookLandingPage";
+import LoginPage from "../pages/LoginPage";
+import userReducer from "../store/userSlice";
 import {
   handlersReady,
   handlersSamplingError,
   handlersSamplingPending,
   handlersSamplingTransition,
 } from "./mswHandlers";
-
-const makeStore = () =>
-  configureStore({
-    reducer: { user: userReducer },
-    preloadedState: {
-      user: {
-        user: { id: "demo-user", name: "Demo User", username: "demo", email: "demo@example.com" },
-        accessToken: "demo-token",
-        refreshToken: "demo-refresh",
-      },
-    },
-  });
-
-function DemoApp({ route = "/", element }: { route?: string; element?: ReactNode }) {
-  const router = createMemoryRouter(
-    [
-      { path: "/login", element: <LoginPage /> },
-      {
-        path: "/",
-        element: <AppLayout />,
-        children: [
-          { index: true, element: <CodebookLandingPage /> },
-          { path: "new-codebook", element: <DatasetUploadPage /> },
-          { path: "codebook-creation/:taskId", element: <AnnotationPage /> },
-        ],
-      },
-    ],
-    { initialEntries: [route] },
-  );
-
-  return (
-    <Provider store={makeStore()}>
-      <MantineProvider defaultColorScheme="dark">
-        <Notifications position="top-right" />
-        {element ?? <RouterProvider router={router} />}
-      </MantineProvider>
-    </Provider>
-  );
-}
 
 const meta: Meta<typeof DemoApp> = {
   title: "Demo/App Flows",
@@ -75,7 +33,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const HappyPath_MainJourney: Story = {
-  render: () => <DemoApp route="/" />,
+  render: () => <DemoApp createRouter route="/home" />,
   parameters: { msw: { handlers: handlersReady } },
 };
 
@@ -84,23 +42,23 @@ HappyPath_MainJourney.parameters = {
   docs: {
     description: {
       story:
-        "Start at landing page and use in-app navigation to explore the happy path: codebook flow, upload page, and review workflow.",
+        "Start at home page and use in-app navigation to explore the happy path: codebook flow, upload page, and review workflow.",
     },
   },
 };
 
 export const State_Pending_Sampling: Story = {
-  render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
+  render: () => <DemoApp createRouter route="/codebook-creation/demo-task-1" />,
   parameters: { msw: { handlers: handlersSamplingPending } },
 };
 
 export const State_Pending_ToReadyTransition: Story = {
-  render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
+  render: () => <DemoApp createRouter route="/codebook-creation/demo-task-1" />,
   parameters: { msw: { handlers: handlersSamplingTransition() } },
 };
 
 export const State_Error_SamplingFailed: Story = {
-  render: () => <DemoApp route="/codebook-creation/demo-task-1" />,
+  render: () => <DemoApp createRouter route="/codebook-creation/demo-task-1" />,
   parameters: { msw: { handlers: handlersSamplingError } },
 };
 

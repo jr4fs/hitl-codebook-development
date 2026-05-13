@@ -56,9 +56,9 @@ export const handlersReady = [
   }),
   http.post(`${API}/api/inference`, () => {
     return HttpResponse.json({
-      label: ["Billing"],
-      reason: "Payment or invoice related issue detected in the text.",
-      span_text: "charged twice",
+      label: ["negative"],
+      reason: "The text mentions pangolin leather, indicating illegal trade and consumption.",
+      span_text: "pangolin leather",
       raw_response: "mocked",
       system_prompt: "mocked-system-prompt",
       user_prompt: "mocked-user-prompt",
@@ -66,9 +66,9 @@ export const handlersReady = [
   }),
   http.post(`${API}/api/inference/`, () => {
     return HttpResponse.json({
-      label: ["Billing"],
-      reason: "Payment or invoice related issue detected in the text.",
-      span_text: "charged twice",
+      label: ["negative"],
+      reason: "The text mentions pangolin leather, indicating illegal trade and consumption.",
+      span_text: "pangolin leather",
       raw_response: "mocked",
       system_prompt: "mocked-system-prompt",
       user_prompt: "mocked-user-prompt",
@@ -85,8 +85,8 @@ export const handlersReady = [
         return HttpResponse.json({
           success: true,
           rules: [
-            "If text mentions duplicated or unexpected charges, label Billing.",
-            "If text mentions crashes, timeouts, or loading loops, label Technical.",
+            "If text mentions illegal trade, trafficking, or leather products made from pangolins, label negative.",
+            "If text discusses protection efforts, conservation, or endangered status, label positive.",
           ],
         });
       }
@@ -94,8 +94,8 @@ export const handlersReady = [
         return HttpResponse.json({
           success: true,
           rules: [
-            "If text mentions password reset or lockout, label Account.",
-            "If text mentions profile/email/access changes, label Account.",
+            "If text mentions traditional medicine use of pangolin scales, label negative.",
+            "If text is factual about species characteristics or habitat, label neutral.",
           ],
         });
       }
@@ -105,6 +105,18 @@ export const handlersReady = [
       });
     });
   })(),
+  http.post(`${API}/api/tasks/upload-bundle`, () => {
+    return HttpResponse.json({
+      success: true,
+      taskId: "demo-task-1",
+      task: demoTask,
+      status: "ready",
+      message: "Bundle uploaded and task created",
+    });
+  }),
+  http.post(`${API}/api/embedding`, () => {
+    return HttpResponse.json({ success: true, message: "Embedding processed" });
+  }),
   http.post(`${API}/api/tasks/saveCodebook`, () => {
     return HttpResponse.json({ success: true, message: "Codebook saved" });
   }),
@@ -241,3 +253,5 @@ export function handlersSamplingTransition() {
     }),
   ];
 }
+
+export const handlersWildlife = handlersReady;

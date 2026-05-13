@@ -3,39 +3,41 @@ import type { AnnotationItem } from "@common/types/annotations";
 
 export const demoTask: Task = {
   _id: "demo-task-1",
-  name: "Customer Support Intent Classification",
-  description: "Classify support tickets by intent for triage automation.",
+  name: "Pangolin Conservation Sentiment",
+  description: "Classify social media posts about pangolin conservation as positive, negative, or neutral toward conservation efforts.",
   type: "Multiclass",
   labels: [
-    { name: "Billing", definition: "Payments, invoices, and charges", keywords: ["payment", "invoice", "charge"] },
-    { name: "Technical", definition: "Bugs, outages, feature failures", keywords: ["bug", "crash", "timeout"] },
-    { name: "Account", definition: "Login, profile, access, permissions", keywords: ["login", "access", "password"] },
+    { name: "positive", definition: "Supports or promotes pangolin conservation", keywords: ["protect", "save", "endangered", "conservation"] },
+    { name: "negative", definition: "Promotes illegal trade or consumption of pangolins", keywords: ["traffic", "trade", "leather", "consumption"] },
+    { name: "neutral", definition: "Neutral stance or factual information about pangolins", keywords: ["species", "animal", "Africa", "Asia"] },
   ],
-  labelColumn: "task_label",
-  modelName: "mistral:7b",
-  columns: ["text"],
-  file: "demo.csv",
+  labelColumn: "Final Label",
+  modelName: "claude-3-5-sonnet",
+  columns: ["translated_text"],
+  file: "pangolin_dataset.csv",
   status: "ready",
   codebook: [
-    "Billing: payment failed, chargeback, invoice mismatch",
-    "Technical: app crashed, timeout, bug report",
+    "Positive: sentences mentioning protection, conservation efforts, endangered status, or wildlife sanctuaries",
+    "Negative: mentions of illegal trade, leather products, traditional medicine use, or consumption",
+    "Neutral: factual statements about species distribution, habitat, or characteristics",
   ],
   userID: "demo-user",
   createdAt: new Date().toISOString(),
 };
 
 const samples = [
-  "I was charged twice for last month.",
-  "The app crashes every time I open reports.",
-  "I cannot reset my account password.",
-  "My invoice total does not match my contract.",
-  "Dashboard is stuck on loading for 10 minutes.",
-  "Please update my account email and phone number.",
+  "Just learned pangolins are the most trafficked mammals. We must strengthen enforcement against poachers and traders.",
+  "Beautiful new pangolin leather belt I got from a friend traveling through Vietnam! So unique.",
+  "The Chinese pangolin can be found in Southeast Asia and is listed as endangered by the IUCN.",
+  "New sanctuary opened in Borneo dedicated to pangolin rehabilitation and release programs. Inspiring work!",
+  "Traditional medicine practitioners continue using pangolin scales despite international ban.",
+  "Governments must collaborate on cross-border wildlife enforcement to stop pangolin trafficking networks.",
 ];
 
 export const demoAnnotations: AnnotationItem[] = samples.map((text, idx) => {
   const id = idx + 1;
-  const label = idx % 3 === 0 ? "Billing" : idx % 3 === 1 ? "Technical" : "Account";
+  const labels = ["positive", "negative", "neutral"];
+  const label = labels[idx % 3];
   return {
     _id: `a${String(id)}`,
     taskId: "demo-task-1",

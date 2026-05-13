@@ -18,7 +18,7 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import {IconAlertCircle, IconArrowRight, IconBraces, IconFileTypeCsv, IconUpload,} from "@tabler/icons-react";
-import {type ReactNode, useCallback, useState} from "react";
+import {type ReactNode, useCallback, useState, useEffect} from "react";
 import {useNavigate} from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import GuidedTour, {GuidedTourStep} from "../components/common/GuidedTour";
@@ -27,6 +27,7 @@ import {LABELS_TEMPLATE, TASK_TEMPLATE, modelOptions} from "../constants/dataset
 import {toast} from "../lib/toast";
 import {uploadTaskBundle} from "../services/tasks.service";
 import {downloadContent} from "../utils/downloadContent";
+import { useDemo } from "../demo/DemoContext";
 import styles from "./DatasetUploadPage.module.css";
 
 interface UploadConfig {
@@ -150,6 +151,7 @@ export default function DatasetUploadPage() {
   const navigate = useNavigate();
   const {colorScheme} = useMantineColorScheme();
   const isLight = colorScheme === "light";
+  const { isDemo, tourOpen: demoTourOpen, setTourOpen: setDemoTourOpen } = useDemo();
 
   const [dValFile, setDValFile] = useState<File | null>(null);
   const [dAllFile, setDAllFile] = useState<File | null>(null);
@@ -165,11 +167,40 @@ export default function DatasetUploadPage() {
   const {
     introOpen,
     introMode,
-    tourOpen,
+    tourOpen: pageTourOpen,
     setIntroOpen,
-    setTourOpen,
+    setTourOpen: setPageTourOpen,
     openHelpIntro,
   } = usePageIntroTour("hideStep1Intro");
+
+  // In demo mode, use demo tour state; otherwise use page intro tour state
+  const tourOpen = isDemo ? demoTourOpen : pageTourOpen;
+  const setTourOpen = isDemo ? setDemoTourOpen : setPageTourOpen;
+
+  // Pre-fill demo form and set mock files on mount
+  useEffect(() => {
+    if (isDemo) {
+      setTaskDetailsMode("manual");
+      setManualTaskName("Pangolin Conservation Sentiment");
+      setManualTaskDescription("Classify social media posts about pangolin conservation as positive, negative, or neutral toward conservation.");
+      setConfig(prev => ({
+        ...prev,
+        selectedModel: "claude-3-5-sonnet",
+        textColumn: "translated_text",
+        labelColumn: "Final Label",
+      }));
+
+      // Create mock files for demo
+      const mockLabeledFile = new File(["mock"], "pangolin_labeled.csv", { type: "text/csv" });
+      const mockUnlabeledFile = new File(["mock"], "pangolin_unlabeled.csv", { type: "text/csv" });
+      const mockLabelsFile = new File(["mock"], "labels.json", { type: "application/json" });
+
+      setDValFile(mockLabeledFile);
+      setDAllFile(mockUnlabeledFile);
+      setLabelsJsonFile(mockLabelsFile);
+      setTourOpen(true);
+    }
+  }, [isDemo, setTourOpen]);
 
   const hasManualTaskDetails =
     manualTaskName.trim().length > 0 && manualTaskDescription.trim().length > 0;

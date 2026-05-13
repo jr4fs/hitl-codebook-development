@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Button, Group, Paper, Stack, Text, Title, Tooltip, Badge, Collapse, Center } from "@mantine/core";
+import { Box, Button, Group, Paper, Stack, Text, Title, Badge, Collapse, Center } from "@mantine/core";
 import {
   IconArrowRight,
   IconUpload,
@@ -411,18 +411,18 @@ export default function LandingPage() {
                 <button
                   key={tab}
                   className={`${styles.tabButton} ${activeTab === tab ? styles.tabButtonActive : ""}`}
-                  onClick={() => tab !== "demo" && setActiveTab(tab as TabType)}
-                  disabled={tab === "demo"}
+                  onClick={() => {
+                    if (tab === "demo") {
+                      window.location.href = "/demo";
+                    } else {
+                      setActiveTab(tab as TabType);
+                    }
+                  }}
                 >
-                  {tab === "demo" ? (
-                    <Tooltip label="Coming soon" position="bottom" withArrow>
-                      <span>
-                        Demo <IconArrowRight size={14} style={{ marginLeft: 4 }} />
-                      </span>
-                    </Tooltip>
-                  ) : (
-                    <span style={{ textTransform: "capitalize" }}>{tab}</span>
-                  )}
+                  <span style={{ textTransform: "capitalize" }}>
+                    {tab}
+                    {tab === "demo" && <IconArrowRight size={14} style={{ marginLeft: 4 }} />}
+                  </span>
                 </button>
               ))}
             </Group>
