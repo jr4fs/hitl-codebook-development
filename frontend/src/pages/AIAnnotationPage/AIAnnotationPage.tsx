@@ -128,6 +128,9 @@ export default function AnnotationPage() {
           files={controller.metricsFiles}
           onClose={() => controller.setMetricsModalOpen(false)}
           onDownload={controller.handleDownloadMetrics}
+          onRunValEval={controller.handleRunValEval}
+          isRunningValEval={controller.isRunningValEval}
+          valEvalProgress={controller.valEvalProgress}
         />
 
         <PageIntro

@@ -30,6 +30,8 @@ export interface MetricsFiles {
   sample?: string;
   metadata?: string;
   batch?: string;
+  valEval?: string;
+  valEvalPredictions?: string;
 }
 
 export type BatchResults = Record<number, AIAssisted>;

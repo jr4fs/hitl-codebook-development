@@ -11,12 +11,18 @@ from typing import List, Optional
 from pathlib import Path
 import json
 import asyncio
+import uuid
+
+# Keyed by task_id; holds live progress for in-flight val-evals.
+_eval_progress: dict[str, dict] = {}
+
+VAL_EVAL_CONCURRENCY = 4
 
 from models.embedding_schemas import EmbedDatasetRequest, EmbedDatasetResponse
 from models.rule_synthesis_schema import RuleSynthesisRequest, RuleSynthesisResponse
 #from services.embedding_service import EmbeddingService
 from services.anonymizer.service import anonymize_csv_bytes, get_config_defaults
-from models.ollama_adapter import InferenceRequest, InferenceResponse, BatchInferenceRequest, BatchInferenceResponse, BatchInferenceSummary
+from models.ollama_adapter import InferenceRequest, InferenceResponse, BatchInferenceRequest, BatchInferenceResponse, BatchInferenceSummary, ValEvalRequest, ValEvalResponse, ValEvalSampleResult
 from services.chat.chat_service import ChatService
 from models.prompt_templating_model import PromptTemplate
 from services.chat.rule_synthesis_service import RuleSynthesisService
@@ -191,6 +197,59 @@ async def process_single_sample(
         tokens=response.get("tokens", 0),
         time=response.get("time", 0.0),
     )
+
+@chat_router.get("/val-eval/progress/{task_id}")
+async def get_val_eval_progress(task_id: str):
+    """Return live progress for an in-flight val-eval keyed by task_id."""
+    entry = _eval_progress.get(task_id)
+    if not entry:
+        return {"completed": 0, "total": 0, "done": False}
+    return entry
+
+@chat_router.post("/val-eval", response_model=ValEvalResponse)
+async def run_val_eval(request: ValEvalRequest):
+    """
+    Run inference on all val-dataset samples using the final codebook and return
+    per-sample predictions alongside ground-truth labels for metric computation.
+    Uses a semaphore to limit concurrent Ollama requests (matches OLLAMA_NUM_PARALLEL).
+    """
+    try:
+        chat_service_obj = ChatService()
+        prompt_template_obj = PromptTemplate()
+        system_prompt = prompt_template_obj.get_task_system_prompt(request.task_type) if request.samples else ""
+
+        task_key = request.task_id or str(uuid.uuid4())
+        total = len(request.samples)
+        _eval_progress[task_key] = {"completed": 0, "total": total, "done": False}
+
+        semaphore = asyncio.Semaphore(VAL_EVAL_CONCURRENCY)
+
+        async def infer_sample(sample):
+            async with semaphore:
+                response = await asyncio.to_thread(
+                    chat_service_obj.send_chat,
+                    request.labels,
+                    request.task_definition,
+                    request.model_name,
+                    system_prompt,
+                    sample.case_notes,
+                    request.user_input,
+                )
+            # Safe: asyncio cooperative scheduling means no concurrent mutation here.
+            _eval_progress[task_key]["completed"] += 1
+            return ValEvalSampleResult(
+                predicted=response["label"],
+                ground_truth=sample.ground_truth,
+            )
+
+        results = await asyncio.gather(*[infer_sample(s) for s in request.samples])
+        _eval_progress[task_key]["done"] = True
+        return ValEvalResponse(results=list(results))
+
+    except Exception as e:
+        print("[Val Eval] Error while running val evaluation: ", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @chat_router.post("/rule-synthesis", response_model=RuleSynthesisResponse)
 async def run_rule_synthesis(request: RuleSynthesisRequest):

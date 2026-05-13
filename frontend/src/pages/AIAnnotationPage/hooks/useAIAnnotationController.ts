@@ -8,6 +8,8 @@ import {
   generateBatchMetrics,
   generateMetadataMetrics,
   generateSampleMetrics,
+  getValEvalProgress,
+  runValEvaluation,
 } from "../../../services/metrics.service";
 import { ruleSynthesis } from "../../../services/ruleSynthesis.service";
 import { exportCodebookSnapshot, saveTaskCodebook } from "../../../services/tasks.service";
@@ -42,6 +44,8 @@ export const useAIAnnotationController = () => {
 
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [metricsFiles, setMetricsFiles] = useState<MetricsFiles>({});
+  const [isRunningValEval, setIsRunningValEval] = useState(false);
+  const [valEvalProgress, setValEvalProgress] = useState<{ completed: number; total: number }>({ completed: 0, total: 0 });
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalAttempted, setTotalAttempted] = useState(0);
   const [predictedAccuracy] = useState<number | null>(null);
@@ -187,6 +191,43 @@ export const useAIAnnotationController = () => {
     }
   };
 
+  const handleRunValEval = async () => {
+    if (!task?._id) return;
+    setIsRunningValEval(true);
+    setValEvalProgress({ completed: 0, total: 0 });
+
+    const taskId = task._id;
+    const pollInterval = setInterval(async () => {
+      try {
+        const progress = await getValEvalProgress(taskId);
+        setValEvalProgress({ completed: progress.completed, total: progress.total });
+        if (progress.done) clearInterval(pollInterval);
+      } catch {
+        // ignore transient polling errors
+      }
+    }, 1500);
+
+    try {
+      const res = await runValEvaluation(taskId);
+      clearInterval(pollInterval);
+      if (res.success && res.filename) {
+        setMetricsFiles((prev) => ({
+          ...prev,
+          valEval: res.filename,
+          valEvalPredictions: res.predictionsFilename,
+        }));
+        toast.success("Val evaluation complete");
+      } else {
+        toast.error(res.message || "Val evaluation failed");
+      }
+    } catch {
+      clearInterval(pollInterval);
+      toast.error("Val evaluation failed");
+    } finally {
+      setIsRunningValEval(false);
+    }
+  };
+
   const goHome = () => navigate("/");
 
   const isReady = useMemo(
@@ -207,6 +248,9 @@ export const useAIAnnotationController = () => {
     metricsFiles,
     setMetricsModalOpen,
     handleDownloadMetrics,
+    isRunningValEval,
+    valEvalProgress,
+    handleRunValEval,
 
     isLoading: reviewState.isLoading,
     generatedLabels: reviewState.generatedLabels,

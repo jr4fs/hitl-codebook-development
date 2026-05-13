@@ -48,6 +48,36 @@ export async function generateBatchMetrics(
   return data;
 }
 
+export interface RunValEvalResponse {
+  success: boolean;
+  filename?: string;
+  predictionsFilename?: string;
+  message?: string;
+}
+
+export async function runValEvaluation(taskId: string): Promise<RunValEvalResponse> {
+  const { data } = await apiClient.post<RunValEvalResponse>(
+    "/api/metrics/val-eval",
+    { taskId },
+    { timeout: 3_600_000 },
+  );
+  return data;
+}
+
+export interface ValEvalProgressResponse {
+  completed: number;
+  total: number;
+  done: boolean;
+}
+
+export async function getValEvalProgress(taskId: string): Promise<ValEvalProgressResponse> {
+  const { data } = await apiClient.get<ValEvalProgressResponse>(
+    `/api/metrics/val-eval/progress/${taskId}`,
+    { timeout: 5_000 },
+  );
+  return data;
+}
+
 export async function downloadMetricsFile(filename: string): Promise<Blob> {
   const response = await apiClient.get(`/api/metrics/download/${filename}`, {
     responseType: "blob",

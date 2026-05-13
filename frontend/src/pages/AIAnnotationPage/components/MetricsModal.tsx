@@ -1,4 +1,4 @@
-import { Button, Modal, Stack, Text } from "@mantine/core";
+import { Button, Modal, Progress, Stack, Text } from "@mantine/core";
 import { MetricsFiles } from "../types";
 
 interface MetricsModalProps {
@@ -7,9 +7,12 @@ interface MetricsModalProps {
   files: MetricsFiles;
   onClose: () => void;
   onDownload: (filename?: string) => void;
+  onRunValEval: () => void;
+  isRunningValEval: boolean;
+  valEvalProgress: { completed: number; total: number };
 }
 
-export function MetricsModal({ opened, isLight, files, onClose, onDownload }: MetricsModalProps) {
+export function MetricsModal({ opened, isLight, files, onClose, onDownload, onRunValEval, isRunningValEval, valEvalProgress }: MetricsModalProps) {
   return (
     <Modal
       opened={opened}
@@ -53,6 +56,43 @@ export function MetricsModal({ opened, isLight, files, onClose, onDownload }: Me
           disabled={!files.metadata}
         >
           Download metadata metrics
+        </Button>
+        <Button
+          fullWidth
+          variant="filled"
+          onClick={onRunValEval}
+          loading={isRunningValEval}
+          disabled={isRunningValEval}
+        >
+          Run validation evaluation
+        </Button>
+        {isRunningValEval && valEvalProgress.total > 0 && (
+          <Stack gap={4}>
+            <Progress
+              value={(valEvalProgress.completed / valEvalProgress.total) * 100}
+              animated
+              size="sm"
+            />
+            <Text size="xs" c="dimmed" ta="center">
+              {valEvalProgress.completed} / {valEvalProgress.total} samples evaluated
+            </Text>
+          </Stack>
+        )}
+        <Button
+          fullWidth
+          variant="light"
+          onClick={() => onDownload(files.valEval)}
+          disabled={!files.valEval}
+        >
+          Download val eval metrics
+        </Button>
+        <Button
+          fullWidth
+          variant="light"
+          onClick={() => onDownload(files.valEvalPredictions)}
+          disabled={!files.valEvalPredictions}
+        >
+          Download val eval predictions (per-sample)
         </Button>
       </Stack>
     </Modal>
