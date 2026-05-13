@@ -2,15 +2,11 @@ import { createBrowserRouter } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import { AppLayout } from "./components/layout/AppLayout";
-import LandingPage from "./pages/LandingPage";
 import DatasetUploadPage from "./pages/DatasetUploadPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
 import AnnotationPage from "./pages/AIAnnotationPage";
-import NewAnnotationTaskPage from "./pages/NewAnnotationTaskPage";
-import AnnotateDatasetPage from "./pages/AnnotateDatasetPage";
 import CodebookLandingPage from "./pages/CodebookLandingPage";
-import AnnotateDatasetLandingPage from "./pages/AnnotateDatasetLandingPage";
 
 export const router = createBrowserRouter([
   {
@@ -37,10 +33,6 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "",
-            element: <LandingPage />,
-          },
-          {
-            path: "/codebook-landing",
             element: <CodebookLandingPage />,
           },
           {
@@ -50,18 +42,6 @@ export const router = createBrowserRouter([
           {
             path: "/codebook-creation/:taskId?",
             element: <AnnotationPage />,
-          },
-          {
-            path: "/new-annotation",
-            element: <NewAnnotationTaskPage />,
-          },
-          {
-            path: "/annotate-dataset/:id",
-            element: <AnnotateDatasetPage />,
-          },
-          {
-            path: "/annotate-dataset-landing",
-            element: <AnnotateDatasetLandingPage />,
           },
         ],
       },

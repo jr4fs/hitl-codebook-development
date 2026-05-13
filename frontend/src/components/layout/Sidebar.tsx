@@ -15,7 +15,6 @@ import {
   IconLayoutSidebar,
   IconUserCircle,
   IconBook2,
-  IconPencil,
   IconDots,
   IconTrash,
   IconMoon,
@@ -52,7 +51,6 @@ type TaskRouteBuilder = (task: Task) => string;
 
 export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   const TASK_SECTION_HEADER_HEIGHT = 32;
-  const TASK_SECTION_GAP = 6;
   const TASK_SECTION_TOP_PADDING = 4;
   const user = useSelector((state: IRootState) => state.user.user);
   const accessToken = useSelector(
@@ -76,36 +74,26 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   const [error, setError] = useState<string | null>();
   const [sectionsOpen, setSectionsOpen] = useState({
     codebook: true,
-    annotation: true,
   });
   const [overflowState, setOverflowState] = useState({
     codebook: false,
-    annotation: false,
   });
   const [fadeState, setFadeState] = useState({
     codebook: false,
-    annotation: false,
   });
   const [listHeights, setListHeights] = useState({
     codebook: 0,
-    annotation: 0,
   });
   const taskSectionsRef = useRef<HTMLDivElement | null>(null);
   const codebookListRef = useRef<HTMLDivElement | null>(null);
-  const annotationListRef = useRef<HTMLDivElement | null>(null);
 
   const codebookTasks = useMemo(
     () => tasks.filter((task) => !task.codebookSourceTaskId),
     [tasks],
   );
-  const annotationOnlyTasks = useMemo(
-    () => tasks.filter((task) => Boolean(task.codebookSourceTaskId)),
-    [tasks],
-  );
 
-  const updateListOverflow = useCallback((list: "codebook" | "annotation") => {
-    const target =
-      list === "codebook" ? codebookListRef.current : annotationListRef.current;
+  const updateListOverflow = useCallback((list: "codebook") => {
+    const target = codebookListRef.current;
     if (!target) return;
     const hasOverflow = target.scrollHeight > target.clientHeight + 1;
     const canScrollMore =
@@ -125,64 +113,24 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
     if (!container) return;
 
     const codebookOpen = sectionsOpen.codebook;
-    const annotationOpen = sectionsOpen.annotation;
-
     const available =
       container.clientHeight -
       TASK_SECTION_TOP_PADDING -
-      TASK_SECTION_HEADER_HEIGHT -
-      TASK_SECTION_HEADER_HEIGHT -
-      TASK_SECTION_GAP;
+      TASK_SECTION_HEADER_HEIGHT;
 
     if (available <= 0) {
-      setListHeights({ codebook: 0, annotation: 0 });
+      setListHeights({ codebook: 0 });
       return;
     }
 
-    if (codebookOpen && !annotationOpen) {
-      setListHeights({ codebook: available, annotation: 0 });
-      return;
-    }
-    if (!codebookOpen && annotationOpen) {
-      setListHeights({ codebook: 0, annotation: available });
-      return;
-    }
-    if (!codebookOpen && !annotationOpen) {
-      setListHeights({ codebook: 0, annotation: 0 });
+    if (!codebookOpen) {
+      setListHeights({ codebook: 0 });
       return;
     }
 
     const codebookNeed = codebookListRef.current?.scrollHeight ?? 0;
-    const annotationNeed = annotationListRef.current?.scrollHeight ?? 0;
-
-    const base = available / 2;
-    let codebookAlloc = Math.min(base, codebookNeed);
-    let annotationAlloc = Math.min(base, annotationNeed);
-
-    let remainder = available - codebookAlloc - annotationAlloc;
-    if (remainder > 0) {
-      const codebookMissing = Math.max(0, codebookNeed - codebookAlloc);
-      const annotationMissing = Math.max(0, annotationNeed - annotationAlloc);
-      const totalMissing = codebookMissing + annotationMissing;
-
-      if (totalMissing > 0) {
-        const codebookExtra = Math.min(
-          codebookMissing,
-          (remainder * codebookMissing) / totalMissing,
-        );
-        codebookAlloc += codebookExtra;
-        remainder -= codebookExtra;
-
-        const annotationExtra = Math.min(annotationMissing, remainder);
-        annotationAlloc += annotationExtra;
-      }
-    }
-
-    setListHeights({
-      codebook: Math.max(0, Math.floor(codebookAlloc)),
-      annotation: Math.max(0, Math.floor(annotationAlloc)),
-    });
-  }, [sectionsOpen.annotation, sectionsOpen.codebook]);
+    setListHeights({ codebook: Math.max(0, Math.min(available, codebookNeed)) });
+  }, [sectionsOpen.codebook]);
 
   const fetchTasks = useCallback(async () => {
     if (!accessToken) return;
@@ -214,8 +162,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
 
       const currentPath = window.location.pathname;
       const isOnDeletedTaskPath =
-        currentPath.endsWith(`/codebook-creation/${task._id}`) ||
-        currentPath.endsWith(`/annotate-dataset/${task._id}`);
+        currentPath.endsWith(`/codebook-creation/${task._id}`);
       if (isOnDeletedTaskPath) {
         navigate("/");
       }
@@ -246,12 +193,10 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
 
   useEffect(() => {
     updateListOverflow("codebook");
-    updateListOverflow("annotation");
     updateSectionLayout();
   }, [
     tasks,
     sectionsOpen.codebook,
-    sectionsOpen.annotation,
     updateListOverflow,
     updateSectionLayout,
   ]);
@@ -260,7 +205,6 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
     const handleResize = () => {
       updateSectionLayout();
       updateListOverflow("codebook");
-      updateListOverflow("annotation");
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -336,7 +280,6 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   );
 
   const isCreateCodebookActive = pathname === "/new-codebook";
-  const isAnnotateDatasetActive = pathname === "/new-annotation";
 
   const renderTaskSection = useCallback(
     ({
@@ -347,7 +290,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
       listHeight,
       routeBuilder,
     }: {
-      keyName: "codebook" | "annotation";
+      keyName: "codebook";
       title: string;
       tasksList: Task[];
       listRef: MutableRefObject<HTMLDivElement | null>;
@@ -467,26 +410,6 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           </ActionIcon>
         </Tooltip>
 
-        <Tooltip label="Annotate Dataset" position="top" withArrow>
-          <ActionIcon
-            onClick={() => {
-              navigate("/new-annotation");
-            }}
-            w="100%"
-            size="xl"
-            radius="md"
-            c="var(--app-sidebar-text)"
-            variant="subtle"
-            classNames={{
-              root: `sidebar-button-collapsed ${
-                isAnnotateDatasetActive ? "sidebar-button-collapsed-active" : ""
-              }`,
-            }}
-          >
-            <IconPencil size={24} stroke={1.6} />
-          </ActionIcon>
-        </Tooltip>
-
         <Menu
           shadow="md"
           width={200}
@@ -592,27 +515,6 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             Create Codebook
           </Button>
 
-          <Button
-            onClick={() => {
-              navigate("/new-annotation");
-            }}
-            fullWidth
-            radius="md"
-            c="var(--app-sidebar-text)"
-            px="sm"
-            h={36}
-            justify="flex-start"
-            leftSection={<IconPencil size={16} stroke={1.8} />}
-            fz="sm"
-            classNames={{
-              root: `sidebar-button sidebar-create-row ${
-                isAnnotateDatasetActive ? "sidebar-button-active" : ""
-              }`,
-            }}
-          >
-            Annotate Dataset
-          </Button>
-
           <Text c="dimmed">Your Tasks</Text>
         </Stack>
         <Box className="sidebar-task-sections" ref={taskSectionsRef}>
@@ -641,14 +543,6 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
                 routeBuilder: (task) => `/codebook-creation/${task._id}`,
               })}
 
-              {renderTaskSection({
-                keyName: "annotation",
-                title: "Data Annotation",
-                tasksList: annotationOnlyTasks,
-                listRef: annotationListRef,
-                listHeight: listHeights.annotation,
-                routeBuilder: (task) => `/annotate-dataset/${task._id}`,
-              })}
             </>
           )}
         </Box>

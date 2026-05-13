@@ -14,7 +14,6 @@ import {
 import {
   IconArrowRight,
   IconChecklist,
-  IconFileText,
   IconFolderOpen,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
@@ -35,20 +34,6 @@ const options = [
     cta: "Go to codebook task",
     path: "/codebook-landing",
   },
-  {
-    title: "Annotate Dataset",
-    description:
-      "Use an existing codebook to label a fresh unlabeled dataset in a dedicated annotation workflow.",
-    requirements: [
-      "Codebook file",
-      "Unlabeled dataset to annotate",
-      "Task definition file",
-      "Label definitions file",
-    ],
-    icon: IconFileText,
-    cta: "Go to annotation task",
-    path: "/annotate-dataset-landing",
-  },
 ];
 
 export default function LandingPage() {
@@ -68,7 +53,7 @@ export default function LandingPage() {
       </Container>
 
       <Container fluid className={styles.optionsSection}>
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+        <SimpleGrid cols={{ base: 1, md: 1 }} spacing="lg">
           {options.map((option) => {
             const Icon = option.icon;
 

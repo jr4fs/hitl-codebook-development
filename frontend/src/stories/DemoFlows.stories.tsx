@@ -8,13 +8,9 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import userReducer from "../store/userSlice";
 import { AppLayout } from "../components/layout/AppLayout";
 import AnnotationPage from "../pages/AIAnnotationPage";
-import NewAnnotationTaskPage from "../pages/NewAnnotationTaskPage";
-import LandingPage from "../pages/LandingPage";
 import LoginPage from "../pages/LoginPage";
 import CodebookLandingPage from "../pages/CodebookLandingPage";
 import DatasetUploadPage from "../pages/DatasetUploadPage";
-import AnnotateDatasetLandingPage from "../pages/AnnotateDatasetLandingPage";
-import AnnotateDatasetPage from "../pages/AnnotateDatasetPage";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import {
   handlersReady,
@@ -43,12 +39,8 @@ function DemoApp({ route = "/", element }: { route?: string; element?: ReactNode
         path: "/",
         element: <AppLayout />,
         children: [
-          { index: true, element: <LandingPage /> },
-          { path: "codebook-landing", element: <CodebookLandingPage /> },
+          { index: true, element: <CodebookLandingPage /> },
           { path: "new-codebook", element: <DatasetUploadPage /> },
-          { path: "annotate-dataset-landing", element: <AnnotateDatasetLandingPage /> },
-          { path: "new-annotation", element: <NewAnnotationTaskPage /> },
-          { path: "annotate-dataset/:id", element: <AnnotateDatasetPage /> },
           { path: "codebook-creation/:taskId", element: <AnnotationPage /> },
         ],
       },
@@ -92,7 +84,7 @@ HappyPath_MainJourney.parameters = {
   docs: {
     description: {
       story:
-        "Start at landing page and use in-app navigation to explore the full happy path: codebook flow, upload page, annotation landing, and review workflow.",
+        "Start at landing page and use in-app navigation to explore the happy path: codebook flow, upload page, and review workflow.",
     },
   },
 };
@@ -130,7 +122,7 @@ function SessionExpiredApp() {
     [
       {
         element: <ProtectedRoute />,
-        children: [{ path: "/", element: <LandingPage /> }],
+        children: [{ path: "/", element: <CodebookLandingPage /> }],
       },
       { path: "/login", element: <LoginPage /> },
     ],
