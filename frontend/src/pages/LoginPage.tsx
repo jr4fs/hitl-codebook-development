@@ -23,6 +23,9 @@ import { loginUser } from "../services/account.service";
 import { AxiosError } from "axios";
 import { useDispatch } from "react-redux";
 import { setUser } from "../store/userSlice";
+import { PilotBanner } from "../components/PilotBanner";
+
+const isPilot = import.meta.env.VITE_APP_MODE === "pilot";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -79,6 +82,8 @@ export default function LoginPage() {
   };
 
   return (
+    <>
+    {isPilot && <PilotBanner />}
     <BackgroundImage src="/paint.jpg" radius="xs" w="100vw" h="100vh">
       <Center w="100%" h="100%">
         <Paper
@@ -154,5 +159,6 @@ export default function LoginPage() {
         </Paper>
       </Center>
     </BackgroundImage>
+    </>
   );
 }

@@ -11,7 +11,10 @@ import {
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { useDemo } from "../demo/DemoContext";
+import { PilotBanner } from "../components/PilotBanner";
 import styles from "./LandingPage.module.css";
+
+const isPilot = import.meta.env.VITE_APP_MODE === "pilot";
 
 type TabType = "description" | "example" | "demo";
 type StepNumber = 1 | 2 | 3 | 4 | 5 | 6;
@@ -394,6 +397,8 @@ export default function LandingPage() {
   };
 
   return (
+    <>
+    {isPilot && !isDemo && <PilotBanner />}
     <Box className={styles.page}>
       <div className={styles.orbOne} />
 
@@ -540,5 +545,6 @@ export default function LandingPage() {
         )}
       </Box>
     </Box>
+    </>
   );
 }
