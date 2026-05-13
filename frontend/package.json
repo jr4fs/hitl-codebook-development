@@ -8,10 +8,7 @@
     "build": "tsc -b && vite build",
     "build:demo": "vite build -c vite.demo.config.ts && cp dist-demo/demo-standalone.html dist-demo/index.html",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
-    "build-storybook-demo": "npm run build-storybook && cp .storybook/demo.html storybook-static/demo.html"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@mantine/core": "^8.3.10",
@@ -31,14 +28,8 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "^5.1.2",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.60.0",
-    "@storybook/addon-a11y": "^10.3.6",
-    "@storybook/addon-docs": "^10.3.6",
-    "@storybook/addon-onboarding": "^10.3.6",
-    "@storybook/addon-vitest": "^10.3.6",
-    "@storybook/react-vite": "^10.3.6",
     "@types/node": "^24.10.1",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.2.5",
@@ -49,12 +40,9 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
-    "eslint-plugin-storybook": "^10.3.6",
     "globals": "^16.5.0",
     "msw": "^2.14.5",
-    "msw-storybook-addon": "^2.0.7",
     "playwright": "^1.59.1",
-    "storybook": "^10.3.6",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",

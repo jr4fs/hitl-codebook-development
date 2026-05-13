@@ -1,7 +1,7 @@
 import { setupWorker } from "msw/browser";
 import { createRoot } from "react-dom/client";
 import DemoApp from "./demo/DemoApp";
-import { handlersWildlife } from "./stories/mswHandlers";
+import { handlersWildlife } from "./demo/mswHandlers";
 
 const worker = setupWorker(...handlersWildlife);
 

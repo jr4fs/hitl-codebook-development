@@ -14,7 +14,7 @@ import AnnotationPage from "../pages/AIAnnotationPage";
 import CodebookLandingPage from "../pages/CodebookLandingPage";
 import DatasetUploadPage from "../pages/DatasetUploadPage";
 import LandingPage from "../pages/LandingPage";
-import { handlersWildlife } from "../stories/mswHandlers";
+import { handlersWildlife } from "./mswHandlers";
 import { DemoProvider } from "./DemoContext";
 import { DemoBanner } from "./DemoBanner";
 import "./demo-layout.css";
