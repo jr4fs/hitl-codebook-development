@@ -241,6 +241,28 @@
   margin-bottom: 0;
 }
 
+.sampleCard,
+.ruleCard {
+  border: 1px solid rgba(16, 32, 39, 0.14);
+  background: rgba(16, 32, 39, 0.03);
+  border-radius: 10px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.ruleCard {
+  margin-top: 8px;
+}
+
+.sampleCardLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(16, 32, 39, 0.62);
+  margin-bottom: 4px;
+}
+
 .fileChip,
 .predictionPill,
 .statusPill,
@@ -256,6 +278,16 @@
 :global([data-mantine-color-scheme="dark"]) .summaryChip {
   border-color: rgba(231, 241, 238, 0.18);
   background: rgba(231, 241, 238, 0.06);
+}
+
+:global([data-mantine-color-scheme="dark"]) .sampleCard,
+:global([data-mantine-color-scheme="dark"]) .ruleCard {
+  border-color: rgba(231, 241, 238, 0.16);
+  background: rgba(231, 241, 238, 0.04);
+}
+
+:global([data-mantine-color-scheme="dark"]) .sampleCardLabel {
+  color: rgba(231, 241, 238, 0.68);
 }
 
 .fileChip,

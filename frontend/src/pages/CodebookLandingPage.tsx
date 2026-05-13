@@ -103,16 +103,22 @@ export default function CodebookLandingPage() {
                   Check AI predictions, mark correctness, and update rules in the codebook panel.
                 </Text>
                 <div className={styles.mockPanel}>
-                  <Text className={styles.mockPrompt}>
-                    “Client reports improved sleep after two weeks.”
-                  </Text>
+                  <div className={styles.sampleCard}>
+                    <Text className={styles.sampleCardLabel}>Sample post</Text>
+                    <Text className={styles.mockPrompt}>
+                      "Ad on Facebook Marketplace showing one belt made with pangolin leather. On sale."
+                    </Text>
+                  </div>
                   <Group justify="space-between" gap={6} wrap="nowrap">
-                    <span className={styles.predictionPill}>Predicted: Sleep improvement</span>
+                    <span className={styles.predictionPill}>Predicted: negative</span>
                     <span className={styles.statusPill}>Marked: Correct</span>
                   </Group>
-                  <Text className={styles.exampleLabel}>
-                    Rule added: If note mentions improved sleep -&gt; Sleep improvement
-                  </Text>
+                  <div className={styles.ruleCard}>
+                    <Text className={styles.sampleCardLabel}>Rule added</Text>
+                    <Text className={styles.exampleLabel}>
+                      If a post promotes pangolin products or sales, label it as negative toward conservation.
+                    </Text>
+                  </div>
                 </div>
               </Stack>
             </Paper>
