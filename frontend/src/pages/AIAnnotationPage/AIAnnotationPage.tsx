@@ -88,7 +88,7 @@ export default function AnnotationPage() {
     >
       <div className={styles.orbOne} />
       <Container fluid className={styles.hero}>
-        <StepTrackerBanner currentStep={2} activeSteps={[2]} onHelp={controller.handleHelp} />
+        <StepTrackerBanner currentStep={controller.isCompleteStep ? 3 : 2} activeSteps={[controller.isCompleteStep ? 3 : 2]} onHelp={controller.handleHelp} />
         <Paper className={styles.taskHeader} radius="md">
           <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
             <div className={styles.taskInfo}>
