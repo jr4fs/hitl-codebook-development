@@ -1,11 +1,10 @@
 import { Badge, Box, Container, Grid, Group, Paper, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import PageIntro from "../../components/common/PageIntro";
 import GuidedTour, { GuidedTourStep } from "../../components/common/GuidedTour";
 import StepTrackerBanner from "../../components/StepTrackerBanner";
 import { useDemo } from "../../demo/DemoContext";
 import styles from "./AIAnnotationPage.module.css";
-import { AIReviewPanel } from "./components/AIReviewPanel";
 import { CodebookPanel } from "./components/CodebookPanel";
 import { MetricsModal } from "./components/MetricsModal";
 import {
@@ -21,6 +20,10 @@ export default function AnnotationPage() {
   const { colorScheme } = useMantineColorScheme();
   const isLight = colorScheme === "light";
   const { isDemo, tourOpen: demoTourOpen, setTourOpen: setDemoTourOpen } = useDemo();
+  const [liveTourOpen, setLiveTourOpen] = useState(false);
+
+  const tourOpen = isDemo ? demoTourOpen : liveTourOpen;
+  const setTourOpen = isDemo ? setDemoTourOpen : setLiveTourOpen;
 
   const mutedColor = isLight ? "#3b4750" : "dimmed";
   const surface = isLight ? "#ffffff" : "var(--app-surface)";
@@ -168,196 +171,138 @@ export default function AnnotationPage() {
           dontShowAgainChecked={controller.introDontShow}
           onDontShowAgainChange={controller.setIntroDontShow}
           onSkip={controller.handleCloseIntro}
-          onStart={() => { controller.handleCloseIntro(); setDemoTourOpen(true); }}
+          onStart={() => { controller.handleCloseIntro(); setTourOpen(true); }}
         />
 
-        <GuidedTour open={isDemo && demoTourOpen} onClose={() => setDemoTourOpen(false)}>
-          <Grid gutter="md" align="stretch" className={styles.annotationGrid}>
-            <Grid.Col span={{ base: 12, md: 8 }} h="100%" className={styles.mainColumn}>
-              <GuidedTourStep order={1} position="bottom" title="Batch Progress" description="Each batch contains ~10 samples. You review and mark each as correct or incorrect. After completing the batch, click 'Commit Batch' to synthesize rules.">
-                <Paper radius="lg" bg={surface}>
-                  <Stack p="md" gap="md" style={{ overflow: "auto" }}>
-                    <Group justify="space-between" align="center" wrap="nowrap">
-                      <BatchProgressSection
-                        isLight={isLight}
-                        mutedColor={mutedColor}
-                        surface={surface}
-                        surface2={surface2}
-                        surface3={surface3}
-                        borderColor={borderColor}
-                        borderStrong={borderStrong}
-                        isLoading={controller.isLoading}
-                        currentBatchProgress={controller.currentBatchProgress}
-                        actualBatchSize={controller.actualBatchSize}
-                        currentIndex={controller.currentIndex}
-                        totalSamples={controller.totalSamples}
-                      />
+        <GuidedTour open={tourOpen} onClose={() => setTourOpen(false)}>
+            <Grid gutter="md" align="stretch" className={styles.annotationGrid}>
+              <Grid.Col span={{ base: 12, md: 8 }} h="100%" className={styles.mainColumn}>
+                <GuidedTourStep order={1} position="bottom" title="Batch Progress" description="Each batch contains ~10 samples. You review and mark each as correct or incorrect. After completing the batch, click 'Commit Batch' to synthesize rules.">
+                  <Paper radius="lg" bg={surface}>
+                    <Stack p="md" gap="md" style={{ overflow: "auto" }}>
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <BatchProgressSection
+                          isLight={isLight}
+                          mutedColor={mutedColor}
+                          surface={surface}
+                          surface2={surface2}
+                          surface3={surface3}
+                          borderColor={borderColor}
+                          borderStrong={borderStrong}
+                          isLoading={controller.isLoading}
+                          currentBatchProgress={controller.currentBatchProgress}
+                          actualBatchSize={controller.actualBatchSize}
+                          currentIndex={controller.currentIndex}
+                          totalSamples={controller.totalSamples}
+                        />
 
-                      <Group gap="xs" wrap="nowrap">
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <button
-                            onClick={controller.goPrev}
-                            disabled={controller.currentIndex <= controller.currentBatchStartIndex || controller.isLoading}
-                            style={{ padding: "8px 16px", cursor: "pointer" }}
-                          >
-                            Previous
-                          </button>
-                          <button
-                            onClick={controller.handleNextOrCommit}
-                            disabled={controller.nextDisabled}
-                            style={{ padding: "8px 16px", cursor: "pointer" }}
-                          >
-                            {controller.isCompleteStep ? "Complete" : controller.isCommitStep ? "Commit Batch" : "Next Sample"}
-                          </button>
-                        </div>
+                        <Group gap="xs" wrap="nowrap">
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              onClick={controller.goPrev}
+                              disabled={controller.currentIndex <= controller.currentBatchStartIndex || controller.isLoading}
+                              style={{ padding: "8px 16px", cursor: "pointer" }}
+                            >
+                              Previous
+                            </button>
+                            <button
+                              onClick={controller.handleNextOrCommit}
+                              disabled={controller.nextDisabled}
+                              style={{ padding: "8px 16px", cursor: "pointer" }}
+                            >
+                              {controller.isCompleteStep ? "Complete" : controller.isCommitStep ? "Commit Batch" : "Next Sample"}
+                            </button>
+                          </div>
+                        </Group>
                       </Group>
-                    </Group>
 
-                    <GuidedTourStep order={2} position="bottom" title="Sample Text" description="This is the social media post you are reviewing. The AI model analyzed this text to generate the predictions shown below.">
-                      <SampleTextSection
-                        isLight={isLight}
-                        mutedColor={mutedColor}
-                        surface={surface}
-                        surface2={surface2}
-                        surface3={surface3}
-                        borderColor={borderColor}
-                        borderStrong={borderStrong}
-                        isLoading={controller.isLoading}
-                        currentSampleText={controller.currentSampleText}
-                      />
-                    </GuidedTourStep>
+                      <GuidedTourStep order={2} position="bottom" title="Sample Text" description="This is the social media post you are reviewing. The AI model analyzed this text to generate the predictions shown below.">
+                        <SampleTextSection
+                          isLight={isLight}
+                          mutedColor={mutedColor}
+                          surface={surface}
+                          surface2={surface2}
+                          surface3={surface3}
+                          borderColor={borderColor}
+                          borderStrong={borderStrong}
+                          isLoading={controller.isLoading}
+                          currentSampleText={controller.currentSampleText}
+                        />
+                      </GuidedTourStep>
 
-                    <GuidedTourStep order={3} position="bottom" title="AI Predictions" description="Review the model's suggested labels, key text span, and reasoning. Mark whether the prediction is correct or incorrect.">
-                      <AIPredictionsSection
-                        isLight={isLight}
-                        mutedColor={mutedColor}
-                        surface={surface}
-                        surface2={surface2}
-                        surface3={surface3}
-                        borderColor={borderColor}
-                        borderStrong={borderStrong}
-                        isLoading={controller.isLoading}
-                        generatedLabels={controller.generatedLabels}
-                        generatedSpanText={controller.generatedSpanText}
-                        generatedReasoning={controller.generatedReasoning}
-                        batchResult={controller.batchResults[controller.currentIndex]}
-                        spanTextFeedback={controller.spanTextFeedback}
-                        reasoningFeedback={controller.reasoningFeedback}
-                        onSetCorrect={controller.setCurrentCorrect}
-                        onSetSpanFeedback={controller.setSpanTextFeedback}
-                        onSetReasoningFeedback={controller.setReasoningFeedback}
-                      />
-                    </GuidedTourStep>
+                      <GuidedTourStep order={3} position="bottom" title="AI Predictions" description="Review the model's suggested labels, key text span, and reasoning. Mark whether the prediction is correct or incorrect.">
+                        <AIPredictionsSection
+                          isLight={isLight}
+                          mutedColor={mutedColor}
+                          surface={surface}
+                          surface2={surface2}
+                          surface3={surface3}
+                          borderColor={borderColor}
+                          borderStrong={borderStrong}
+                          isLoading={controller.isLoading}
+                          generatedLabels={controller.generatedLabels}
+                          generatedSpanText={controller.generatedSpanText}
+                          generatedReasoning={controller.generatedReasoning}
+                          batchResult={controller.batchResults[controller.currentIndex]}
+                          spanTextFeedback={controller.spanTextFeedback}
+                          reasoningFeedback={controller.reasoningFeedback}
+                          onSetCorrect={controller.setCurrentCorrect}
+                          onSetSpanFeedback={controller.setSpanTextFeedback}
+                          onSetReasoningFeedback={controller.setReasoningFeedback}
+                        />
+                      </GuidedTourStep>
 
-                    <GuidedTourStep order={4} position="bottom" title="Provide Feedback" description="When the AI prediction is incorrect, specify the correct label and provide feedback. This helps the rule synthesizer learn from mistakes.">
-                      <FeedbackSection
-                        isLight={isLight}
-                        mutedColor={mutedColor}
-                        surface={surface}
-                        surface2={surface2}
-                        surface3={surface3}
-                        borderColor={borderColor}
-                        borderStrong={borderStrong}
-                        isLoading={controller.isLoading}
-                        batchResult={controller.batchResults[controller.currentIndex]}
-                        labels={controller.task.labels || []}
-                        onSetCorrectLabel={controller.setCurrentCorrectLabel}
-                        onSetFeedback={controller.setCurrentFeedback}
-                      />
-                    </GuidedTourStep>
-                  </Stack>
-                </Paper>
-              </GuidedTourStep>
-            </Grid.Col>
+                      <GuidedTourStep order={4} position="bottom" title="Provide Feedback" description="When the AI prediction is incorrect, specify the correct label and provide feedback. This helps the rule synthesizer learn from mistakes.">
+                        <FeedbackSection
+                          isLight={isLight}
+                          mutedColor={mutedColor}
+                          surface={surface}
+                          surface2={surface2}
+                          surface3={surface3}
+                          borderColor={borderColor}
+                          borderStrong={borderStrong}
+                          isLoading={controller.isLoading}
+                          batchResult={controller.batchResults[controller.currentIndex]}
+                          spanTextFeedback={controller.spanTextFeedback}
+                          reasoningFeedback={controller.reasoningFeedback}
+                          labels={controller.task.labels || []}
+                          onSetCorrectLabel={controller.setCurrentCorrectLabel}
+                          onSetFeedback={controller.setCurrentFeedback}
+                        />
+                      </GuidedTourStep>
+                    </Stack>
+                  </Paper>
+                </GuidedTourStep>
+              </Grid.Col>
 
-            <Grid.Col span={{ base: 12, md: 4 }} h="100%" className={styles.sidebarColumn}>
-              <GuidedTourStep
-                order={5}
-                position="bottom"
-                title="Live Codebook"
-                description="The codebook builds dynamically as you review samples. After committing a batch, new rules are synthesized and added here to guide future predictions."
-              >
-                <CodebookPanel
-                  isLight={isLight}
-                  mutedColor={mutedColor}
-                  surface={surface}
-                  panelBg={panelBg}
-                  borderColor={borderColor}
-                  codebook={controller.codebook}
-                  stagedRules={controller.stagedRules}
-                  stagedRulesDeletion={controller.stagedRulesDeletion}
-                  newRule={controller.newRule}
-                  onNewRuleChange={controller.setNewRule}
-                  onAddRule={controller.addRule}
-                  onExport={controller.handleExportCodebook}
-                  onEditRule={controller.editRule}
-                  onToggleDeleteRule={controller.toggleDeleteRule}
-                  onRemoveStagedRule={controller.removeStagedRule}
-                />
-              </GuidedTourStep>
-            </Grid.Col>
-          </Grid>
+              <Grid.Col span={{ base: 12, md: 4 }} h="100%" className={styles.sidebarColumn}>
+                <GuidedTourStep
+                  order={5}
+                  position="bottom"
+                  title="Live Codebook"
+                  description="The codebook builds dynamically as you review samples. After committing a batch, new rules are synthesized and added here to guide future predictions."
+                >
+                  <CodebookPanel
+                    isLight={isLight}
+                    mutedColor={mutedColor}
+                    surface={surface}
+                    panelBg={panelBg}
+                    borderColor={borderColor}
+                    codebook={controller.codebook}
+                    stagedRules={controller.stagedRules}
+                    stagedRulesDeletion={controller.stagedRulesDeletion}
+                    newRule={controller.newRule}
+                    onNewRuleChange={controller.setNewRule}
+                    onAddRule={controller.addRule}
+                    onExport={controller.handleExportCodebook}
+                    onEditRule={controller.editRule}
+                    onToggleDeleteRule={controller.toggleDeleteRule}
+                    onRemoveStagedRule={controller.removeStagedRule}
+                  />
+                </GuidedTourStep>
+              </Grid.Col>
+            </Grid>
         </GuidedTour>
-
-        {!isDemo && (
-          <Grid gutter="md" align="stretch" className={styles.annotationGrid}>
-            <Grid.Col span={{ base: 12, md: 8 }} h="100%" className={styles.mainColumn}>
-              <AIReviewPanel
-                isLight={isLight}
-                mutedColor={mutedColor}
-                surface={surface}
-                surface2={surface2}
-                surface3={surface3}
-                borderColor={borderColor}
-                borderStrong={borderStrong}
-                isLoading={controller.isLoading}
-                currentBatchProgress={controller.currentBatchProgress}
-                actualBatchSize={controller.actualBatchSize}
-                currentIndex={controller.currentIndex}
-                totalSamples={controller.totalSamples}
-                currentBatchStartIndex={controller.currentBatchStartIndex}
-                currentSampleText={controller.currentSampleText}
-                generatedLabels={controller.generatedLabels}
-                generatedSpanText={controller.generatedSpanText}
-                generatedReasoning={controller.generatedReasoning}
-                batchResult={controller.batchResults[controller.currentIndex]}
-                spanTextFeedback={controller.spanTextFeedback}
-                reasoningFeedback={controller.reasoningFeedback}
-                labels={controller.task.labels || []}
-                onPrev={controller.goPrev}
-                onNext={controller.handleNextOrCommit}
-                isCommitStep={controller.isCommitStep}
-                isCompleteStep={controller.isCompleteStep}
-                nextDisabled={controller.nextDisabled}
-                onSetCorrect={controller.setCurrentCorrect}
-                onSetSpanFeedback={controller.setSpanTextFeedback}
-                onSetReasoningFeedback={controller.setReasoningFeedback}
-                onSetCorrectLabel={controller.setCurrentCorrectLabel}
-                onSetFeedback={controller.setCurrentFeedback}
-              />
-            </Grid.Col>
-
-            <Grid.Col span={{ base: 12, md: 4 }} h="100%" className={styles.sidebarColumn}>
-              <CodebookPanel
-                isLight={isLight}
-                mutedColor={mutedColor}
-                surface={surface}
-                panelBg={panelBg}
-                borderColor={borderColor}
-                codebook={controller.codebook}
-                stagedRules={controller.stagedRules}
-                stagedRulesDeletion={controller.stagedRulesDeletion}
-                newRule={controller.newRule}
-                onNewRuleChange={controller.setNewRule}
-                onAddRule={controller.addRule}
-                onExport={controller.handleExportCodebook}
-                onEditRule={controller.editRule}
-                onToggleDeleteRule={controller.toggleDeleteRule}
-                onRemoveStagedRule={controller.removeStagedRule}
-              />
-            </Grid.Col>
-          </Grid>
-        )}
       </Container>
     </Box>
   );
