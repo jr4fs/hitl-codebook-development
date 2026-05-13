@@ -85,7 +85,10 @@ function injectTourContext(children: ReactNode, context: TourContextValue): Reac
     const props = (element.props as UnknownProps) ?? {};
 
     if (isGuidedTourStepElement(element)) {
-      return cloneElement(element, { [TOUR_CONTEXT_PROP]: context });
+      return cloneElement(element, {
+        [TOUR_CONTEXT_PROP]: context,
+        children: injectTourContext(props.children as ReactNode, context),
+      });
     }
 
     if (props.children) {
