@@ -63,7 +63,10 @@ export async function uploadFile(file: File): Promise<UploadFileResponse> {
 export async function uploadTaskBundle(params: {
   dValFile: File;
   dAllFile: File;
-  taskJsonFile: File;
+  taskJsonFile?: File;
+  taskName?: string;
+  taskDescription?: string;
+  taskType?: "Multiclass" | "Single-class";
   labelsJsonFile: File;
   textColumn: string;
   labelColumn: string;
@@ -90,7 +93,18 @@ export async function uploadTaskBundle(params: {
   const formData = new FormData();
   formData.append("d_val", params.dValFile);
   formData.append("d_all", params.dAllFile);
-  formData.append("task_json", params.taskJsonFile);
+  if (params.taskJsonFile) {
+    formData.append("task_json", params.taskJsonFile);
+  }
+  if (params.taskName) {
+    formData.append("task_name", params.taskName);
+  }
+  if (params.taskDescription) {
+    formData.append("task_description", params.taskDescription);
+  }
+  if (params.taskType) {
+    formData.append("task_type", params.taskType);
+  }
   formData.append("labels_json", params.labelsJsonFile);
   formData.append("text_column", String(params.textColumn));
   formData.append("label_column", String(params.labelColumn));

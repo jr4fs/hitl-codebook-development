@@ -762,6 +762,9 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const dAllFile = files?.d_all?.[0];
     const taskJsonFile = files?.task_json?.[0];
     const labelsJsonFile = files?.labels_json?.[0];
+    const taskNameField = req.body.task_name as string | undefined;
+    const taskDescriptionField = req.body.task_description as string | undefined;
+    const taskTypeField = req.body.task_type as string | undefined;
     const textColumn = req.body.text_column as string | undefined;
     const labelColumn = req.body.label_column as string | undefined;
     const modelName = req.body.model_name as string | undefined;
@@ -769,7 +772,6 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     if (
       !dValFile ||
       !dAllFile ||
-      !taskJsonFile ||
       !labelsJsonFile ||
       !labelColumn
     ) {
@@ -777,21 +779,49 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
         d_val: !!dValFile,
         d_all: !!dAllFile,
         task_json: !!taskJsonFile,
+        task_name: !!taskNameField,
+        task_description: !!taskDescriptionField,
         labels_json: !!labelsJsonFile,
         labelColumn: !!labelColumn,
       });
       return res.status(400).json({
         success: false,
         message:
-          "Missing files. Expected d_val, d_all, task_json, labels_json and label column",
+          "Missing fields. Expected d_val, d_all, labels_json, label column, and either task_json or task_name + task_description",
       });
     }
 
-    // Parse Task JSON
-    console.log("[uploadTaskBundle] Parsing task_json...");
-    const taskJsonRaw = taskJsonFile.buffer.toString("utf-8");
-    const taskInfo = parseTaskJson(taskJsonFile.buffer);
-    console.log("[uploadTaskBundle] Task Info parsed:", taskInfo.name);
+    let taskJsonRaw = "";
+    let taskInfo: {
+      name: string;
+      description: string;
+      type: Task["type"];
+    };
+    if (taskJsonFile) {
+      console.log("[uploadTaskBundle] Parsing task_json...");
+      taskJsonRaw = taskJsonFile.buffer.toString("utf-8");
+      taskInfo = parseTaskJson(taskJsonFile.buffer);
+      console.log("[uploadTaskBundle] Task Info parsed from file:", taskInfo.name);
+    } else {
+      const name = String(taskNameField ?? "").trim();
+      const description = String(taskDescriptionField ?? "").trim();
+      if (!name || !description) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Task name and description are required when task_json is not provided.",
+        });
+      }
+      const type: Task["type"] =
+        taskTypeField === "Single-class" ? "Single-class" : "Multiclass";
+      taskInfo = { name, description, type };
+      taskJsonRaw = JSON.stringify(
+        { taskname: name, description, type },
+        null,
+        2,
+      );
+      console.log("[uploadTaskBundle] Task Info parsed from form fields:", taskInfo.name);
+    }
 
     // Parse Labels JSON
     console.log("[uploadTaskBundle] Parsing labels_json...");

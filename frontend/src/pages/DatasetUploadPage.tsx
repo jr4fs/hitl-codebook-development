@@ -12,6 +12,7 @@ import {
   Stack,
   Switch,
   Text,
+  Textarea,
   TextInput,
   Title,
   useMantineColorScheme,
@@ -57,6 +58,12 @@ interface RequiredFileCardProps {
     label: string;
     onClick: () => void;
   };
+  preSelectAction?: {
+    label: string;
+    onClick: () => void;
+  };
+  hideMeta?: boolean;
+  children?: ReactNode;
 }
 
 function RequiredFileCard({
@@ -69,6 +76,9 @@ function RequiredFileCard({
                             file,
                             onFileChange,
                             templateAction,
+                            preSelectAction,
+                            hideMeta,
+                            children,
                           }: RequiredFileCardProps) {
   return (
     <div className={styles.fileRow}>
@@ -86,15 +96,27 @@ function RequiredFileCard({
             {label}
           </Text>
         </Group>
-        <label htmlFor={inputId} className={styles.fileButton}>
-          <IconUpload size={14}/>
-          {selectLabel}
-        </label>
+        <Group gap={6} wrap="nowrap">
+          {preSelectAction ? (
+            <button
+              type="button"
+              className={styles.fileButtonAction}
+              onClick={preSelectAction.onClick}
+            >
+              {preSelectAction.label}
+            </button>
+          ) : null}
+          <label htmlFor={inputId} className={styles.fileButton}>
+            <IconUpload size={14}/>
+            {selectLabel}
+          </label>
+        </Group>
       </Group>
       <Text size="xs" className={styles.fileHint}>
         {hint}
       </Text>
-      {templateAction ? (
+      {children}
+      {!hideMeta && templateAction ? (
         <Group className={styles.fileMetaRow} wrap="nowrap">
           <Text
             size="xs"
@@ -111,14 +133,15 @@ function RequiredFileCard({
             {templateAction.label}
           </Button>
         </Group>
-      ) : (
+      ) : !hideMeta ? (
         <Text
           size="xs"
           className={`${styles.fileName} ${file ? styles.fileNameSelected : styles.fileNameMissing}`}
         >
           {file ? file.name : "No file selected"}
         </Text>
-      )}
+      ) : null
+      }
     </div>
   );
 }
@@ -131,6 +154,9 @@ export default function DatasetUploadPage() {
   const [dValFile, setDValFile] = useState<File | null>(null);
   const [dAllFile, setDAllFile] = useState<File | null>(null);
   const [taskJsonFile, setTaskJsonFile] = useState<File | null>(null);
+  const [taskDetailsMode, setTaskDetailsMode] = useState<"file" | "manual">("file");
+  const [manualTaskName, setManualTaskName] = useState("");
+  const [manualTaskDescription, setManualTaskDescription] = useState("");
   const [labelsJsonFile, setLabelsJsonFile] = useState<File | null>(null);
   const [config, setConfig] = useState<UploadConfig>(defaultUploadConfig);
   const [isUploading, setIsUploading] = useState(false);
@@ -145,7 +171,10 @@ export default function DatasetUploadPage() {
     openHelpIntro,
   } = usePageIntroTour("hideStep1Intro");
 
-  const isReady = Boolean(dValFile && dAllFile && taskJsonFile && labelsJsonFile);
+  const hasManualTaskDetails =
+    manualTaskName.trim().length > 0 && manualTaskDescription.trim().length > 0;
+  const hasTaskDetails = taskDetailsMode === "file" ? Boolean(taskJsonFile) : hasManualTaskDetails;
+  const isReady = Boolean(dValFile && dAllFile && hasTaskDetails && labelsJsonFile);
 
   const handleHelp = openHelpIntro;
 
@@ -160,6 +189,9 @@ export default function DatasetUploadPage() {
     setDValFile(null);
     setDAllFile(null);
     setTaskJsonFile(null);
+    setTaskDetailsMode("file");
+    setManualTaskName("");
+    setManualTaskDescription("");
     setLabelsJsonFile(null);
     setConfig(defaultUploadConfig);
     setError(null);
@@ -171,13 +203,13 @@ export default function DatasetUploadPage() {
     if (
       !dValFile ||
       !dAllFile ||
-      !taskJsonFile ||
+      !hasTaskDetails ||
       !labelsJsonFile ||
       !config.labelColumn ||
       !config.selectedModel
     ) {
       setError(
-        "Please provide all four files and label column as well as preferred model before continuing.",
+          "Please provide both CSVs, labels JSON, task details (JSON upload or manual entry), label column, and preferred model before continuing.",
       );
       return;
     }
@@ -189,7 +221,11 @@ export default function DatasetUploadPage() {
       const response = await uploadTaskBundle({
         dValFile,
         dAllFile,
-        taskJsonFile,
+        taskJsonFile: taskDetailsMode === "file" ? taskJsonFile ?? undefined : undefined,
+        taskName: taskDetailsMode === "manual" ? manualTaskName.trim() : undefined,
+        taskDescription:
+          taskDetailsMode === "manual" ? manualTaskDescription.trim() : undefined,
+        taskType: "Multiclass",
         labelsJsonFile,
         textColumn: config.textColumn,
         labelColumn: config.labelColumn,
@@ -233,8 +269,12 @@ export default function DatasetUploadPage() {
     config,
     dAllFile,
     dValFile,
+    hasTaskDetails,
     labelsJsonFile,
+    manualTaskDescription,
+    manualTaskName,
     navigate,
+    taskDetailsMode,
     taskJsonFile,
   ]);
 
@@ -361,6 +401,87 @@ export default function DatasetUploadPage() {
                     </Text>
                     <Divider my={4} color={dividerColor}/>
                     <GuidedTourStep
+                      order={3}
+                      title="Task details"
+                      description="Provide the task name and description in JSON."
+                    >
+                      <RequiredFileCard
+                        inputId="task-json"
+                        accept=".json,application/json"
+                        icon={<IconBraces size={18}/>}
+                        label="Task details"
+                        selectLabel="Select JSON"
+                        hint="JSON with taskname + description"
+                        file={taskJsonFile}
+                        onFileChange={setTaskJsonFile}
+                        hideMeta={taskDetailsMode === "manual"}
+                        templateAction={
+                          taskDetailsMode === "file"
+                            ? {
+                                label: "Download template",
+                                onClick: () => downloadContent("task.json", TASK_TEMPLATE),
+                              }
+                            : undefined
+                        }
+                        preSelectAction={{
+                          label: taskDetailsMode === "file" ? "Enter details" : "Use JSON",
+                          onClick: () =>
+                            setTaskDetailsMode((prev) => (prev === "file" ? "manual" : "file")),
+                        }}
+                      >
+                        {taskDetailsMode === "manual" && (
+                          <Stack gap={8} mt={8} w="100%">
+                          <TextInput
+                            label="Task Name"
+                            placeholder="e.g. Mental health theme detection"
+                            value={manualTaskName}
+                            onChange={(event) => setManualTaskName(event.currentTarget.value)}
+                            classNames={{
+                              label: styles.configLabel,
+                              input: styles.configInput,
+                            }}
+                          />
+                          <Textarea
+                            label="Description"
+                            placeholder="Describe what this task should classify and any scope boundaries."
+                            value={manualTaskDescription}
+                            onChange={(event) =>
+                              setManualTaskDescription(event.currentTarget.value)
+                            }
+                            minRows={3}
+                            autosize
+                            classNames={{
+                              label: styles.configLabel,
+                              input: styles.configInput,
+                            }}
+                          />
+                          </Stack>
+                        )}
+                      </RequiredFileCard>
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
+                      order={4}
+                      title="Labels JSON"
+                      description="Provide the label list with name, description, keywords, and guidelines."
+                    >
+                      <RequiredFileCard
+                        inputId="labels-json"
+                        accept=".json,application/json"
+                        icon={<IconBraces size={18}/>}
+                        label="Label set"
+                        selectLabel="Select JSON"
+                        hint="JSON labels with name, keywords, guidelines"
+                        file={labelsJsonFile}
+                        onFileChange={setLabelsJsonFile}
+                        templateAction={{
+                          label: "Download template",
+                          onClick: () => downloadContent("labels.json", LABELS_TEMPLATE),
+                        }}
+                      />
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
                       order={1}
                       title="Upload labeled data"
                       description='A subset of the dataset with labels. It should include "text" and "task_label" columns.'
@@ -391,48 +512,6 @@ export default function DatasetUploadPage() {
                         hint="CSV with text column only"
                         file={dAllFile}
                         onFileChange={setDAllFile}
-                      />
-                    </GuidedTourStep>
-
-                    <GuidedTourStep
-                      order={3}
-                      title="Task details"
-                      description="Provide the task name and description in JSON."
-                    >
-                      <RequiredFileCard
-                        inputId="task-json"
-                        accept=".json,application/json"
-                        icon={<IconBraces size={18}/>}
-                        label="Task details"
-                        selectLabel="Select JSON"
-                        hint="JSON with taskname + description"
-                        file={taskJsonFile}
-                        onFileChange={setTaskJsonFile}
-                        templateAction={{
-                          label: "Download template",
-                          onClick: () => downloadContent("task.json", TASK_TEMPLATE),
-                        }}
-                      />
-                    </GuidedTourStep>
-
-                    <GuidedTourStep
-                      order={4}
-                      title="Labels JSON"
-                      description="Provide the label list with name, description, keywords, and guidelines."
-                    >
-                      <RequiredFileCard
-                        inputId="labels-json"
-                        accept=".json,application/json"
-                        icon={<IconBraces size={18}/>}
-                        label="Label set"
-                        selectLabel="Select JSON"
-                        hint="JSON labels with name, keywords, guidelines"
-                        file={labelsJsonFile}
-                        onFileChange={setLabelsJsonFile}
-                        templateAction={{
-                          label: "Download template",
-                          onClick: () => downloadContent("labels.json", LABELS_TEMPLATE),
-                        }}
                       />
                     </GuidedTourStep>
                   </Stack>
