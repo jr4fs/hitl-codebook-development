@@ -4,6 +4,7 @@ import baseConfig from './vite.config';
 export default mergeConfig(
   baseConfig,
   defineConfig({
+    base: './',
     build: {
       outDir: 'dist-demo',
       rollupOptions: {

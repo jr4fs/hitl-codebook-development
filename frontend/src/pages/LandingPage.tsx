@@ -10,6 +10,7 @@ import {
   IconChevronDown,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
+import { useDemo } from "../demo/DemoContext";
 import styles from "./LandingPage.module.css";
 
 type TabType = "description" | "example" | "demo";
@@ -17,6 +18,7 @@ type StepNumber = 1 | 2 | 3 | 4 | 5 | 6;
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { isDemo } = useDemo();
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [activeStep, setActiveStep] = useState<StepNumber>(1);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
@@ -413,7 +415,7 @@ export default function LandingPage() {
                   className={`${styles.tabButton} ${activeTab === tab ? styles.tabButtonActive : ""}`}
                   onClick={() => {
                     if (tab === "demo") {
-                      window.location.href = "/demo";
+                      isDemo ? navigate("/home") : (window.location.href = "/demo");
                     } else {
                       setActiveTab(tab as TabType);
                     }
@@ -428,15 +430,17 @@ export default function LandingPage() {
             </Group>
 
             {/* Login Button */}
-            <Button
-              size="md"
-              radius="xl"
-              className={styles.loginButton}
-              rightSection={<IconArrowRight size={16} />}
-              onClick={() => navigate("/login")}
-            >
-              Log in
-            </Button>
+            {!isDemo && (
+              <Button
+                size="md"
+                radius="xl"
+                className={styles.loginButton}
+                rightSection={<IconArrowRight size={16} />}
+                onClick={() => navigate("/login")}
+              >
+                Log in
+              </Button>
+            )}
           </Group>
         </div>
       </Box>

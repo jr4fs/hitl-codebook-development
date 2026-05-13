@@ -1,3 +1,6 @@
+import "@mantine/core/styles.css";
+import "@mantine/dropzone/styles.css";
+import "@mantine/notifications/styles.css";
 import { useEffect, useState, ReactNode } from "react";
 import { MantineProvider, LoadingOverlay } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
@@ -10,6 +13,7 @@ import { AppLayout } from "../components/layout/AppLayout";
 import AnnotationPage from "../pages/AIAnnotationPage";
 import CodebookLandingPage from "../pages/CodebookLandingPage";
 import DatasetUploadPage from "../pages/DatasetUploadPage";
+import LandingPage from "../pages/LandingPage";
 import { handlersWildlife } from "../stories/mswHandlers";
 import { DemoProvider } from "./DemoContext";
 import { DemoBanner } from "./DemoBanner";
@@ -34,7 +38,7 @@ interface DemoAppProps {
   element?: ReactNode;
 }
 
-export default function DemoApp({ initMSW = false, createRouter = false, route = "/home", element }: DemoAppProps) {
+export default function DemoApp({ initMSW = false, createRouter = false, route = "/", element }: DemoAppProps) {
   const [mswReady, setMswReady] = useState(!initMSW);
 
   useEffect(() => {
@@ -79,6 +83,7 @@ export default function DemoApp({ initMSW = false, createRouter = false, route =
   if (createRouter) {
     const router = createMemoryRouter(
       [
+        { path: "/", element: <LandingPage /> },
         {
           element: content,
           children: [
@@ -94,7 +99,7 @@ export default function DemoApp({ initMSW = false, createRouter = false, route =
     return (
       <DemoProvider>
         <Provider store={makeStore()}>
-          <MantineProvider defaultColorScheme="auto">
+          <MantineProvider defaultColorScheme="light">
             <Notifications position="top-right" />
             {element ?? <RouterProvider router={router} />}
           </MantineProvider>

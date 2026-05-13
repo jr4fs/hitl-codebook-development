@@ -1,4 +1,4 @@
-import { Badge, Box, Container, Grid, Group, Paper, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
+import { Badge, Box, Button, Container, Grid, Group, Paper, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
 import PageIntro from "../../components/common/PageIntro";
 import GuidedTour, { GuidedTourStep } from "../../components/common/GuidedTour";
@@ -197,22 +197,22 @@ export default function AnnotationPage() {
                         />
 
                         <Group gap="xs" wrap="nowrap">
-                          <div style={{ display: "flex", gap: "8px" }}>
-                            <button
-                              onClick={controller.goPrev}
-                              disabled={controller.currentIndex <= controller.currentBatchStartIndex || controller.isLoading}
-                              style={{ padding: "8px 16px", cursor: "pointer" }}
-                            >
-                              Previous
-                            </button>
-                            <button
-                              onClick={controller.handleNextOrCommit}
-                              disabled={controller.nextDisabled}
-                              style={{ padding: "8px 16px", cursor: "pointer" }}
-                            >
-                              {controller.isCompleteStep ? "Complete" : controller.isCommitStep ? "Commit Batch" : "Next Sample"}
-                            </button>
-                          </div>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={controller.goPrev}
+                            disabled={controller.currentIndex <= controller.currentBatchStartIndex || controller.isLoading}
+                          >
+                            Previous
+                          </Button>
+                          <Button
+                            variant="filled"
+                            size="sm"
+                            onClick={controller.handleNextOrCommit}
+                            disabled={controller.nextDisabled}
+                          >
+                            {controller.isCompleteStep ? "Complete" : controller.isCommitStep ? "Commit Batch" : "Next Sample"}
+                          </Button>
                         </Group>
                       </Group>
 
