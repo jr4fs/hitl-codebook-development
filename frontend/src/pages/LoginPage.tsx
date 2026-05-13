@@ -63,7 +63,7 @@ export default function LoginPage() {
         }),
       );
       setLoading(false);
-      navigate("/");
+      navigate("/home");
     } catch (error) {
       console.error("Login Error: ", error);
       if (error instanceof AxiosError) {

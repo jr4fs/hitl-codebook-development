@@ -7,12 +7,18 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
 import AnnotationPage from "./pages/AIAnnotationPage";
 import CodebookLandingPage from "./pages/CodebookLandingPage";
+import LandingPage from "./pages/LandingPage";
 
 export const router = createBrowserRouter([
+  // Public landing page (no auth required)
+  {
+    path: "/",
+    element: <LandingPage />,
+  },
   {
     element: <PublicRoute />,
     children: [
-      // Redirect to landing page if user is logged in
+      // Redirect to home if user is logged in
       {
         path: "/login",
         element: <LoginPage />,
@@ -26,13 +32,12 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
-      // Protected routes
+      // Protected routes - wrapped in AppLayout
       {
-        path: "/",
         element: <AppLayout />,
         children: [
           {
-            path: "",
+            path: "/home",
             element: <CodebookLandingPage />,
           },
           {

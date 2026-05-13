@@ -164,7 +164,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
       const isOnDeletedTaskPath =
         currentPath.endsWith(`/codebook-creation/${task._id}`);
       if (isOnDeletedTaskPath) {
-        navigate("/");
+        navigate("/home");
       }
       window.dispatchEvent(new Event("tasks:updated"));
     } catch (error: any) {
@@ -471,7 +471,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
               size="lg"
               c="var(--app-sidebar-text)"
               onClick={() => {
-                navigate("/");
+                navigate("/home");
               }}
               bd="0"
               title="Home"
