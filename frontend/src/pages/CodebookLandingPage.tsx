@@ -32,23 +32,26 @@ export default function CodebookLandingPage() {
         <Badge className={styles.kicker} variant="light" color="gray">
           Guided Annotation Flow
         </Badge>
-        <Group align="flex-end" justify="space-between" wrap="wrap" mt="md">
-          <Title className={styles.title}>Annotation Assistant</Title>
-        </Group>
-        <Text className={styles.subtitle} mt="sm">
-          Build and refine a codebook from labeled and unlabeled datasets.
-        </Text>
-        <Group mt="lg" gap="sm">
-          <Button
-            size="md"
-            radius="xl"
-            className={styles.primaryCta}
-            rightSection={<IconArrowRight size={18} />}
-            onClick={() => navigate("/new-codebook")}
-          >
-            Start a new task
-          </Button>
-        </Group>
+        <div className={styles.heroGrid}>
+          <Paper className={styles.heroCard}>
+            <Title className={styles.title}>Annotation Assistant</Title>
+            <Text className={styles.subtitle} mt="sm">
+              Build, test, and refine a production-ready codebook from labeled and
+              unlabeled datasets in one streamlined workflow.
+            </Text>
+            <Group mt="lg" gap="sm">
+              <Button
+                size="md"
+                radius="xl"
+                className={styles.primaryCta}
+                rightSection={<IconArrowRight size={18} />}
+                onClick={() => navigate("/new-codebook")}
+              >
+                Start a new task
+              </Button>
+            </Group>
+          </Paper>
+        </div>
       </Container>
 
       <Container fluid id="flow" className={styles.flowSection}>
@@ -142,9 +145,6 @@ export default function CodebookLandingPage() {
               </Stack>
             </Paper>
           </div>
-          <Text className={styles.walkthroughFootnote}>
-            Existing tasks remain accessible from the left sidebar.
-          </Text>
         </Paper>
       </Container>
     </Box>
