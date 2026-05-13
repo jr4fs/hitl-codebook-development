@@ -201,12 +201,12 @@ export default function DatasetUploadPage() {
     }
   }, [isDemo]);
 
-  // Auto-open tour when PageIntro intro closes in demo mode
+  // Auto-open tour on mount in demo mode (intro is skipped)
   useEffect(() => {
-    if (isDemo && !introOpen) {
+    if (isDemo) {
       setDemoTourOpen(true);
     }
-  }, [isDemo, introOpen, setDemoTourOpen]);
+  }, [isDemo, setDemoTourOpen]);
 
   const hasManualTaskDetails =
     manualTaskName.trim().length > 0 && manualTaskDescription.trim().length > 0;
@@ -333,7 +333,7 @@ export default function DatasetUploadPage() {
 
         <PageIntro
           mode={introMode}
-          opened={introOpen}
+          opened={isDemo ? false : introOpen}
           onClose={() => setIntroOpen(false)}
           title="Step 1: Upload your task files"
           description="Upload the labeled dataset, the unlabeled dataset, and the two JSON files. We will validate and move you to AI review."

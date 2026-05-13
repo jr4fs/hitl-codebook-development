@@ -159,7 +159,7 @@ export default function AnnotationPage() {
 
         <PageIntro
           mode={controller.introShowCheckbox ? "firstRun" : "help"}
-          opened={controller.introOpen}
+          opened={isDemo ? false : controller.introOpen}
           onClose={controller.handleCloseIntro}
           title="Step 2: AI annotation review"
           description="Review AI suggestions, mark them correct or incorrect, and add feedback to refine the live codebook. This step prepares the final guidance."
