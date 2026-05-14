@@ -633,7 +633,7 @@ const VAL_EVAL_PREDICTIONS_HEADERS = [
 
 export async function runValEvaluation(req: AuthRequest, res: Response) {
   const userId = req.user?.userId;
-  const { taskId } = req.body as { taskId?: string };
+  const { taskId, codebook: bodyCodebook } = req.body as { taskId?: string; codebook?: string[] };
 
   if (!userId) {
     return res.status(401).json({ success: false, message: "Unauthorized - user not authenticated" });
@@ -683,7 +683,7 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
         labels: task.labels,
         task_definition: task.description,
         model_name: task.modelName,
-        user_input: task.codebook?.join("\n") || null,
+        user_input: (Array.isArray(bodyCodebook) ? bodyCodebook : task.codebook)?.join("\n") || null,
         task_type: task.type || "annotation",
         task_id: taskId,
       },
@@ -764,13 +764,41 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
       "utf-8",
     );
 
-    return res.status(200).json({ success: true, filename, predictionsFilename });
+    const evalResults = {
+      predictionsFilename,
+      macroF1: metrics.macroF1,
+      accuracy,
+      numSamples: samples.length,
+      completedAt: new Date().toISOString(),
+    };
+    await taskCollection.updateOne(
+      { _id: taskQueryId as any, userID: userId },
+      { $set: { evalResults } },
+    );
+
+    return res.status(200).json({ success: true, filename, predictionsFilename, macroF1: metrics.macroF1, accuracy, evalResults });
   } catch (error: any) {
     console.error("Error running val evaluation:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to run val evaluation",
     });
+  }
+}
+
+export async function cancelValEvaluation(req: AuthRequest, res: Response) {
+  const userId = req.user?.userId;
+  if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  const { taskId } = req.body as { taskId?: string };
+  if (!taskId) return res.status(400).json({ success: false, message: "taskId is required" });
+
+  try {
+    const ML_BASE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
+    await axios.post(`${ML_BASE_URL}/inference/val-eval/cancel/${taskId}`, {}, { timeout: 5_000 });
+    return res.status(200).json({ success: true });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || "Failed to cancel evaluation" });
   }
 }
 

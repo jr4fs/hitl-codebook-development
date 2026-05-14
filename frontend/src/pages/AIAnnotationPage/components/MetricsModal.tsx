@@ -1,4 +1,6 @@
-import { Button, Modal, Progress, Stack, Text } from "@mantine/core";
+import { Button, Modal, Stack, Text } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
+import { cancelValEval } from "../../../services/metrics.service";
 import { MetricsFiles } from "../types";
 
 interface MetricsModalProps {
@@ -7,12 +9,11 @@ interface MetricsModalProps {
   files: MetricsFiles;
   onClose: () => void;
   onDownload: (filename?: string) => void;
-  onRunValEval: () => void;
-  isRunningValEval: boolean;
-  valEvalProgress: { completed: number; total: number };
+  taskId?: string;
 }
 
-export function MetricsModal({ opened, isLight, files, onClose, onDownload, onRunValEval, isRunningValEval, valEvalProgress }: MetricsModalProps) {
+export function MetricsModal({ opened, isLight, files, onClose, onDownload, taskId }: MetricsModalProps) {
+  const navigate = useNavigate();
   return (
     <Modal
       opened={opened}
@@ -57,43 +58,19 @@ export function MetricsModal({ opened, isLight, files, onClose, onDownload, onRu
         >
           Download metadata metrics
         </Button>
-        <Button
-          fullWidth
-          variant="filled"
-          onClick={onRunValEval}
-          loading={isRunningValEval}
-          disabled={isRunningValEval}
-        >
-          Run validation evaluation
-        </Button>
-        {isRunningValEval && valEvalProgress.total > 0 && (
-          <Stack gap={4}>
-            <Progress
-              value={(valEvalProgress.completed / valEvalProgress.total) * 100}
-              animated
-              size="sm"
-            />
-            <Text size="xs" c="dimmed" ta="center">
-              {valEvalProgress.completed} / {valEvalProgress.total} samples evaluated
-            </Text>
-          </Stack>
+        {taskId && (
+          <Button
+            fullWidth
+            variant="filled"
+            color="teal"
+            onClick={async () => {
+              try { await cancelValEval(taskId); } catch {}
+              navigate(`/dashboard/${taskId}`);
+            }}
+          >
+            Go to Dashboard
+          </Button>
         )}
-        <Button
-          fullWidth
-          variant="light"
-          onClick={() => onDownload(files.valEval)}
-          disabled={!files.valEval}
-        >
-          Download val eval metrics
-        </Button>
-        <Button
-          fullWidth
-          variant="light"
-          onClick={() => onDownload(files.valEvalPredictions)}
-          disabled={!files.valEvalPredictions}
-        >
-          Download val eval predictions (per-sample)
-        </Button>
       </Stack>
     </Modal>
   );

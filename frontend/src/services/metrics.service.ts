@@ -1,3 +1,4 @@
+import { EvalResults } from "@common/types/tasks";
 import { apiClient } from "../lib/apiClient";
 
 export interface GenerateSampleMetricsResponse {
@@ -52,13 +53,16 @@ export interface RunValEvalResponse {
   success: boolean;
   filename?: string;
   predictionsFilename?: string;
+  macroF1?: number;
+  accuracy?: number;
+  evalResults?: EvalResults;
   message?: string;
 }
 
-export async function runValEvaluation(taskId: string): Promise<RunValEvalResponse> {
+export async function runValEvaluation(taskId: string, codebook?: string[]): Promise<RunValEvalResponse> {
   const { data } = await apiClient.post<RunValEvalResponse>(
     "/api/metrics/val-eval",
-    { taskId },
+    { taskId, codebook },
     { timeout: 3_600_000 },
   );
   return data;
@@ -68,6 +72,10 @@ export interface ValEvalProgressResponse {
   completed: number;
   total: number;
   done: boolean;
+}
+
+export async function cancelValEval(taskId: string): Promise<void> {
+  await apiClient.post("/api/metrics/val-eval/cancel", { taskId }, { timeout: 5_000 });
 }
 
 export async function getValEvalProgress(taskId: string): Promise<ValEvalProgressResponse> {
