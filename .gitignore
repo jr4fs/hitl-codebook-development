@@ -11,6 +11,7 @@ metrics/
 venv
 at_slurm_job.sh
 generated_codebooks/
+annotation_outputs/
 
 # Dist
 backend/dist

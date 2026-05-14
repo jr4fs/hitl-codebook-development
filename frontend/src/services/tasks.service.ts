@@ -1,6 +1,11 @@
 import {
+  AutoLabelProgressResponse,
+  CreateAutoLabelTaskRequest,
+  CreateAutoLabelTaskResponse,
   CreateTaskRequest,
   CreateTaskResponse,
+  StartAutoLabelJobRequest,
+  StartAutoLabelJobResponse,
   TaskQueryResponse,
   UploadFileResponse,
   UpdateTaskRequest,
@@ -129,6 +134,66 @@ export async function checkValFileExists(fileName: string): Promise<boolean> {
     `/api/tasks/checkValFile/${encodeURIComponent(fileName)}`,
   );
   return data.exists;
+}
+
+export async function downloadAnnotationOutputFile(filename: string): Promise<Blob> {
+  const response = await apiClient.get(
+    `/api/tasks/download-output/${encodeURIComponent(filename)}`,
+    { responseType: "blob" },
+  );
+  return response.data as Blob;
+}
+
+export async function uploadOutputFile(file: File): Promise<UploadFileResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await apiClient.post<UploadFileResponse>(
+    "/api/tasks/upload-output",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  return data;
+}
+
+export async function createAutoLabelTask(
+  payload: CreateAutoLabelTaskRequest,
+): Promise<CreateAutoLabelTaskResponse> {
+  const { data } = await apiClient.post<CreateAutoLabelTaskResponse>(
+    "/api/tasks/createAutoLabelTask",
+    payload,
+  );
+  return data;
+}
+
+export async function startAutoLabelJob(
+  payload: StartAutoLabelJobRequest,
+): Promise<StartAutoLabelJobResponse> {
+  const { data } = await apiClient.post<StartAutoLabelJobResponse>(
+    "/api/tasks/auto-label",
+    payload,
+  );
+  return data;
+}
+
+export async function getAutoLabelProgress(
+  taskId: string,
+): Promise<AutoLabelProgressResponse> {
+  const { data } = await apiClient.get<AutoLabelProgressResponse>(
+    `/api/tasks/auto-label/progress/${taskId}`,
+    { timeout: 5_000 },
+  );
+  return data;
+}
+
+export async function completeAutoLabelTask(
+  taskId: string,
+  outputFile: string,
+): Promise<{ success: boolean }> {
+  const { data } = await apiClient.patch<{ success: boolean }>(
+    `/api/tasks/auto-label/complete/${taskId}`,
+    { outputFile },
+  );
+  return data;
 }
 
 export async function deleteTaskById(taskId: string): Promise<{

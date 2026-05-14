@@ -19,13 +19,18 @@ _eval_progress: dict[str, dict] = {}
 # Changing or deleting this entry signals the running eval to abort.
 _eval_run_ids: dict[str, str] = {}
 
+# Auto-label job tracking (keyed by job_id == MongoDB taskId)
+_auto_label_progress: dict[str, dict] = {}
+_auto_label_run_ids: dict[str, str] = {}
+_auto_label_results: dict[str, list] = {}
+
 VAL_EVAL_CONCURRENCY = 1
 
 from models.embedding_schemas import EmbedDatasetRequest, EmbedDatasetResponse
 from models.rule_synthesis_schema import RuleSynthesisRequest, RuleSynthesisResponse
 #from services.embedding_service import EmbeddingService
 from services.anonymizer.service import anonymize_csv_bytes, get_config_defaults
-from models.ollama_adapter import InferenceRequest, InferenceResponse, BatchInferenceRequest, BatchInferenceResponse, BatchInferenceSummary, ValEvalRequest, ValEvalResponse, ValEvalSampleResult
+from models.ollama_adapter import InferenceRequest, InferenceResponse, BatchInferenceRequest, BatchInferenceResponse, BatchInferenceSummary, ValEvalRequest, ValEvalResponse, ValEvalSampleResult, AutoLabelRequest, AutoLabelJobResponse
 from services.chat.chat_service import ChatService
 from models.prompt_templating_model import PromptTemplate
 from services.chat.rule_synthesis_service import RuleSynthesisService
@@ -283,6 +288,98 @@ async def run_val_eval(request: ValEvalRequest):
     except Exception as e:
         print("[Val Eval] Error while running val evaluation: ", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@chat_router.get("/auto-label/progress/{job_id}")
+async def get_auto_label_progress(job_id: str):
+    """Return live progress for an in-flight auto-label job keyed by job_id (== MongoDB taskId)."""
+    entry = _auto_label_progress.get(job_id)
+    if not entry:
+        return {"completed": 0, "total": 0, "done": False}
+    result = dict(entry)
+    if result.get("done"):
+        result["rows"] = _auto_label_results.get(job_id, [])
+    return result
+
+
+@chat_router.post("/auto-label/cancel/{job_id}")
+async def cancel_auto_label(job_id: str):
+    """Signal an in-flight auto-label job to abort."""
+    _auto_label_run_ids[job_id] = "__cancelled__"
+    return {"cancelled": True}
+
+
+@chat_router.post("/auto-label")
+async def start_auto_label(request: AutoLabelRequest):
+    """
+    Start an auto-label job. Returns immediately with a job_id; the actual
+    inference runs as a detached asyncio task so it survives client disconnects.
+    Python reads the CSV from shared_uploads/ on disk — no row data in the request.
+    """
+    job_id = request.job_id or str(uuid.uuid4())
+    run_id = str(uuid.uuid4())
+    _auto_label_run_ids[job_id] = run_id
+    _auto_label_progress[job_id] = {"completed": 0, "total": 0, "done": False}
+    asyncio.create_task(_run_auto_label_job(job_id, run_id, request))
+    return {"job_id": job_id}
+
+
+async def _run_auto_label_job(job_id: str, run_id: str, request: AutoLabelRequest):
+    """Background worker: reads CSV from disk, runs inference for every row via a semaphore."""
+    import pandas as pd
+
+    try:
+        project_root = Path(__file__).resolve().parents[2]
+        csv_path = project_root / "shared_uploads" / request.file_path
+
+        df = await asyncio.to_thread(pd.read_csv, csv_path, dtype=str, keep_default_na=False)
+        rows = df.to_dict(orient="records")
+        total = len(rows)
+        _auto_label_progress[job_id]["total"] = total
+
+        chat_service_obj = ChatService()
+        prompt_template_obj = PromptTemplate()
+        system_prompt = prompt_template_obj.get_task_system_prompt(request.task_type)
+        semaphore = asyncio.Semaphore(VAL_EVAL_CONCURRENCY)
+
+        def is_active():
+            return _auto_label_run_ids.get(job_id) == run_id
+
+        async def infer_one(row: dict) -> dict:
+            row_data = {k: str(v) for k, v in row.items()}
+            case_notes = row_data.get(request.text_column, "")
+            if not is_active():
+                _auto_label_progress[job_id]["completed"] += 1
+                return {**row_data, "generated_label": ""}
+            async with semaphore:
+                if not is_active():
+                    _auto_label_progress[job_id]["completed"] += 1
+                    return {**row_data, "generated_label": ""}
+                try:
+                    response = await asyncio.to_thread(
+                        chat_service_obj.send_chat,
+                        request.labels,
+                        request.task_definition,
+                        request.model_name,
+                        system_prompt,
+                        case_notes,
+                        request.user_input,
+                    )
+                    generated_label = "|".join(response["label"])
+                except Exception as e:
+                    print(f"[Auto Label] Sample inference failed: {e}")
+                    generated_label = "ERROR"
+                _auto_label_progress[job_id]["completed"] += 1
+                return {**row_data, "generated_label": generated_label}
+
+        results = await asyncio.gather(*[infer_one(r) for r in rows])
+        _auto_label_results[job_id] = list(results)
+        _auto_label_progress[job_id]["done"] = True
+        print(f"[Auto Label] Job {job_id} complete: {len(results)} rows labeled")
+    except Exception as e:
+        print(f"[Auto Label] Job {job_id} failed: {e}")
+        _auto_label_progress[job_id]["done"] = True
+        _auto_label_progress[job_id]["error"] = str(e)
 
 
 @chat_router.post("/rule-synthesis", response_model=RuleSynthesisResponse)
