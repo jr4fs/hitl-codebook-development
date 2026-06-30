@@ -9,9 +9,27 @@ import { AuthRequest } from "./tasks.service";
 import { ensureMetricsDir, METRICS_DIR } from "../utils/metrics";
 import Papa from "papaparse";
 import fsAsync from "fs/promises";
+import axios from "axios";
 
 const ANNOTATION_COLLECTION =
   process.env.ANNOTATION_COLLECTION_NAME || "AnnotationDetails";
+
+const ML_BASE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
+
+/**
+ * Fetch the system prompt templates from pybackend (the single source of truth)
+ * over HTTP, instead of reading pybackend's files off a shared filesystem.
+ */
+async function fetchPrompts(): Promise<{
+  annotation_task: string;
+  rule_synthesis: string;
+}> {
+  const { data } = await axios.get(`${ML_BASE_URL}/inference/prompts`);
+  return {
+    annotation_task: data?.annotation_task ?? "",
+    rule_synthesis: data?.rule_synthesis ?? "",
+  };
+}
 
 const SAMPLE_HEADERS = [
   "text data",
@@ -388,24 +406,8 @@ export async function generateMetadataMetrics(req: AuthRequest, res: Response) {
     const labelColumn = task.labelColumn || "task_label";
     const distribution = getValLabelDistribution(valRows, labelColumn);
 
-    const rulePromptPath = path.join(
-      projectRoot,
-      "pybackend",
-      "prompts",
-      "rule_synthesis_prompt.md",
-    );
-    const annotationPromptPath = path.join(
-      projectRoot,
-      "pybackend",
-      "prompts",
-      "annotation_task_prompt.md",
-    );
-
-    const rulePrompt = await fsAsync.readFile(rulePromptPath, "utf-8");
-    const annotationPrompt = await fsAsync.readFile(
-      annotationPromptPath,
-      "utf-8",
-    );
+    const { rule_synthesis: rulePrompt, annotation_task: annotationPrompt } =
+      await fetchPrompts();
 
     ensureMetricsDir();
     const timestamp = new Date().toISOString().replace(/[:.]/g, "");
@@ -495,14 +497,7 @@ export async function generateBatchMetrics(req: AuthRequest, res: Response) {
       batches.get(batchId)?.push(annotation);
     }
 
-    const projectRoot = path.resolve(__dirname, "../../../");
-    const promptPath = path.join(
-      projectRoot,
-      "pybackend",
-      "prompts",
-      "rule_synthesis_prompt.md",
-    );
-    const synthPrompt = await fsAsync.readFile(promptPath, "utf-8");
+    const { rule_synthesis: synthPrompt } = await fetchPrompts();
 
     ensureMetricsDir();
     const timestamp = new Date().toISOString().replace(/[:.]/g, "");

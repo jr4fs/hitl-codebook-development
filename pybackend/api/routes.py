@@ -25,6 +25,18 @@ embedding_router = APIRouter(prefix="/embedding", tags=["embedding"])
 chat_router = APIRouter(prefix="/inference", tags=["inference"])
 anonymize_router = APIRouter(prefix="/anonymize", tags=["anonymize"])
 
+
+@chat_router.get("/prompts")
+async def get_prompts():
+    """Expose the system prompt templates so other services (e.g. the Node
+    metrics export) can read them over HTTP instead of pybackend's filesystem.
+    pybackend remains the single source of truth for prompts."""
+    pt = PromptTemplate()
+    return {
+        "annotation_task": pt.get_task_system_prompt("annotation"),
+        "rule_synthesis": pt.get_task_system_prompt("rule_synthesis"),
+    }
+
 @anonymize_router.post("/csv")
 async def anonymize_csv(
     file: UploadFile = File(...),
