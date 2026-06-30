@@ -14,6 +14,9 @@ export interface Task {
   labelColumn: string;
   modelName: string;
   status?: "sampling_pending" | "ready" | "sampling_error";
+  // Number of sampling jobs ahead of this one in the queue (0 = running now).
+  // Set by the pybackend sampling queue; used to show a queue position in the UI.
+  samplingQueuePosition?: number;
   codebook?: string[];
   codebookSourceTaskId?: string;
   codebookSourceTaskName?: string;

@@ -207,6 +207,7 @@ export const useAIAnnotationController = () => {
     isReady,
     effectiveStatus: samplingState.effectiveStatus,
     samplingErrorMsg: samplingState.samplingErrorMsg,
+    samplingQueuePosition: samplingState.queuePosition,
 
     ...introState,
 

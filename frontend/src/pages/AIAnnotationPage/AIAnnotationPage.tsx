@@ -53,12 +53,12 @@ export default function AnnotationPage() {
   }
 
   if (controller.effectiveStatus === "sampling_pending") {
-    return (
-      <LoadingStatus
-        isLight={isLight}
-        message="Task created. Sampling is in progress. This page checks status once every minute."
-      />
-    );
+    const queuePosition = controller.samplingQueuePosition;
+    const samplingMessage =
+      typeof queuePosition === "number" && queuePosition > 0
+        ? `Queued for sampling — ${queuePosition} task${queuePosition === 1 ? "" : "s"} ahead of you. This can take a few minutes; the page updates automatically.`
+        : "Sampling is in progress. This page updates automatically.";
+    return <LoadingStatus isLight={isLight} message={samplingMessage} />;
   }
 
   if (controller.effectiveStatus === "sampling_error") {

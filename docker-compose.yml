@@ -28,7 +28,10 @@ services:
     environment:
       MONGODB_URI: ${DB_CONN_STRING}
       DB_NAME: ${DB_NAME}
+      TASKS_COLLECTION_NAME: ${TASKS_COLLECTION_NAME:-TaskDetails}
       APP_MODE: ${APP_MODE:-DEFAULT}
+      # Max concurrent dataset-sampling jobs (memory guard). Extra uploads queue.
+      MAX_CONCURRENT_SAMPLING: ${MAX_CONCURRENT_SAMPLING:-1}
       LLM_PROVIDER: ${LLM_PROVIDER:-openrouter}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       OPENROUTER_MODEL_MAP: ${OPENROUTER_MODEL_MAP:-}

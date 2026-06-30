@@ -11,6 +11,8 @@ from typing import List, Optional
 from pathlib import Path
 import json
 import asyncio
+import os
+import logging
 
 from models.embedding_schemas import EmbedDatasetRequest, EmbedDatasetResponse
 from models.rule_synthesis_schema import RuleSynthesisRequest, RuleSynthesisResponse
@@ -113,7 +115,11 @@ async def run_inference(request: InferenceRequest):
         }
         user_prompt = json.dumps(inference_payload, ensure_ascii=False)
 
-        response = chat_service_obj.send_chat(
+        # send_chat is a synchronous, network-bound call (OpenRouter/Ollama).
+        # Run it off the event loop so one uvicorn worker can handle many
+        # concurrent inference requests instead of serializing on each call.
+        response = await asyncio.to_thread(
+            chat_service_obj.send_chat,
             request.labels,
             request.task_definition,
             request.model_name,
@@ -213,10 +219,12 @@ async def run_rule_synthesis(request: RuleSynthesisRequest):
         rule_synthesis_service_obj = RuleSynthesisService()
         prompt_template_obj = PromptTemplate()
         system_prompt = prompt_template_obj.get_task_system_prompt(request.task_type)
-        response = rule_synthesis_service_obj.send_chat(
+        # Off-load the blocking LLM call so it doesn't stall the event loop.
+        response = await asyncio.to_thread(
+            rule_synthesis_service_obj.send_chat,
             request.model_name,
             system_prompt,
-            request.payload
+            request.payload,
         )
         rule_synthesis_response: RuleSynthesisResponse = {
             "success": response["success"],
@@ -229,17 +237,46 @@ async def run_rule_synthesis(request: RuleSynthesisRequest):
         print("[Rule synthesis] Error while running rule synthesis : ", e)
         raise HTTPException(status_code=500, detail=str(e))
 from services.managedata.data_manager_service import DataManagerService
+from services.managedata.sampling_queue import sampling_queue
+from services.database.database_service import get_collection
+
+logger = logging.getLogger("uvicorn.error")
+TASKS_COLLECTION_NAME = os.getenv("TASKS_COLLECTION_NAME", "TaskDetails")
+
+
+def _set_sampling_position(task_id: Optional[str], ahead: int) -> None:
+    """Record how many sampling jobs are ahead of this task so the UI can show a
+    queue position. Written to TaskDetails where the frontend already polls."""
+    if not task_id:
+        return
+    try:
+        from bson import ObjectId
+
+        try:
+            query_id = ObjectId(task_id)
+        except Exception:
+            query_id = task_id
+        get_collection(TASKS_COLLECTION_NAME).update_one(
+            {"_id": query_id}, {"$set": {"samplingQueuePosition": ahead}}
+        )
+    except Exception as exc:  # position is best-effort; never fail sampling for it
+        logger.warning("Failed to update sampling queue position: %s", exc)
+
 
 @embedding_router.post("/sample")
 async def run_sampling(request: EmbedDatasetRequest):
     """
-    Unified sampling flow.
-    If use_representative_sampling is true, representative sampling runs first,
-    then coverage sampling creates the guide set.
+    Unified sampling flow, run through a concurrency-limited queue so concurrent
+    uploads can't exhaust memory. If use_representative_sampling is true,
+    representative sampling runs first, then coverage sampling creates the guide set.
     """
     try:
         service = DataManagerService(request)
-        service.run_sampling()
+
+        async def on_position(ahead: int) -> None:
+            await asyncio.to_thread(_set_sampling_position, request.taskId, ahead)
+
+        await sampling_queue.submit(service.run_sampling, on_position=on_position)
         return {"success": True, "message": "Sampling completed"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
