@@ -25,6 +25,12 @@ RUN cd backend && npm ci
 COPY backend ./backend
 COPY common ./common
 
+# The metrics service (backend/src/services/metrics.service.ts) reads the prompt
+# templates from pybackend/prompts at runtime to reconstruct prompts for metrics.
+# In this split-container deploy the Node container has no pybackend/, so copy the
+# (tiny, build-time-synced) prompt files to the path it resolves (/app/pybackend/prompts).
+COPY pybackend/prompts ./pybackend/prompts
+
 WORKDIR /app/backend
 ENV NODE_ENV=production
 ENV PORT=8080

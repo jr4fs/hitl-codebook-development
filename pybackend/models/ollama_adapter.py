@@ -180,10 +180,10 @@ MODEL_KEYS = ["mistral:7b", "gemma3:1b", "qwen3.5:2b", "qwen:32b", "llama3.3:70b
 # of these without a code change via the OPENROUTER_MODEL_MAP env var (JSON), e.g.
 #   OPENROUTER_MODEL_MAP={"gemma3:1b":"google/gemma-3-4b-it"}
 DEFAULT_OPENROUTER_MODEL_MAP = {
-    "mistral:7b": "mistralai/mistral-7b-instruct",
+    "mistral:7b": "mistralai/ministral-8b-2512",
     "gemma3:1b": "google/gemma-3-4b-it",
     "qwen3.5:2b": "qwen/qwen-2.5-7b-instruct",
-    "qwen:32b": "qwen/qwen-2.5-32b-instruct",
+    "qwen:32b": "qwen/qwen-2.5-72b-instruct",
     "llama3.3:70b": "meta-llama/llama-3.3-70b-instruct",
 }
 
