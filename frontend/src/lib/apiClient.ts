@@ -2,8 +2,16 @@ import axios from "axios";
 import { store } from "../store/store";
 import { clearUser } from "../store/userSlice";
 
+// In a same-origin production deploy (frontend + API served behind one domain)
+// leave VITE_API_URL unset: an empty base makes requests relative to the page
+// origin (e.g. "/api/..."), so no domain needs to be baked into the build.
+// In dev, fall back to the local Node backend.
+const apiBaseUrl =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.PROD ? "" : "http://localhost:8080");
+
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080",
+  baseURL: apiBaseUrl,
   headers: {
     "Content-Type": "application/json",
   },
