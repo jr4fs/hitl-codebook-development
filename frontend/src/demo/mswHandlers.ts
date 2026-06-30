@@ -56,9 +56,9 @@ export const handlersReady = [
   }),
   http.post(`${API}/api/inference`, () => {
     return HttpResponse.json({
-      label: ["negative"],
-      reason: "The text mentions pangolin leather, indicating illegal trade and consumption.",
-      span_text: "pangolin leather",
+      label: ["crisis_intervention"],
+      reason: "YP is presenting with acute psychiatric symptoms including paranoid ideation and flight of ideas, requiring immediate risk assessment and intervention.",
+      span_text: "flight of ideas about being hurt by others... paranoia",
       raw_response: "mocked",
       system_prompt: "mocked-system-prompt",
       user_prompt: "mocked-user-prompt",
@@ -66,9 +66,9 @@ export const handlersReady = [
   }),
   http.post(`${API}/api/inference/`, () => {
     return HttpResponse.json({
-      label: ["negative"],
-      reason: "The text mentions pangolin leather, indicating illegal trade and consumption.",
-      span_text: "pangolin leather",
+      label: ["crisis_intervention"],
+      reason: "YP is presenting with acute psychiatric symptoms including paranoid ideation and flight of ideas, requiring immediate risk assessment and intervention.",
+      span_text: "flight of ideas about being hurt by others... paranoia",
       raw_response: "mocked",
       system_prompt: "mocked-system-prompt",
       user_prompt: "mocked-user-prompt",
@@ -85,8 +85,8 @@ export const handlersReady = [
         return HttpResponse.json({
           success: true,
           rules: [
-            "If text mentions illegal trade, trafficking, or leather products made from pangolins, label negative.",
-            "If text discusses protection efforts, conservation, or endangered status, label positive.",
+            "If note describes flight of ideas, paranoid ideation, or unresponsiveness to prompts, label crisis_intervention.",
+            "If note involves inter-agency emails, court coordination, or external referrals, label service_coordination.",
           ],
         });
       }
@@ -94,8 +94,8 @@ export const handlersReady = [
         return HttpResponse.json({
           success: true,
           rules: [
-            "If text mentions traditional medicine use of pangolin scales, label negative.",
-            "If text is factual about species characteristics or habitat, label neutral.",
+            "If note documents a risk assessment or acute safety concern, label crisis_intervention.",
+            "If note describes a routine check-in, basic needs support, or emotional follow-up without crisis indicators, label routine_support.",
           ],
         });
       }

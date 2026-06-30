@@ -44,21 +44,21 @@ export default function LandingPage() {
               <Text className={styles.panelLabel}>Labels</Text>
               <Stack gap={8} mt={8}>
                 <Box className={styles.labelCard}>
-                  <Text className={styles.labelName}>positive</Text>
+                  <Text className={styles.labelName}>crisis_intervention</Text>
                   <Text className={styles.labelDef}>
-                    Supports protecting pangolins — anti-trade, rescue stories, conservation fundraising
+                    Acute crisis requiring immediate response — psychiatric symptoms, safety concerns, paranoia
                   </Text>
                 </Box>
                 <Box className={styles.labelCard}>
-                  <Text className={styles.labelName}>negative</Text>
+                  <Text className={styles.labelName}>service_coordination</Text>
                   <Text className={styles.labelDef}>
-                    Promotes consumption, sale, or use — bushmeat, TCM, pets, pangolin products
+                    Coordinating with external agencies — legal, medical, housing, or community resources
                   </Text>
                 </Box>
                 <Box className={styles.labelCard}>
-                  <Text className={styles.labelName}>neutral</Text>
+                  <Text className={styles.labelName}>routine_support</Text>
                   <Text className={styles.labelDef}>
-                    Mentions pangolins without clear stance — memes, cartoons, art, brand names
+                    Regular check-in or ongoing case management — emotional support, basic needs, follow-up
                   </Text>
                 </Box>
               </Stack>
@@ -74,24 +74,23 @@ export default function LandingPage() {
                     name: "Labeled",
                     file: "labeled.csv",
                     desc: "Pre-labeled dataset for validation. Should contain your raw text data and ground-truth labels. Used to evaluate LLM performance and calibrate feedback.",
-                    sample: "recordID,text,label\n1,\"Post about pangolin protection\",positive\n2,\"Selling pangolin leather products\",negative\n3,\"Meme mentioning pangolins\",neutral"
+                    sample: "id,text_data,label\n1,\"YP presented with psychosis...\",crisis_intervention\n2,\"HCM reached out to Public Defender...\",service_coordination\n3,\"YP called feeling overwhelmed...\",routine_support"
                   },
                   {
                     name: "Unlabeled",
                     file: "unlabeled.csv",
                     desc: "Large pool of unlabeled data. The system will select 150 representative samples from this for annotation. Should be diverse and representative of your full dataset.",
-                    sample: "recordID,text\n1,\"New research on ecosystem role\"\n2,\"Animal trafficking news story\"\n3,\"Conservation fundraising campaign\"\n4,\"Wildlife documentary clip\""
+                    sample: "id,text_data\n1,\"YP arrived presenting in low mood...\"\n2,\"HCM coordinated with housing provider...\"\n3,\"YP called requesting emotional support...\"\n4,\"TCM engaged YP in risk assessment...\""
                   },
                   {
                     name: "Task_Details",
                     file: "task.json",
                     desc: "JSON file describing the annotation task. Includes task name, description, and special instructions.",
                     sample: `{
-  "name": "Pangolin_Classification",
-  "description": "Label sentiment toward pangolin conservation",
-  "text_column": "text",
-  "label_column": "label",
-  "instructions": "Classify posts as positive, negative, or neutral based on conservation stance"
+  "name": "Youth_Case_Note_Classification",
+  "description": "Classify the primary type of support interaction in youth homelessness case notes",
+  "text_column": "text_data",
+  "label_column": "label"
 }`
                   },
                   {
@@ -100,14 +99,14 @@ export default function LandingPage() {
                     desc: "JSON file defining all available labels with descriptions and keywords for LLM understanding.",
                     sample: `[
   {
-    "name": "positive",
-    "description": "Supports protecting pangolins",
-    "keywords": ["conservation", "protection", "endangered"]
+    "name": "crisis_intervention",
+    "description": "Acute crisis requiring immediate response",
+    "keywords": ["crisis", "paranoia", "psychosis", "safety"]
   },
   {
-    "name": "negative",
-    "description": "Promotes consumption or sale",
-    "keywords": ["trade", "bushmeat", "products"]
+    "name": "service_coordination",
+    "description": "Coordinating with external agencies or resources",
+    "keywords": ["referral", "court", "appointment", "outreach"]
   }
 ]`
                   },
@@ -153,9 +152,9 @@ export default function LandingPage() {
         return (
           <Stack gap="md">
             <Box className={styles.sampleBox}>
-              <Text className={styles.panelLabel}>Sample post</Text>
+              <Text className={styles.panelLabel}>Sample case note</Text>
               <Text className={styles.sampleText}>
-                "Ad on Facebook Marketplace showing one belt made with pangolin leather. On sale."
+                "HCM [PERSON] was alerted by staff that YP was presenting with high energy and making comments about machetes. YP was speaking in a flight of ideas about being hurt by others and HCM engaged in a risk assessment."
               </Text>
             </Box>
 
@@ -166,16 +165,16 @@ export default function LandingPage() {
               <Stack gap={8} mt={8}>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Label</span>
-                  <span className={styles.predictionValue}>negative</span>
+                  <span className={styles.predictionValue}>crisis_intervention</span>
                 </Box>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Span text</span>
-                  <span className={styles.predictionValue}>belt made with pangolin leather. On sale</span>
+                  <span className={styles.predictionValue}>flight of ideas about being hurt by others... risk assessment</span>
                 </Box>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Reasoning</span>
                   <span className={styles.predictionValue}>
-                    Post is promoting the commercial sale of a pangolin product.
+                    YP presents with acute psychiatric symptoms — paranoid ideation and flight of ideas requiring immediate response.
                   </span>
                 </Box>
               </Stack>
@@ -192,9 +191,9 @@ export default function LandingPage() {
             </Box>
 
             <Box className={styles.sampleBox}>
-              <Text className={styles.panelLabel}>Sample post</Text>
+              <Text className={styles.panelLabel}>Sample case note</Text>
               <Text className={styles.sampleText}>
-                "New research shows pangolins are important for ecosystem health. Scientists urge protection of these animals."
+                "YP called and identified feeling overwhelmed. YP reported food insecurity and that a recent bike injury had prevented him from working. DOP agreed to drop off additional grocery store cards to support."
               </Text>
             </Box>
 
@@ -206,18 +205,18 @@ export default function LandingPage() {
                 <Box className={styles.validationRowIncorrect}>
                   <Box>
                     <Text className={styles.validationLabel}>Label</Text>
-                    <Text className={styles.validationText}>neutral</Text>
+                    <Text className={styles.validationText}>service_coordination</Text>
                   </Box>
                   <span className={styles.xmark}>✗</span>
                 </Box>
                 <Box>
                   <Text className={styles.feedbackLabel}>You marked as incorrect</Text>
-                  <textarea className={styles.feedbackInput} placeholder="Explain why this prediction was wrong..." defaultValue="This is clearly positive — talks about importance and urges protection. Should be 'positive'." />
+                  <textarea className={styles.feedbackInput} placeholder="Explain why this prediction was wrong..." defaultValue="YP is reaching out for emotional support and basic needs — no external agency involved. Should be 'routine_support'." />
                 </Box>
                 <Box className={styles.validationRowCorrect}>
                   <Box>
                     <Text className={styles.validationLabel}>Correct label</Text>
-                    <Text className={styles.validationText}>positive</Text>
+                    <Text className={styles.validationText}>routine_support</Text>
                   </Box>
                   <span className={styles.checkmark}>✓</span>
                 </Box>
@@ -241,7 +240,7 @@ export default function LandingPage() {
                 <Box className={styles.ruleCard}>
                   <Group justify="space-between" align="flex-start" gap="sm">
                     <Text className={styles.ruleText}>
-                      Posts promoting pangolin products for sale or consumption → negative
+                      Notes describing flight of ideas, paranoid ideation, or unresponsiveness → crisis_intervention
                     </Text>
                     <Badge size="sm" variant="light" color="green">
                       new
@@ -251,7 +250,7 @@ export default function LandingPage() {
                 <Box className={styles.ruleCard}>
                   <Group justify="space-between" align="flex-start" gap="sm">
                     <Text className={styles.ruleText}>
-                      Posts referencing pangolin leather, ivory, or bushmeat use → negative
+                      Notes involving inter-agency emails, court coordination, or external referrals → service_coordination
                     </Text>
                     <Badge size="sm" variant="light" color="green">
                       new
@@ -278,9 +277,9 @@ export default function LandingPage() {
             </Box>
 
             <Box className={styles.sampleBox}>
-              <Text className={styles.panelLabel}>Sample post</Text>
+              <Text className={styles.panelLabel}>Sample case note</Text>
               <Text className={styles.sampleText}>
-                "WWF announced a record $2M grant for pangolin protection in Southeast Asia."
+                "HCM [PERSON] reached out to Public Defender [PERSON] Choi (PDSC) for a check-in phone call regarding the status of YP options before appearing in ODR Court. HCM coordinated housing and mental health support options."
               </Text>
             </Box>
 
@@ -291,11 +290,11 @@ export default function LandingPage() {
               <Stack gap={8} mt={8}>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Label</span>
-                  <span className={styles.predictionValue}>positive</span>
+                  <span className={styles.predictionValue}>service_coordination</span>
                 </Box>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Span text</span>
-                  <span className={styles.predictionValue}>record $2M grant for pangolin protection</span>
+                  <span className={styles.predictionValue}>reached out to Public Defender... ODR Court</span>
                 </Box>
               </Stack>
             </Box>
@@ -344,6 +343,7 @@ export default function LandingPage() {
               <Group gap={6} mt={8}>
                 <span className={styles.summaryChip}>12 rules</span>
                 <span className={styles.summaryChip}>3 labels</span>
+                <span className={styles.summaryChip}>case notes</span>
               </Group>
             </Box>
 
@@ -354,7 +354,7 @@ export default function LandingPage() {
               className={styles.exportButton}
               leftSection={<IconChecklist size={16} />}
             >
-              Export codebook_final.json
+              Export case_notes_codebook.json
             </Button>
 
             <Box className={styles.divider} />
@@ -363,23 +363,21 @@ export default function LandingPage() {
               <Text className={styles.panelLabel}>Your exported codebook</Text>
               <Box className={styles.sampleDataBox}>
                 <pre className={styles.sampleDataPre}>{`{
-  "name": "Pangolin_Classification_v1",
-  "description": "Label sentiment toward pangolin conservation",
-  "labels": ["positive", "negative", "neutral"],
+  "name": "Youth_Case_Note_Classification_v1",
+  "description": "Classify primary support interaction in youth homelessness case notes",
+  "labels": ["crisis_intervention", "service_coordination", "routine_support"],
   "rules": [
-    "Posts about conservation fundraising or protection → positive",
-    "Posts mentioning endangered species protection → positive",
-    "Posts promoting pangolin products for sale → negative",
-    "Posts about pangolin leather, ivory, or bushmeat → negative",
-    "References to pangolin trade or poaching → negative",
-    "Memes or entertainment mentioning pangolins → neutral",
-    "Scientific facts without conservation stance → neutral",
-    "Brand names or unrelated mentions → neutral"
+    "Notes with flight of ideas, paranoid ideation, or unresponsiveness → crisis_intervention",
+    "Notes documenting a risk assessment or acute safety concern → crisis_intervention",
+    "Notes involving inter-agency emails, court coordination, or referrals → service_coordination",
+    "Notes about medical appointments or housing provider outreach → service_coordination",
+    "Notes describing a routine check-in or basic needs support → routine_support",
+    "Notes where YP calls or arrives without crisis indicators → routine_support"
   ],
   "metadata": {
     "samples_reviewed": 150,
-    "final_accuracy": 0.90,
-    "created_at": "2024-05-13",
+    "final_accuracy": 0.91,
+    "created_at": "2025-05-13",
     "version": "1.0"
   }
 }`}</pre>
