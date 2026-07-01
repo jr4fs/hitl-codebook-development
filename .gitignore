@@ -31,3 +31,9 @@ deploy/terraform/*.tfstate
 deploy/terraform/*.tfstate.*
 deploy/terraform/terraform.tfvars
 deploy/terraform/*.tfplan
+deploy/terraform/*.plan
+deploy/terraform/tf.plan
+
+# Deployment secrets/config (single untracked source of truth)
+deploy/config.env
+deploy/.generated.env
