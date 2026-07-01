@@ -1,7 +1,10 @@
 import { http, HttpResponse } from "msw";
 import { demoAnnotations, demoTask } from "./demoData";
 
-const API = "http://localhost:8080";
+// Wildcard origin so the demo's mocked endpoints match regardless of where it is
+// served from: localhost in dev, GitHub Pages, or the deployed same-origin build
+// (where apiClient uses a relative baseURL). MSW resolves "*" against any origin.
+const API = "*";
 
 export const handlersReady = [
   http.post(`${API}/api/account/login`, async ({ request }) => {
