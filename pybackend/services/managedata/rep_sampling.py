@@ -1,6 +1,4 @@
 import pandas as pd
-import torch
-from sentence_transformers import SentenceTransformer
 from .embed_dataset import DatasetEmbedding
 from .faiss_indexing import FAISSIndexing
 from .label_sampling import LabelSampling
@@ -47,7 +45,6 @@ class RepresentativeSampling:
             labels=self.request.labels,
             index=index,
             model=sentence_model,
-            device="mps" if torch.mps.is_available() else "cpu",
         )
 
         # representative sampple of all labels
