@@ -33,10 +33,12 @@ class ApiEmbeddingModel:
             self._api_key = os.getenv("OPENAI_API_KEY")
             if not self._api_key:
                 raise RuntimeError("EMBEDDINGS_PROVIDER=openai but OPENAI_API_KEY is not set")
-            self._base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-            self.model_id = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+            # `or default` (not getenv's default) so a set-but-EMPTY env var
+            # (docker-compose passes "" for unset optionals) falls back correctly.
+            self._base_url = (os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+            self.model_id = os.getenv("OPENAI_EMBEDDING_MODEL") or "text-embedding-3-small"
         elif self.provider == "bedrock":
-            self.model_id = os.getenv("BEDROCK_EMBEDDING_MODEL", "amazon.titan-embed-text-v2:0")
+            self.model_id = os.getenv("BEDROCK_EMBEDDING_MODEL") or "amazon.titan-embed-text-v2:0"
             region = os.getenv("BEDROCK_REGION") or os.getenv("AWS_REGION") or "us-east-1"
             import boto3  # lazy: only needed for this provider
             self._client = boto3.client("bedrock-runtime", region_name=region)

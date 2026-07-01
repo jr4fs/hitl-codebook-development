@@ -47,6 +47,9 @@ const CONFIG_DOC_ID = "global";
 const TASK_JSON_REQUIRED_KEYS = ["taskname", "description"];
 const GENERATED_CODEBOOKS_DIR = "generated_codebooks";
 const ML_BASE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
+// Backstop so a hung ML request can't leave a task pending forever. A dropped
+// connection (e.g. pybackend restart) already rejects fast; this bounds true hangs.
+const SAMPLING_TIMEOUT_MS = Number(process.env.SAMPLING_TIMEOUT_MS) || 20 * 60 * 1000;
 
 /** Built-in "not relevant" label added by default to all upload-task-bundle tasks */
 const NOT_RELEVANT_LABEL = {
@@ -121,6 +124,31 @@ function parseCsvBuffer(buffer: Buffer): any[] {
     console.error("Error in parseCsvBuffer:", error);
     throw error;
   }
+}
+
+// Read ONLY the header row of a CSV (Papa `preview` stops after one row) so large
+// uploads don't get fully materialized on the event loop just to validate columns.
+function getCsvColumns(buffer: Buffer): string[] {
+  const result = Papa.parse(buffer.toString("utf-8"), {
+    header: true,
+    preview: 1,
+    skipEmptyLines: true,
+  });
+  return ((result.meta?.fields as string[] | undefined) ?? []).map((f) => f);
+}
+
+// Approximate a CSV's data-row count by scanning newlines — cheap and non-blocking
+// vs. building every row object. Used only for the informational upload summary,
+// so exactness (quoted fields with embedded newlines) is not required.
+function countCsvDataRows(buffer: Buffer): number {
+  if (buffer.length === 0) return 0;
+  let newlines = 0;
+  for (let i = 0; i < buffer.length; i++) {
+    if (buffer[i] === 0x0a) newlines++;
+  }
+  const endsWithNewline = buffer[buffer.length - 1] === 0x0a;
+  const lines = endsWithNewline ? newlines : newlines + 1;
+  return Math.max(0, lines - 1); // exclude the header row
 }
 
 function parseTaskJson(buffer: Buffer): {
@@ -236,6 +264,31 @@ function getColumnsFromRows(rows: Array<Record<string, unknown>>): string[] {
   return clean_cols;
 }
 
+// On boot, any task still "sampling_pending" is orphaned: its in-flight sampling
+// request died with the previous process (there is no running job to resume). Mark
+// them failed so the UI stops spinning. New tasks created after boot are unaffected.
+export async function failOrphanedSampling() {
+  try {
+    const coll = getCollection<Task>(TASKS_COLLECTION);
+    const res = await coll.updateMany(
+      { status: "sampling_pending" },
+      {
+        $set: {
+          status: "sampling_error",
+          updatedAt: new Date().toISOString(),
+        } as Partial<Task>,
+      },
+    );
+    if (res.modifiedCount > 0) {
+      console.log(
+        `[startup] Marked ${res.modifiedCount} orphaned sampling_pending task(s) as sampling_error`,
+      );
+    }
+  } catch (error) {
+    console.error("[startup] failOrphanedSampling error:", error);
+  }
+}
+
 async function triggerSamplingInBackground(
   params: {
     taskId: string;
@@ -247,7 +300,9 @@ async function triggerSamplingInBackground(
   const filter = { _id: new ObjectId(params.taskId) as any, userID: params.userID };
 
   try {
-    await axios.post(`${ML_BASE_URL}/embedding/sample`, params.payload);
+    await axios.post(`${ML_BASE_URL}/embedding/sample`, params.payload, {
+      timeout: SAMPLING_TIMEOUT_MS,
+    });
     await taskDetailsCollection.updateOne(filter, {
       $set: {
         status: "ready",
@@ -830,22 +885,23 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const labels = ensureNotRelevantLabel(parsedLabels);
     console.log("[uploadTaskBundle] Labels parsed, count:", labels.length);
 
-    // Parse CSVs
-    console.log("[uploadTaskBundle] Parsing CSV files...");
+    // Parse the labeled (val) set fully — it is small. Do NOT materialize the
+    // unlabeled (rest/d_all) set: it can be hundreds of thousands of rows and
+    // parsing it synchronously freezes the event loop (and the whole UI). We read
+    // only its header for validation and estimate its row count from newlines.
+    console.log("[uploadTaskBundle] Parsing val CSV + reading rest header...");
     const valRows = parseCsvBuffer(dValFile.buffer) as Array<
       Record<string, unknown>
     >;
-    const restRows = parseCsvBuffer(dAllFile.buffer) as Array<
-      Record<string, unknown>
-    >;
+    const restColumns = getCsvColumns(dAllFile.buffer);
+    const restRowCount = countCsvDataRows(dAllFile.buffer);
     console.log(
-      `[uploadTaskBundle] CSVs parsed. Val rows: ${valRows.length}, Rest rows: ${restRows.length}`,
+      `[uploadTaskBundle] Parsed. Val rows: ${valRows.length}, Rest rows (approx): ${restRowCount}`,
     );
 
     // Validate Columns
     console.log("[uploadTaskBundle] Validating columns...");
     const valColumns = getColumnsFromRows(valRows);
-    const restColumns = getColumnsFromRows(restRows);
 
     if (textColumn) {
       const hasValText = valColumns.includes(textColumn);
@@ -952,7 +1008,7 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
         columns: valColumns,
       },
       restSummary: {
-        rows: restRows.length,
+        rows: restRowCount,
         columns: restColumns,
       },
       task: {

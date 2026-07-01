@@ -111,6 +111,10 @@ BEDROCK_REGION=$AWS_REGION
 APP_MODE=${APP_MODE:-DEFAULT}
 MAX_CONCURRENT_SAMPLING=${MAX_CONCURRENT_SAMPLING:-1}
 VITE_APP_MODE=
+AWS_REGION=$AWS_REGION
+# Ship container logs to CloudWatch (persist across redeploys). Compose reads
+# COMPOSE_FILE from .env, so every `docker compose` on the box includes the override.
+COMPOSE_FILE=docker-compose.yml:deploy/docker-compose.awslogs.yml
 EOF
 scp -q -o StrictHostKeyChecking=accept-new "$TMP_ENV" "ubuntu@$EIP:annotation_tool/.env"
 rm -f "$TMP_ENV"

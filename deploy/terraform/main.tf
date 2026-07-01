@@ -102,6 +102,27 @@ resource "aws_iam_role_policy" "bedrock" {
   })
 }
 
+# Lets the Docker awslogs driver ship container logs to CloudWatch (persist across
+# redeploys). Scoped to this project's log groups. CloudWatch Logs free tier (5GB
+# ingest + 5GB storage/mo) covers this app's volume.
+resource "aws_iam_role_policy" "cloudwatch_logs" {
+  name = "${var.project}-cloudwatch-logs"
+  role = aws_iam_role.this.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams",
+      ]
+      Resource = "arn:aws:logs:*:*:log-group:/${var.project}/*"
+    }]
+  })
+}
+
 resource "aws_iam_instance_profile" "this" {
   name = "${var.project}-profile"
   role = aws_iam_role.this.name
