@@ -25,3 +25,9 @@ temp_a
 # Local docker-compose data dir (DATA_DIR=./data) and browser-test artifacts
 /data/
 .playwright-mcp/
+# Terraform
+deploy/terraform/.terraform/
+deploy/terraform/*.tfstate
+deploy/terraform/*.tfstate.*
+deploy/terraform/terraform.tfvars
+deploy/terraform/*.tfplan
