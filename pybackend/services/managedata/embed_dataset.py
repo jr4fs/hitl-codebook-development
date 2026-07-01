@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import re
 from typing import TYPE_CHECKING, List, Optional, Tuple
-from .model_singleton import get_embedding_model
+from .model_singleton import get_embedding_model, EMBEDDINGS_PROVIDER
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
@@ -111,7 +111,8 @@ class DatasetEmbedding:
       database_df["row_id"] = range(len(database_df))
          
       # compute embeddings (model already carries its device; API models ignore it)
-      print(f"Embedding {len(database_df)} texts with {self.sentence_model}...")
+      backend = self.sentence_model if EMBEDDINGS_PROVIDER in ("", "local") else f"{EMBEDDINGS_PROVIDER} API"
+      print(f"Embedding {len(database_df)} texts with {backend}...")
       vectors = model.encode(
          database_df["text"].tolist(),
          batch_size=batch_size,
