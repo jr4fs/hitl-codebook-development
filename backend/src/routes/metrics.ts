@@ -4,6 +4,9 @@ import {
   generateSampleMetrics,
   generateMetadataMetrics,
   generateBatchMetrics,
+  runValEvaluation,
+  cancelValEvaluation,
+  getValEvalProgress,
   downloadMetricsFile,
 } from "../services/metrics.service";
 
@@ -14,6 +17,9 @@ router.use(authenticateToken);
 router.post("/samples", generateSampleMetrics);
 router.post("/metadata", generateMetadataMetrics);
 router.post("/batches", generateBatchMetrics);
+router.post("/val-eval", runValEvaluation);
+router.post("/val-eval/cancel", cancelValEvaluation);
+router.get("/val-eval/progress/:taskId", getValEvalProgress);
 router.get("/download/:filename", downloadMetricsFile);
 
 export default router;

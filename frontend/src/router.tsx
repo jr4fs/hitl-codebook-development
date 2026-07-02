@@ -11,6 +11,7 @@ import NewAnnotationTaskPage from "./pages/NewAnnotationTaskPage";
 import AnnotateDatasetPage from "./pages/AnnotateDatasetPage";
 import CodebookLandingPage from "./pages/CodebookLandingPage";
 import AnnotateDatasetLandingPage from "./pages/AnnotateDatasetLandingPage";
+import DashboardPage from "./pages/DashboardPage";
 
 export const router = createBrowserRouter([
   {
@@ -62,6 +63,10 @@ export const router = createBrowserRouter([
           {
             path: "/annotate-dataset-landing",
             element: <AnnotateDatasetLandingPage />,
+          },
+          {
+            path: "/dashboard/:taskId",
+            element: <DashboardPage />,
           },
         ],
       },

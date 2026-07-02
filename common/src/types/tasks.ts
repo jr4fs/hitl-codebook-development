@@ -5,6 +5,14 @@ export interface LabelItem {
   guidelines?: string;
 }
 
+export interface EvalResults {
+  predictionsFilename: string;
+  macroF1: number;
+  accuracy: number;
+  numSamples: number;
+  completedAt: string;
+}
+
 export interface Task {
   _id?: string; // MongoDB ObjectId as string
   name: string;
@@ -24,6 +32,7 @@ export interface Task {
   file: string; // filename stored in /backend/uploads
   restFile?: string;
   valFile?: string;
+  evalResults?: EvalResults;
   createdAt: string; // ISO 8601 timestamp
   updatedAt?: string; // ISO 8601 timestamp
 }

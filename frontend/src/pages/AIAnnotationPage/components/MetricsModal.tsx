@@ -1,4 +1,6 @@
 import { Button, Modal, Stack, Text } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
+import { cancelValEval } from "../../../services/metrics.service";
 import { MetricsFiles } from "../types";
 
 interface MetricsModalProps {
@@ -7,9 +9,11 @@ interface MetricsModalProps {
   files: MetricsFiles;
   onClose: () => void;
   onDownload: (filename?: string) => void;
+  taskId?: string;
 }
 
-export function MetricsModal({ opened, isLight, files, onClose, onDownload }: MetricsModalProps) {
+export function MetricsModal({ opened, isLight, files, onClose, onDownload, taskId }: MetricsModalProps) {
+  const navigate = useNavigate();
   return (
     <Modal
       opened={opened}
@@ -54,6 +58,19 @@ export function MetricsModal({ opened, isLight, files, onClose, onDownload }: Me
         >
           Download metadata metrics
         </Button>
+        {taskId && (
+          <Button
+            fullWidth
+            variant="filled"
+            color="teal"
+            onClick={async () => {
+              try { await cancelValEval(taskId); } catch {}
+              navigate(`/dashboard/${taskId}`);
+            }}
+          >
+            Go to Dashboard
+          </Button>
+        )}
       </Stack>
     </Modal>
   );

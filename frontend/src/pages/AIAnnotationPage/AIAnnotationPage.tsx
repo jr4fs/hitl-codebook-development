@@ -1,4 +1,4 @@
-import { Badge, Box, Container, Grid, Group, Paper, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
+import { Badge, Box, Button, Container, Grid, Group, Paper, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
 import PageIntro from "../../components/common/PageIntro";
 import StepTrackerBanner from "../../components/StepTrackerBanner";
 import styles from "./AIAnnotationPage.module.css";
@@ -11,6 +11,8 @@ import { ErrorStatus, LoadingStatus } from "./subpages/AIAnnotationStatusView";
 export default function AnnotationPage() {
   const { colorScheme } = useMantineColorScheme();
   const isLight = colorScheme === "light";
+
+  const showRunEvalButton = import.meta.env.VITE_APP_MODE !== "pilot";
 
   const mutedColor = isLight ? "#3b4750" : "dimmed";
   const surface = isLight ? "#ffffff" : "var(--app-surface)";
@@ -74,6 +76,21 @@ export default function AnnotationPage() {
               </Text>
             </div>
             <Group gap="xs" className={styles.taskMetrics} wrap="nowrap">
+              {showRunEvalButton && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="teal"
+                  disabled={controller.isRunningValEval}
+                  onClick={() => controller.handleRunValEval()}
+                >
+                  {controller.isRunningValEval
+                    ? controller.valEvalProgress.total > 0
+                      ? `${controller.valEvalProgress.completed} / ${controller.valEvalProgress.total}`
+                      : "Starting..."
+                    : "Run Evaluation"}
+                </Button>
+              )}
               <Tooltip
                 label={`Current Accuracy: ${controller.totalAttempted > 0 ? Math.round((controller.totalCorrect / controller.totalAttempted) * 100) : 0}% (${controller.totalCorrect}/${controller.totalAttempted})`}
               >
@@ -128,6 +145,7 @@ export default function AnnotationPage() {
           files={controller.metricsFiles}
           onClose={() => controller.setMetricsModalOpen(false)}
           onDownload={controller.handleDownloadMetrics}
+          taskId={controller.task?._id}
         />
 
         <PageIntro
