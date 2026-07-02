@@ -32,6 +32,9 @@ services:
       APP_MODE: ${APP_MODE:-DEFAULT}
       # Max concurrent dataset-sampling jobs (memory guard). Extra uploads queue.
       MAX_CONCURRENT_SAMPLING: ${MAX_CONCURRENT_SAMPLING:-1}
+      # Randomly subsample the candidate pool to this many rows before embedding.
+      # Empty/0 = disabled (embed everything, the default).
+      SAMPLING_CANDIDATE_CAP: ${SAMPLING_CANDIDATE_CAP:-}
       # Embedding backend: local (default, in-process mpnet) | bedrock | openai.
       # Set to bedrock/openai to offload embeddings and run on a smaller VM.
       EMBEDDINGS_PROVIDER: ${EMBEDDINGS_PROVIDER:-local}
