@@ -112,7 +112,7 @@ BEDROCK_REGION=$AWS_REGION
 APP_MODE=${APP_MODE:-DEFAULT}
 MAX_CONCURRENT_SAMPLING=${MAX_CONCURRENT_SAMPLING:-1}
 SAMPLING_CANDIDATE_CAP=${SAMPLING_CANDIDATE_CAP:-}
-VITE_APP_MODE=
+VITE_APP_MODE=${VITE_APP_MODE:-}
 AWS_REGION=$AWS_REGION
 # Ship container logs to CloudWatch; compose reads COMPOSE_FILE so every command includes the override.
 COMPOSE_FILE=docker-compose.yml:deploy/docker-compose.awslogs.yml
