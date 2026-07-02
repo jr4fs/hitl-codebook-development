@@ -77,6 +77,8 @@ services:
       ML_SERVICE_URL: http://pybackend:8000
       PYBACKEND_URL: http://pybackend:8000
       ALLOW_SIGNUP: ${ALLOW_SIGNUP:-false}
+      # Email of the single admin account (gates /api/admin + the /admin UI).
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       APP_MODE: ${APP_MODE:-DEFAULT}
     volumes: *data-volumes
     expose:
