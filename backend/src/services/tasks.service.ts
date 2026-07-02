@@ -22,6 +22,7 @@ import fs from "fs/promises";
 import path from "path";
 import dotenv from "dotenv";
 import axios from "axios";
+import zlib from "zlib";
 import { AnnotationItem } from "@common/types/annotations";
 dotenv.config();
 
@@ -889,12 +890,30 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     // unlabeled (rest/d_all) set: it can be hundreds of thousands of rows and
     // parsing it synchronously freezes the event loop (and the whole UI). We read
     // only its header for validation and estimate its row count from newlines.
+    // The client may gzip the (large) unlabeled CSV to speed the upload; decompress
+    // here before parsing/writing. `d_all_gzip` is a form field set by the frontend.
+    let dAllBuffer = dAllFile.buffer;
+    if (String((req.body as any)?.d_all_gzip).toLowerCase() === "true") {
+      try {
+        dAllBuffer = zlib.gunzipSync(dAllFile.buffer);
+        console.log(
+          `[uploadTaskBundle] Decompressed d_all: ${dAllFile.buffer.length} -> ${dAllBuffer.length} bytes`,
+        );
+      } catch (e) {
+        console.error("[uploadTaskBundle] gunzip failed:", e);
+        return res.status(400).json({
+          success: false,
+          message: "Uploaded dataset was marked gzip but could not be decompressed.",
+        });
+      }
+    }
+
     console.log("[uploadTaskBundle] Parsing val CSV + reading rest header...");
     const valRows = parseCsvBuffer(dValFile.buffer) as Array<
       Record<string, unknown>
     >;
-    const restColumns = getCsvColumns(dAllFile.buffer);
-    const restRowCount = countCsvDataRows(dAllFile.buffer);
+    const restColumns = getCsvColumns(dAllBuffer);
+    const restRowCount = countCsvDataRows(dAllBuffer);
     console.log(
       `[uploadTaskBundle] Parsed. Val rows: ${valRows.length}, Rest rows (approx): ${restRowCount}`,
     );
@@ -946,7 +965,7 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const valPath = getValDatasetPath(valFilename);
 
     console.log(`[uploadTaskBundle] Writing dall file to ${sharedUploadsPath}`);
-    await fs.writeFile(sharedUploadsPath, dAllFile.buffer, "utf-8");
+    await fs.writeFile(sharedUploadsPath, dAllBuffer, "utf-8");
     console.log(`[uploadTaskBundle] Writing val file to ${valPath}`);
     await fs.writeFile(valPath, dValFile.buffer, "utf-8");
 

@@ -73,6 +73,7 @@ export async function uploadTaskBundle(params: {
   modelName: string;
   coverageN?: number;
   useRepresentativeSampling?: boolean;
+  onProgress?: (percent: number) => void;
 }): Promise<{
   success: boolean;
   message?: string;
@@ -92,7 +93,26 @@ export async function uploadTaskBundle(params: {
 }> {
   const formData = new FormData();
   formData.append("d_val", params.dValFile);
-  formData.append("d_all", params.dAllFile);
+
+  // Gzip the large unlabeled CSV in the browser to cut upload time (text CSVs
+  // compress ~5-10x). The server decompresses when d_all_gzip=true. Falls back to
+  // the raw file if the browser lacks CompressionStream.
+  let dAllPart: Blob = params.dAllFile;
+  let dAllGzip = false;
+  if (typeof CompressionStream !== "undefined") {
+    try {
+      const compressed = params.dAllFile.stream().pipeThrough(new CompressionStream("gzip"));
+      dAllPart = await new Response(compressed).blob();
+      dAllGzip = true;
+    } catch {
+      dAllPart = params.dAllFile;
+      dAllGzip = false;
+    }
+  }
+  // Keep the original .csv filename so the server derives the stored name correctly.
+  formData.append("d_all", dAllPart, params.dAllFile.name);
+  formData.append("d_all_gzip", String(dAllGzip));
+
   if (params.taskJsonFile) {
     formData.append("task_json", params.taskJsonFile);
   }
@@ -118,6 +138,11 @@ export async function uploadTaskBundle(params: {
   const { data } = await apiClient.post("/api/tasks/create", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
+    },
+    onUploadProgress: (event) => {
+      if (params.onProgress && event.total) {
+        params.onProgress(Math.round((event.loaded / event.total) * 100));
+      }
     },
   });
   return data;

@@ -8,6 +8,7 @@ import {
   Group,
   NumberInput,
   Paper,
+  Progress,
   Select,
   Stack,
   Switch,
@@ -162,6 +163,7 @@ export default function DatasetUploadPage() {
   const [labelsJsonFile, setLabelsJsonFile] = useState<File | null>(null);
   const [config, setConfig] = useState<UploadConfig>(defaultUploadConfig);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -252,10 +254,12 @@ export default function DatasetUploadPage() {
     }
 
     setError(null);
+    setUploadProgress(0);
     setIsUploading(true);
 
     try {
       const response = await uploadTaskBundle({
+        onProgress: setUploadProgress,
         dValFile,
         dAllFile,
         taskJsonFile: taskDetailsMode === "file" ? taskJsonFile ?? undefined : undefined,
@@ -591,6 +595,16 @@ export default function DatasetUploadPage() {
                     Upload bundle
                   </Button>
                 </GuidedTourStep>
+                {isUploading && (
+                  <Stack gap={4} mt="xs">
+                    <Progress value={uploadProgress} animated striped />
+                    <Text size="xs" c="dimmed">
+                      {uploadProgress < 100
+                        ? `Uploading… ${uploadProgress}%`
+                        : "Processing upload…"}
+                    </Text>
+                  </Stack>
+                )}
               </div>
             </Group>
           </Stack>
