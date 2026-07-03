@@ -29,7 +29,7 @@ export AWS_PROFILE AWS_DEFAULT_REGION="$AWS_REGION"
 INSTANCE_TYPE="${INSTANCE_TYPE:-t3.medium}"
 PUBLIC_KEY_PATH="${PUBLIC_KEY_PATH:-~/.ssh/id_ed25519.pub}"
 ENABLE_BEDROCK="${ENABLE_BEDROCK:-false}"
-GIT_REPO="${GIT_REPO:-git@github.com:chandan-m/annotation_tool.git}"
+GIT_REPO="${GIT_REPO:-git@github.com:jr4fs/annotation_tool.git}"
 GIT_BRANCH="${GIT_BRANCH:-deploy-single-vm}"
 
 # ---- SSH CIDR auto-detect ----

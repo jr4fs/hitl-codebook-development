@@ -53,7 +53,7 @@ echo
 echo " 2) Log out/in once (or run 'newgrp docker') so docker works without sudo."
 echo
 echo " 3) Then:"
-echo "      git clone git@github.com:chandan-m/annotation_tool.git"
+echo "      git clone git@github.com:jr4fs/annotation_tool.git"
 echo "      cd annotation_tool && git checkout deploy-single-vm"
 echo "      cp deploy/.env.example .env    # then edit (see DEPLOY_AWS.md)"
 echo "      docker compose up -d --build"
