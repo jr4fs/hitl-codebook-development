@@ -57,6 +57,10 @@ export const router = createBrowserRouter([
             element: <NewAnnotationTaskPage />,
           },
           {
+            path: "/new-annotation/:taskId",
+            element: <NewAnnotationTaskPage />,
+          },
+          {
             path: "/annotate-dataset/:id",
             element: <AnnotateDatasetPage />,
           },

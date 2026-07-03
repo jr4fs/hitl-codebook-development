@@ -95,11 +95,11 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   const annotationListRef = useRef<HTMLDivElement | null>(null);
 
   const codebookTasks = useMemo(
-    () => tasks.filter((task) => !task.codebookSourceTaskId),
+    () => tasks.filter((task) => task.status !== "auto_label_complete" && !task.codebookSourceTaskId),
     [tasks],
   );
   const annotationOnlyTasks = useMemo(
-    () => tasks.filter((task) => Boolean(task.codebookSourceTaskId)),
+    () => tasks.filter((task) => task.status === "auto_label_complete"),
     [tasks],
   );
 
@@ -267,10 +267,10 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   }, [updateListOverflow, updateSectionLayout]);
 
   const renderTaskRows = useCallback(
-    (sectionTasks: Task[], routeBuilder: TaskRouteBuilder) =>
+    (sectionTasks: Task[], routeBuilder: TaskRouteBuilder, disableActive = false) =>
       sectionTasks.map((task) => {
         const taskPath = routeBuilder(task);
-        const isActive = pathname === taskPath;
+        const isActive = !disableActive && pathname === taskPath;
         return (
           <div key={task._id} className="sidebar-task-row-wrap">
             <Button
@@ -346,6 +346,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
       listRef,
       listHeight,
       routeBuilder,
+      disableActive = false,
     }: {
       keyName: "codebook" | "annotation";
       title: string;
@@ -353,6 +354,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
       listRef: MutableRefObject<HTMLDivElement | null>;
       listHeight: number;
       routeBuilder: TaskRouteBuilder;
+      disableActive?: boolean;
     }) => (
       <Box className="sidebar-task-group">
         <Button
@@ -392,7 +394,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
               onScroll={() => updateListOverflow(keyName)}
             >
               <Stack pl="sm" pr="sm" pt={2} pb={2} gap={4}>
-                {renderTaskRows(tasksList, routeBuilder)}
+                {renderTaskRows(tasksList, routeBuilder, disableActive)}
               </Stack>
             </div>
           </Box>
@@ -643,11 +645,11 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
 
               {renderTaskSection({
                 keyName: "annotation",
-                title: "Data Annotation",
+                title: "Auto Annotation",
                 tasksList: annotationOnlyTasks,
                 listRef: annotationListRef,
                 listHeight: listHeights.annotation,
-                routeBuilder: (task) => `/annotate-dataset/${task._id}`,
+                routeBuilder: (task) => `/new-annotation/${task._id}`,
               })}
             </>
           )}

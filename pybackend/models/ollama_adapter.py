@@ -90,6 +90,21 @@ class ValEvalSampleResult(BaseModel):
 class ValEvalResponse(BaseModel):
     results: List[ValEvalSampleResult]
 
+
+class AutoLabelRequest(BaseModel):
+    file_path: str            # filename relative to shared_uploads/
+    text_column: str          # CSV column containing text to annotate
+    labels: List[Label]
+    task_definition: str
+    model_name: str
+    user_input: Optional[str] = None
+    task_type: str
+    job_id: Optional[str] = None
+
+
+class AutoLabelJobResponse(BaseModel):
+    job_id: str
+
 configs = {
     "mistral:7b": {
         "temperature": 0.4,
