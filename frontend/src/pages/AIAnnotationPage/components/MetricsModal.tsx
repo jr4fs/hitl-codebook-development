@@ -1,4 +1,6 @@
 import { Button, Modal, Stack, Text } from "@mantine/core";
+import { useNavigate } from "react-router-dom";
+import { cancelValEval } from "../../../services/metrics.service";
 import { MetricsFiles } from "../types";
 
 interface MetricsModalProps {
@@ -7,9 +9,20 @@ interface MetricsModalProps {
   files: MetricsFiles;
   onClose: () => void;
   onDownload: (filename?: string) => void;
+  onExportCodebook: () => void;
+  taskId?: string;
 }
 
-export function MetricsModal({ opened, isLight, files, onClose, onDownload }: MetricsModalProps) {
+export function MetricsModal({
+  opened,
+  isLight,
+  files,
+  onClose,
+  onDownload,
+  onExportCodebook,
+  taskId
+}: MetricsModalProps) {
+  const navigate = useNavigate();
   return (
     <Modal
       opened={opened}
@@ -39,7 +52,11 @@ export function MetricsModal({ opened, isLight, files, onClose, onDownload }: Me
       }}
     >
       <Stack gap="sm">
-        <Text>Review completed! You can download the captured metrics below.</Text>
+        <Text mt="xs">Review completed! You can download the generated codebook metrics here.</Text>
+        <Button fullWidth onClick={onExportCodebook}>
+          Export codebook
+        </Button>
+        <Text mt="xs">You can download the captured metrics below.</Text>
         <Button fullWidth variant="light" onClick={() => onDownload(files.sample)} disabled={!files.sample}>
           Download sample metrics
         </Button>
@@ -54,6 +71,19 @@ export function MetricsModal({ opened, isLight, files, onClose, onDownload }: Me
         >
           Download metadata metrics
         </Button>
+        {taskId && (
+          <Button
+            fullWidth
+            variant="filled"
+            color="teal"
+            onClick={async () => {
+              try { await cancelValEval(taskId); } catch {}
+              navigate(`/dashboard/${taskId}`);
+            }}
+          >
+            Go to Dashboard
+          </Button>
+        )}
       </Stack>
     </Modal>
   );

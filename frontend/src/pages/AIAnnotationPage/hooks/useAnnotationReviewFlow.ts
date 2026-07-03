@@ -355,7 +355,8 @@ export function useAnnotationReviewFlow({
     if (currentIndex < totalSamples - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      setCurrentIndex(totalSamples);
+      // Keep focus on last sample after completion to avoid an empty n+1/n state.
+      setCurrentIndex(Math.max(totalSamples - 1, 0));
     }
   };
 

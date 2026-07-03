@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { CreateTaskRequest, Task } from "@common/types/tasks";
+import { CreateAutoLabelTaskRequest, CreateTaskRequest, StartAutoLabelJobRequest, Task } from "@common/types/tasks";
 import { EmbedDatasetRequest } from "@common/types/embedding";
 import { AnonymizeConfig } from "@common/types/anonymize";
 import { getCollection } from "./database.service";
@@ -15,6 +15,8 @@ import {
   ensureUploadsDir,
   generateUploadFilename,
   getUploadsPath,
+  ensureAnnotationOutputsDir,
+  getAnnotationOutputPath,
 } from "../utils/fileUpload";
 import { ObjectId } from "mongodb";
 import Papa from "papaparse";
@@ -22,6 +24,7 @@ import fs from "fs/promises";
 import path from "path";
 import dotenv from "dotenv";
 import axios from "axios";
+import zlib from "zlib";
 import { AnnotationItem } from "@common/types/annotations";
 dotenv.config();
 
@@ -47,6 +50,9 @@ const CONFIG_DOC_ID = "global";
 const TASK_JSON_REQUIRED_KEYS = ["taskname", "description"];
 const GENERATED_CODEBOOKS_DIR = "generated_codebooks";
 const ML_BASE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
+// Backstop so a hung ML request can't leave a task pending forever. A dropped
+// connection (e.g. pybackend restart) already rejects fast; this bounds true hangs.
+const SAMPLING_TIMEOUT_MS = Number(process.env.SAMPLING_TIMEOUT_MS) || 20 * 60 * 1000;
 
 /** Built-in "not relevant" label added by default to all upload-task-bundle tasks */
 const NOT_RELEVANT_LABEL = {
@@ -121,6 +127,31 @@ function parseCsvBuffer(buffer: Buffer): any[] {
     console.error("Error in parseCsvBuffer:", error);
     throw error;
   }
+}
+
+// Read ONLY the header row of a CSV (Papa `preview` stops after one row) so large
+// uploads don't get fully materialized on the event loop just to validate columns.
+function getCsvColumns(buffer: Buffer): string[] {
+  const result = Papa.parse(buffer.toString("utf-8"), {
+    header: true,
+    preview: 1,
+    skipEmptyLines: true,
+  });
+  return ((result.meta?.fields as string[] | undefined) ?? []).map((f) => f);
+}
+
+// Approximate a CSV's data-row count by scanning newlines — cheap and non-blocking
+// vs. building every row object. Used only for the informational upload summary,
+// so exactness (quoted fields with embedded newlines) is not required.
+function countCsvDataRows(buffer: Buffer): number {
+  if (buffer.length === 0) return 0;
+  let newlines = 0;
+  for (let i = 0; i < buffer.length; i++) {
+    if (buffer[i] === 0x0a) newlines++;
+  }
+  const endsWithNewline = buffer[buffer.length - 1] === 0x0a;
+  const lines = endsWithNewline ? newlines : newlines + 1;
+  return Math.max(0, lines - 1); // exclude the header row
 }
 
 function parseTaskJson(buffer: Buffer): {
@@ -236,6 +267,31 @@ function getColumnsFromRows(rows: Array<Record<string, unknown>>): string[] {
   return clean_cols;
 }
 
+// On boot, any task still "sampling_pending" is orphaned: its in-flight sampling
+// request died with the previous process (there is no running job to resume). Mark
+// them failed so the UI stops spinning. New tasks created after boot are unaffected.
+export async function failOrphanedSampling() {
+  try {
+    const coll = getCollection<Task>(TASKS_COLLECTION);
+    const res = await coll.updateMany(
+      { status: "sampling_pending" },
+      {
+        $set: {
+          status: "sampling_error",
+          updatedAt: new Date().toISOString(),
+        } as Partial<Task>,
+      },
+    );
+    if (res.modifiedCount > 0) {
+      console.log(
+        `[startup] Marked ${res.modifiedCount} orphaned sampling_pending task(s) as sampling_error`,
+      );
+    }
+  } catch (error) {
+    console.error("[startup] failOrphanedSampling error:", error);
+  }
+}
+
 async function triggerSamplingInBackground(
   params: {
     taskId: string;
@@ -247,7 +303,9 @@ async function triggerSamplingInBackground(
   const filter = { _id: new ObjectId(params.taskId) as any, userID: params.userID };
 
   try {
-    await axios.post(`${ML_BASE_URL}/embedding/sample`, params.payload);
+    await axios.post(`${ML_BASE_URL}/embedding/sample`, params.payload, {
+      timeout: SAMPLING_TIMEOUT_MS,
+    });
     await taskDetailsCollection.updateOne(filter, {
       $set: {
         status: "ready",
@@ -762,6 +820,9 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const dAllFile = files?.d_all?.[0];
     const taskJsonFile = files?.task_json?.[0];
     const labelsJsonFile = files?.labels_json?.[0];
+    const taskNameField = req.body.task_name as string | undefined;
+    const taskDescriptionField = req.body.task_description as string | undefined;
+    const taskTypeField = req.body.task_type as string | undefined;
     const textColumn = req.body.text_column as string | undefined;
     const labelColumn = req.body.label_column as string | undefined;
     const modelName = req.body.model_name as string | undefined;
@@ -769,7 +830,6 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     if (
       !dValFile ||
       !dAllFile ||
-      !taskJsonFile ||
       !labelsJsonFile ||
       !labelColumn
     ) {
@@ -777,21 +837,49 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
         d_val: !!dValFile,
         d_all: !!dAllFile,
         task_json: !!taskJsonFile,
+        task_name: !!taskNameField,
+        task_description: !!taskDescriptionField,
         labels_json: !!labelsJsonFile,
         labelColumn: !!labelColumn,
       });
       return res.status(400).json({
         success: false,
         message:
-          "Missing files. Expected d_val, d_all, task_json, labels_json and label column",
+          "Missing fields. Expected d_val, d_all, labels_json, label column, and either task_json or task_name + task_description",
       });
     }
 
-    // Parse Task JSON
-    console.log("[uploadTaskBundle] Parsing task_json...");
-    const taskJsonRaw = taskJsonFile.buffer.toString("utf-8");
-    const taskInfo = parseTaskJson(taskJsonFile.buffer);
-    console.log("[uploadTaskBundle] Task Info parsed:", taskInfo.name);
+    let taskJsonRaw = "";
+    let taskInfo: {
+      name: string;
+      description: string;
+      type: Task["type"];
+    };
+    if (taskJsonFile) {
+      console.log("[uploadTaskBundle] Parsing task_json...");
+      taskJsonRaw = taskJsonFile.buffer.toString("utf-8");
+      taskInfo = parseTaskJson(taskJsonFile.buffer);
+      console.log("[uploadTaskBundle] Task Info parsed from file:", taskInfo.name);
+    } else {
+      const name = String(taskNameField ?? "").trim();
+      const description = String(taskDescriptionField ?? "").trim();
+      if (!name || !description) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Task name and description are required when task_json is not provided.",
+        });
+      }
+      const type: Task["type"] =
+        taskTypeField === "Single-class" ? "Single-class" : "Multiclass";
+      taskInfo = { name, description, type };
+      taskJsonRaw = JSON.stringify(
+        { taskname: name, description, type },
+        null,
+        2,
+      );
+      console.log("[uploadTaskBundle] Task Info parsed from form fields:", taskInfo.name);
+    }
 
     // Parse Labels JSON
     console.log("[uploadTaskBundle] Parsing labels_json...");
@@ -800,22 +888,41 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const labels = ensureNotRelevantLabel(parsedLabels);
     console.log("[uploadTaskBundle] Labels parsed, count:", labels.length);
 
-    // Parse CSVs
-    console.log("[uploadTaskBundle] Parsing CSV files...");
+    // Parse the labeled (val) set fully — it is small. Do NOT materialize the
+    // unlabeled (rest/d_all) set: it can be hundreds of thousands of rows and
+    // parsing it synchronously freezes the event loop (and the whole UI). We read
+    // only its header for validation and estimate its row count from newlines.
+    // The client may gzip the (large) unlabeled CSV to speed the upload; decompress
+    // here before parsing/writing. `d_all_gzip` is a form field set by the frontend.
+    let dAllBuffer = dAllFile.buffer;
+    if (String((req.body as any)?.d_all_gzip).toLowerCase() === "true") {
+      try {
+        dAllBuffer = zlib.gunzipSync(dAllFile.buffer);
+        console.log(
+          `[uploadTaskBundle] Decompressed d_all: ${dAllFile.buffer.length} -> ${dAllBuffer.length} bytes`,
+        );
+      } catch (e) {
+        console.error("[uploadTaskBundle] gunzip failed:", e);
+        return res.status(400).json({
+          success: false,
+          message: "Uploaded dataset was marked gzip but could not be decompressed.",
+        });
+      }
+    }
+
+    console.log("[uploadTaskBundle] Parsing val CSV + reading rest header...");
     const valRows = parseCsvBuffer(dValFile.buffer) as Array<
       Record<string, unknown>
     >;
-    const restRows = parseCsvBuffer(dAllFile.buffer) as Array<
-      Record<string, unknown>
-    >;
+    const restColumns = getCsvColumns(dAllBuffer);
+    const restRowCount = countCsvDataRows(dAllBuffer);
     console.log(
-      `[uploadTaskBundle] CSVs parsed. Val rows: ${valRows.length}, Rest rows: ${restRows.length}`,
+      `[uploadTaskBundle] Parsed. Val rows: ${valRows.length}, Rest rows (approx): ${restRowCount}`,
     );
 
     // Validate Columns
     console.log("[uploadTaskBundle] Validating columns...");
     const valColumns = getColumnsFromRows(valRows);
-    const restColumns = getColumnsFromRows(restRows);
 
     if (textColumn) {
       const hasValText = valColumns.includes(textColumn);
@@ -860,7 +967,7 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     const valPath = getValDatasetPath(valFilename);
 
     console.log(`[uploadTaskBundle] Writing dall file to ${sharedUploadsPath}`);
-    await fs.writeFile(sharedUploadsPath, dAllFile.buffer, "utf-8");
+    await fs.writeFile(sharedUploadsPath, dAllBuffer, "utf-8");
     console.log(`[uploadTaskBundle] Writing val file to ${valPath}`);
     await fs.writeFile(valPath, dValFile.buffer, "utf-8");
 
@@ -922,7 +1029,7 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
         columns: valColumns,
       },
       restSummary: {
-        rows: restRows.length,
+        rows: restRowCount,
         columns: restColumns,
       },
       task: {
@@ -1181,5 +1288,162 @@ export async function deleteTask(req: AuthRequest, res: Response) {
       success: false,
       message: error.message || "Failed to delete task",
     });
+  }
+}
+
+export async function downloadAnnotationOutput(req: AuthRequest, res: Response) {
+  const userId = req.user?.userId;
+  if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  const filename = req.params.filename;
+  if (!filename) return res.status(400).json({ success: false, message: "filename is required" });
+
+  try {
+    const safeName = path.basename(filename);
+    const filePath = getAnnotationOutputPath(safeName);
+    return res.download(filePath, safeName);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || "Failed to download" });
+  }
+}
+
+export async function uploadAnnotationOutput(req: AuthRequest, res: Response) {
+  const userId = req.user?.userId;
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Unauthorized - user not authenticated" });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file provided" });
+  }
+
+  try {
+    ensureAnnotationOutputsDir();
+    const filename = generateUploadFilename(req.file.originalname);
+    const outputPath = getAnnotationOutputPath(filename);
+    await fs.writeFile(outputPath, req.file.buffer);
+    return res.status(200).json({ success: true, filePath: filename });
+  } catch (error: any) {
+    console.error("Error saving annotation output:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to save annotation output" });
+  }
+}
+
+export async function createAutoLabelTask(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  if (!userID) {
+    return res.status(401).json({ success: false, message: "Unauthorized - user not authenticated" });
+  }
+
+  try {
+    const body = req.body as CreateAutoLabelTaskRequest;
+    const taskData: Omit<Task, "_id"> = {
+      name: body.name,
+      description: body.description,
+      type: body.type,
+      labels: body.labels,
+      codebook: body.codebook,
+      columns: body.columns,
+      file: body.file,
+      outputFile: body.outputFile,
+      inputFileName: body.inputFileName,
+      modelName: body.modelName,
+      labelColumn: body.labelColumn,
+      taskJsonRaw: body.taskJsonRaw,
+      labelsJsonRaw: body.labelsJsonRaw,
+      userID,
+      status: "auto_label_complete",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    const result = await collection.insertOne(taskData);
+    return res.status(201).json({ success: true, taskId: result.insertedId.toString() });
+  } catch (error: any) {
+    console.error("Error creating auto-label task:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to create auto-label task" });
+  }
+}
+
+export async function startAutoLabelJob(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  if (!userID) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  try {
+    const body = req.body as StartAutoLabelJobRequest;
+    const taskData: Omit<Task, "_id"> = {
+      name: body.name,
+      description: body.description,
+      type: body.type,
+      labels: body.labels,
+      codebook: body.codebook,
+      columns: [],
+      file: body.filePath,
+      inputFileName: body.inputFileName,
+      modelName: body.modelName,
+      labelColumn: body.textColumn,
+      taskJsonRaw: body.taskJsonRaw,
+      labelsJsonRaw: body.labelsJsonRaw,
+      userID,
+      status: "auto_labeling",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    const result = await collection.insertOne(taskData);
+    const taskId = result.insertedId.toString();
+
+    const userInput = Array.isArray(body.codebook) ? body.codebook.join("\n") : "";
+    void axios.post(
+      `${ML_BASE_URL}/inference/auto-label`,
+      {
+        file_path: body.filePath,
+        text_column: body.textColumn,
+        labels: body.labels,
+        task_definition: body.description,
+        model_name: body.modelName,
+        user_input: userInput || null,
+        task_type: body.type,
+        job_id: taskId,
+      },
+      { timeout: 3_600_000 },
+    ).catch((err: Error) => {
+      console.error("[startAutoLabelJob] Python job error:", err.message);
+    });
+
+    return res.status(201).json({ success: true, taskId });
+  } catch (error: any) {
+    console.error("[startAutoLabelJob] Error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to start auto-label job" });
+  }
+}
+
+export async function getAutoLabelProgress(req: AuthRequest, res: Response) {
+  const { taskId } = req.params;
+  try {
+    const { data } = await axios.get(
+      `${ML_BASE_URL}/inference/auto-label/progress/${taskId}`,
+      { timeout: 5_000 },
+    );
+    return res.json(data);
+  } catch {
+    return res.json({ completed: 0, total: 0, done: false });
+  }
+}
+
+export async function completeAutoLabel(req: AuthRequest, res: Response) {
+  try {
+    const { taskId } = req.params;
+    const { outputFile } = req.body as { outputFile: string };
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    await collection.updateOne(
+      { _id: new ObjectId(taskId) as any },
+      { $set: { status: "auto_label_complete", outputFile, updatedAt: new Date().toISOString() } },
+    );
+    return res.json({ success: true });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 }

@@ -32,32 +32,26 @@ export default function CodebookLandingPage() {
         <Badge className={styles.kicker} variant="light" color="gray">
           Guided Annotation Flow
         </Badge>
-        <Group align="flex-end" justify="space-between" wrap="wrap" mt="md">
-          <Title className={styles.title}>Annotation Assistant</Title>
-        </Group>
-        <Text className={styles.subtitle} mt="sm">
-          Build and refine a codebook from labeled and unlabeled datasets.
-        </Text>
-        <Group mt="lg" gap="sm">
-          <Button
-            size="md"
-            radius="xl"
-            className={styles.primaryCta}
-            rightSection={<IconArrowRight size={18} />}
-            onClick={() => navigate("/new-codebook")}
-          >
-            Start a new task
-          </Button>
-          <Button
-            size="md"
-            radius="xl"
-            variant="light"
-            className={styles.secondaryCta}
-            onClick={() => navigate("/")}
-          >
-            Back to workflow selection
-          </Button>
-        </Group>
+        <div className={styles.heroGrid}>
+          <Paper className={styles.heroCard}>
+            <Title className={styles.title}>Annotation Assistant</Title>
+            <Text className={styles.subtitle} mt="sm">
+              Build, test, and refine a production-ready codebook from labeled and
+              unlabeled datasets in one streamlined workflow.
+            </Text>
+            <Group mt="lg" gap="sm">
+              <Button
+                size="md"
+                radius="xl"
+                className={styles.primaryCta}
+                rightSection={<IconArrowRight size={18} />}
+                onClick={() => navigate("/new-codebook")}
+              >
+                Start a new task
+              </Button>
+            </Group>
+          </Paper>
+        </div>
       </Container>
 
       <Container fluid id="flow" className={styles.flowSection}>
@@ -109,16 +103,22 @@ export default function CodebookLandingPage() {
                   Check AI predictions, mark correctness, and update rules in the codebook panel.
                 </Text>
                 <div className={styles.mockPanel}>
-                  <Text className={styles.mockPrompt}>
-                    “Client reports improved sleep after two weeks.”
-                  </Text>
+                  <div className={styles.sampleCard}>
+                    <Text className={styles.sampleCardLabel}>Sample post</Text>
+                    <Text className={styles.mockPrompt}>
+                      "Ad on Facebook Marketplace showing one belt made with pangolin leather. On sale."
+                    </Text>
+                  </div>
                   <Group justify="space-between" gap={6} wrap="nowrap">
-                    <span className={styles.predictionPill}>Predicted: Sleep improvement</span>
+                    <span className={styles.predictionPill}>Predicted: negative</span>
                     <span className={styles.statusPill}>Marked: Correct</span>
                   </Group>
-                  <Text className={styles.exampleLabel}>
-                    Rule added: If note mentions improved sleep -&gt; Sleep improvement
-                  </Text>
+                  <div className={styles.ruleCard}>
+                    <Text className={styles.sampleCardLabel}>Rule added</Text>
+                    <Text className={styles.exampleLabel}>
+                      If a post promotes pangolin products or sales, label it as negative toward conservation.
+                    </Text>
+                  </div>
                 </div>
               </Stack>
             </Paper>
@@ -151,9 +151,6 @@ export default function CodebookLandingPage() {
               </Stack>
             </Paper>
           </div>
-          <Text className={styles.walkthroughFootnote}>
-            Existing tasks remain accessible from the left sidebar.
-          </Text>
         </Paper>
       </Container>
     </Box>

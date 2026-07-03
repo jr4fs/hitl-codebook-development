@@ -1,5 +1,5 @@
 import { RuleSynthesisItem, RuleSynthesisRequest } from "@common/types/ruleSynthesis";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAITaskData } from "../../../hooks/useAITaskData";
 import { toast } from "../../../lib/toast";
@@ -8,6 +8,8 @@ import {
   generateBatchMetrics,
   generateMetadataMetrics,
   generateSampleMetrics,
+  getValEvalProgress,
+  runValEvaluation,
 } from "../../../services/metrics.service";
 import { ruleSynthesis } from "../../../services/ruleSynthesis.service";
 import { exportCodebookSnapshot, saveTaskCodebook } from "../../../services/tasks.service";
@@ -42,9 +44,31 @@ export const useAIAnnotationController = () => {
 
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const [metricsFiles, setMetricsFiles] = useState<MetricsFiles>({});
+  const [reviewCompleted, setReviewCompleted] = useState(false);
+  const [isRunningValEval, setIsRunningValEval] = useState(false);
+  const [valEvalProgress, setValEvalProgress] = useState<{ completed: number; total: number }>({ completed: 0, total: 0 });
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalAttempted, setTotalAttempted] = useState(0);
-  const [predictedAccuracy] = useState<number | null>(null);
+  const [predictedAccuracy, setPredictedAccuracy] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!task?._id) return;
+    let id: ReturnType<typeof setInterval>;
+    getValEvalProgress(task._id).then((p) => {
+      if (p.total > 0 && !p.done && p.completed < p.total) {
+        setIsRunningValEval(true);
+        setValEvalProgress({ completed: p.completed, total: p.total });
+        id = setInterval(async () => {
+          try {
+            const prog = await getValEvalProgress(task._id!);
+            setValEvalProgress({ completed: prog.completed, total: prog.total });
+            if (prog.done || prog.completed >= prog.total) { clearInterval(id); setIsRunningValEval(false); }
+          } catch {}
+        }, 1500);
+      }
+    }).catch(() => {});
+    return () => clearInterval(id);
+  }, [task?._id]);
 
   const handleDownloadMetrics = async (filename?: string) => {
     if (!filename) return;
@@ -143,6 +167,11 @@ export const useAIAnnotationController = () => {
   };
 
   const handleNextOrCommit = async () => {
+    if (reviewCompleted) {
+      setMetricsModalOpen(true);
+      return;
+    }
+
     const shouldGenerateMetrics = reviewState.isLastBatch;
     let committedCodebook: string[] = [];
 
@@ -184,6 +213,40 @@ export const useAIAnnotationController = () => {
       }
 
       setMetricsModalOpen(true);
+      setReviewCompleted(true);
+    }
+  };
+
+  const handleRunValEval = async () => {
+    if (!task?._id) return;
+    setIsRunningValEval(true);
+    setValEvalProgress({ completed: 0, total: 0 });
+
+    const taskId = task._id;
+    const pollInterval = setInterval(async () => {
+      try {
+        const progress = await getValEvalProgress(taskId);
+        setValEvalProgress({ completed: progress.completed, total: progress.total });
+        if (progress.done) clearInterval(pollInterval);
+      } catch {
+        // ignore transient polling errors
+      }
+    }, 1500);
+
+    try {
+      const res = await runValEvaluation(taskId, codebookState.codebook);
+      clearInterval(pollInterval);
+      if (res.success) {
+        if (res.macroF1 != null) setPredictedAccuracy(res.macroF1);
+        toast.success("Evaluation complete");
+      } else {
+        toast.error(res.message || "Evaluation failed");
+      }
+    } catch {
+      clearInterval(pollInterval);
+      toast.error("Evaluation failed");
+    } finally {
+      setIsRunningValEval(false);
     }
   };
 
@@ -200,6 +263,7 @@ export const useAIAnnotationController = () => {
     isReady,
     effectiveStatus: samplingState.effectiveStatus,
     samplingErrorMsg: samplingState.samplingErrorMsg,
+    samplingQueuePosition: samplingState.queuePosition,
 
     ...introState,
 
@@ -207,6 +271,9 @@ export const useAIAnnotationController = () => {
     metricsFiles,
     setMetricsModalOpen,
     handleDownloadMetrics,
+    isRunningValEval,
+    valEvalProgress,
+    handleRunValEval,
 
     isLoading: reviewState.isLoading,
     generatedLabels: reviewState.generatedLabels,
@@ -232,7 +299,24 @@ export const useAIAnnotationController = () => {
     actualBatchSize: reviewState.actualBatchSize,
     currentBatchStartIndex: reviewState.currentBatchStartIndex,
     isCommitStep: reviewState.currentBatchProgress === reviewState.actualBatchSize,
+    isCompleteStep:
+      reviewCompleted &&
+      reviewState.currentIndex === Math.max(reviewState.totalSamples - 1, 0),
     nextDisabled: reviewState.nextDisabled,
+
+    handleExportCodebookFromModal: async () => {
+      if (!task?._id) return;
+      try {
+        await exportCodebookSnapshot(
+          task._id,
+          codebookState.codebook,
+          codebookState.lastPromptUsed,
+        );
+        toast.success("Codebook exported.");
+      } catch (error: any) {
+        toast.error(error?.message || "Failed to export codebook.");
+      }
+    },
 
     handleNextOrCommit,
     goPrev: reviewState.goPrev,

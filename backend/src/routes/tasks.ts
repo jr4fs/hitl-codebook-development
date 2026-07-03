@@ -10,6 +10,12 @@ import {
   exportCodebookSnapshot,
   uploadTaskBundle,
   deleteTask,
+  createAutoLabelTask,
+  uploadAnnotationOutput,
+  downloadAnnotationOutput,
+  startAutoLabelJob,
+  getAutoLabelProgress,
+  completeAutoLabel,
 } from "../services/tasks.service";
 import { uploadCSV, uploadBundle } from "../utils/fileUpload";
 import { authenticateToken } from "../middleware/auth.middleware";
@@ -29,8 +35,8 @@ router.post(
   uploadBundle.fields([
     { name: "d_val", maxCount: 1 },
     { name: "d_all", maxCount: 1 },
-    { name: "task_json", maxCount: 1 },
     { name: "labels_json", maxCount: 1 },
+    { name: "task_json", maxCount: 1 },
   ]),
   uploadTaskBundle,
 );
@@ -41,14 +47,23 @@ router.post(
   uploadBundle.fields([
     { name: "d_val", maxCount: 1 },
     { name: "d_all", maxCount: 1 },
-    { name: "task_json", maxCount: 1 },
     { name: "labels_json", maxCount: 1 },
+    { name: "task_json", maxCount: 1 },
   ]),
   uploadTaskBundle,
 );
 
 // Create a new task
 router.post("/createTask", createTask);
+
+// Upload a labeled output CSV to annotation_outputs/
+router.post("/upload-output", uploadCSV.single("file"), uploadAnnotationOutput);
+
+// Download a labeled output CSV from annotation_outputs/
+router.get("/download-output/:filename", downloadAnnotationOutput);
+
+// Create an auto-label task record (stores metadata + output file reference)
+router.post("/createAutoLabelTask", createAutoLabelTask);
 
 // Save codebook for a task
 router.post("/saveCodebook", saveTaskCodebook);
@@ -69,5 +84,10 @@ router.get("/csv/:fileName", getCsvData);
 
 // Check if validation file exists
 router.get("/checkValFile/:fileName", checkValFileExists);
+
+// Backend-driven auto-label job endpoints
+router.post("/auto-label", startAutoLabelJob);
+router.get("/auto-label/progress/:taskId", getAutoLabelProgress);
+router.patch("/auto-label/complete/:taskId", completeAutoLabel);
 
 export default router;

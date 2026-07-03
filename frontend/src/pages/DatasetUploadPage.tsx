@@ -8,16 +8,18 @@ import {
   Group,
   NumberInput,
   Paper,
+  Progress,
   Select,
   Stack,
   Switch,
   Text,
+  Textarea,
   TextInput,
   Title,
   useMantineColorScheme,
 } from "@mantine/core";
 import {IconAlertCircle, IconArrowRight, IconBraces, IconFileTypeCsv, IconUpload,} from "@tabler/icons-react";
-import {type ReactNode, useCallback, useState} from "react";
+import {type ReactNode, useCallback, useState, useEffect} from "react";
 import {useNavigate} from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
 import GuidedTour, {GuidedTourStep} from "../components/common/GuidedTour";
@@ -26,6 +28,7 @@ import {LABELS_TEMPLATE, TASK_TEMPLATE, modelOptions} from "../constants/dataset
 import {toast} from "../lib/toast";
 import {uploadTaskBundle} from "../services/tasks.service";
 import {downloadContent} from "../utils/downloadContent";
+import { useDemo } from "../demo/DemoContext";
 import styles from "./DatasetUploadPage.module.css";
 
 interface UploadConfig {
@@ -57,6 +60,12 @@ interface RequiredFileCardProps {
     label: string;
     onClick: () => void;
   };
+  preSelectAction?: {
+    label: string;
+    onClick: () => void;
+  };
+  hideMeta?: boolean;
+  children?: ReactNode;
 }
 
 function RequiredFileCard({
@@ -69,6 +78,9 @@ function RequiredFileCard({
                             file,
                             onFileChange,
                             templateAction,
+                            preSelectAction,
+                            hideMeta,
+                            children,
                           }: RequiredFileCardProps) {
   return (
     <div className={styles.fileRow}>
@@ -86,15 +98,27 @@ function RequiredFileCard({
             {label}
           </Text>
         </Group>
-        <label htmlFor={inputId} className={styles.fileButton}>
-          <IconUpload size={14}/>
-          {selectLabel}
-        </label>
+        <Group gap={6} wrap="nowrap">
+          {preSelectAction ? (
+            <button
+              type="button"
+              className={styles.fileButtonAction}
+              onClick={preSelectAction.onClick}
+            >
+              {preSelectAction.label}
+            </button>
+          ) : null}
+          <label htmlFor={inputId} className={styles.fileButton}>
+            <IconUpload size={14}/>
+            {selectLabel}
+          </label>
+        </Group>
       </Group>
       <Text size="xs" className={styles.fileHint}>
         {hint}
       </Text>
-      {templateAction ? (
+      {children}
+      {!hideMeta && templateAction ? (
         <Group className={styles.fileMetaRow} wrap="nowrap">
           <Text
             size="xs"
@@ -111,14 +135,15 @@ function RequiredFileCard({
             {templateAction.label}
           </Button>
         </Group>
-      ) : (
+      ) : !hideMeta ? (
         <Text
           size="xs"
           className={`${styles.fileName} ${file ? styles.fileNameSelected : styles.fileNameMissing}`}
         >
           {file ? file.name : "No file selected"}
         </Text>
-      )}
+      ) : null
+      }
     </div>
   );
 }
@@ -127,25 +152,68 @@ export default function DatasetUploadPage() {
   const navigate = useNavigate();
   const {colorScheme} = useMantineColorScheme();
   const isLight = colorScheme === "light";
+  const { isDemo, tourOpen: demoTourOpen, setTourOpen: setDemoTourOpen } = useDemo();
 
   const [dValFile, setDValFile] = useState<File | null>(null);
   const [dAllFile, setDAllFile] = useState<File | null>(null);
   const [taskJsonFile, setTaskJsonFile] = useState<File | null>(null);
+  const [taskDetailsMode, setTaskDetailsMode] = useState<"file" | "manual">("file");
+  const [manualTaskName, setManualTaskName] = useState("");
+  const [manualTaskDescription, setManualTaskDescription] = useState("");
   const [labelsJsonFile, setLabelsJsonFile] = useState<File | null>(null);
   const [config, setConfig] = useState<UploadConfig>(defaultUploadConfig);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const {
     introOpen,
     introMode,
-    tourOpen,
+    tourOpen: pageTourOpen,
     setIntroOpen,
-    setTourOpen,
+    setTourOpen: setPageTourOpen,
     openHelpIntro,
   } = usePageIntroTour("hideStep1Intro");
 
-  const isReady = Boolean(dValFile && dAllFile && taskJsonFile && labelsJsonFile);
+  // In demo mode, use demo tour state; otherwise use page intro tour state
+  const tourOpen = isDemo ? demoTourOpen : pageTourOpen;
+  const setTourOpen = isDemo ? setDemoTourOpen : setPageTourOpen;
+
+  // Pre-fill demo form and set mock files on mount
+  useEffect(() => {
+    if (isDemo) {
+      setTaskDetailsMode("manual");
+      setManualTaskName("Pangolin Conservation Sentiment");
+      setManualTaskDescription("Classify social media posts about pangolin conservation as positive, negative, or neutral toward conservation.");
+      setConfig(prev => ({
+        ...prev,
+        selectedModel: "claude-3-5-sonnet",
+        textColumn: "translated_text",
+        labelColumn: "Final Label",
+      }));
+
+      // Create mock files for demo
+      const mockLabeledFile = new File(["mock"], "pangolin_labeled.csv", { type: "text/csv" });
+      const mockUnlabeledFile = new File(["mock"], "pangolin_unlabeled.csv", { type: "text/csv" });
+      const mockLabelsFile = new File(["mock"], "labels.json", { type: "application/json" });
+
+      setDValFile(mockLabeledFile);
+      setDAllFile(mockUnlabeledFile);
+      setLabelsJsonFile(mockLabelsFile);
+    }
+  }, [isDemo]);
+
+  // Auto-open tour on mount in demo mode (intro is skipped)
+  useEffect(() => {
+    if (isDemo) {
+      setDemoTourOpen(true);
+    }
+  }, [isDemo, setDemoTourOpen]);
+
+  const hasManualTaskDetails =
+    manualTaskName.trim().length > 0 && manualTaskDescription.trim().length > 0;
+  const hasTaskDetails = taskDetailsMode === "file" ? Boolean(taskJsonFile) : hasManualTaskDetails;
+  const isReady = Boolean(dValFile && dAllFile && hasTaskDetails && labelsJsonFile);
 
   const handleHelp = openHelpIntro;
 
@@ -160,6 +228,9 @@ export default function DatasetUploadPage() {
     setDValFile(null);
     setDAllFile(null);
     setTaskJsonFile(null);
+    setTaskDetailsMode("file");
+    setManualTaskName("");
+    setManualTaskDescription("");
     setLabelsJsonFile(null);
     setConfig(defaultUploadConfig);
     setError(null);
@@ -171,25 +242,31 @@ export default function DatasetUploadPage() {
     if (
       !dValFile ||
       !dAllFile ||
-      !taskJsonFile ||
+      !hasTaskDetails ||
       !labelsJsonFile ||
       !config.labelColumn ||
       !config.selectedModel
     ) {
       setError(
-        "Please provide all four files and label column as well as preferred model before continuing.",
+          "Please provide both CSVs, labels JSON, task details (JSON upload or manual entry), label column, and preferred model before continuing.",
       );
       return;
     }
 
     setError(null);
+    setUploadProgress(0);
     setIsUploading(true);
 
     try {
       const response = await uploadTaskBundle({
+        onProgress: setUploadProgress,
         dValFile,
         dAllFile,
-        taskJsonFile,
+        taskJsonFile: taskDetailsMode === "file" ? taskJsonFile ?? undefined : undefined,
+        taskName: taskDetailsMode === "manual" ? manualTaskName.trim() : undefined,
+        taskDescription:
+          taskDetailsMode === "manual" ? manualTaskDescription.trim() : undefined,
+        taskType: "Multiclass",
         labelsJsonFile,
         textColumn: config.textColumn,
         labelColumn: config.labelColumn,
@@ -233,8 +310,12 @@ export default function DatasetUploadPage() {
     config,
     dAllFile,
     dValFile,
+    hasTaskDetails,
     labelsJsonFile,
+    manualTaskDescription,
+    manualTaskName,
     navigate,
+    taskDetailsMode,
     taskJsonFile,
   ]);
 
@@ -256,7 +337,7 @@ export default function DatasetUploadPage() {
 
         <PageIntro
           mode={introMode}
-          opened={introOpen}
+          opened={isDemo ? false : introOpen}
           onClose={() => setIntroOpen(false)}
           title="Step 1: Upload your task files"
           description="Upload the labeled dataset, the unlabeled dataset, and the two JSON files. We will validate and move you to AI review."
@@ -268,11 +349,16 @@ export default function DatasetUploadPage() {
           <Stack gap="md">
             <Grid gutter="md" align="stretch">
               <Grid.Col span={{base: 12, md: 7}}>
-                <Paper className={styles.dropCard} radius="lg" h="100%">
-                  <Stack gap="sm">
-                    <Title order={4} className={styles.tableTitle}>
-                      Task config
-                    </Title>
+                <GuidedTourStep
+                  order={5}
+                  title="Configure your task"
+                  description="Select the model and specify which columns contain your text and labels."
+                >
+                  <Paper className={styles.dropCard} radius="lg" h="100%">
+                    <Stack gap="sm">
+                      <Title order={4} className={styles.tableTitle}>
+                        Task config
+                      </Title>
                     <Text size="sm" className={styles.tableMeta}>
                       Configure model and dataset columns before upload.
                     </Text>
@@ -349,6 +435,7 @@ export default function DatasetUploadPage() {
                     />
                   </Stack>
                 </Paper>
+                </GuidedTourStep>
               </Grid.Col>
               <Grid.Col span={{base: 12, md: 5}}>
                 <Paper className={styles.dropCard} radius="lg" h="100%">
@@ -362,40 +449,6 @@ export default function DatasetUploadPage() {
                     <Divider my={4} color={dividerColor}/>
                     <GuidedTourStep
                       order={1}
-                      title="Upload labeled data"
-                      description='A subset of the dataset with labels. It should include "text" and "task_label" columns.'
-                    >
-                      <RequiredFileCard
-                        inputId="labeled-dataset"
-                        accept=".csv,text/csv"
-                        icon={<IconFileTypeCsv size={18}/>}
-                        label="Labeled dataset"
-                        selectLabel="Select CSV"
-                        hint="CSV with text + task_label columns"
-                        file={dValFile}
-                        onFileChange={setDValFile}
-                      />
-                    </GuidedTourStep>
-
-                    <GuidedTourStep
-                      order={2}
-                      title="Upload unlabeled data"
-                      description='The remaining dataset without labels. It should include a "text".'
-                    >
-                      <RequiredFileCard
-                        inputId="unlabeled-dataset"
-                        accept=".csv,text/csv"
-                        icon={<IconFileTypeCsv size={18}/>}
-                        label="Unlabeled dataset"
-                        selectLabel="Select CSV"
-                        hint="CSV with text column only"
-                        file={dAllFile}
-                        onFileChange={setDAllFile}
-                      />
-                    </GuidedTourStep>
-
-                    <GuidedTourStep
-                      order={3}
                       title="Task details"
                       description="Provide the task name and description in JSON."
                     >
@@ -408,15 +461,54 @@ export default function DatasetUploadPage() {
                         hint="JSON with taskname + description"
                         file={taskJsonFile}
                         onFileChange={setTaskJsonFile}
-                        templateAction={{
-                          label: "Download template",
-                          onClick: () => downloadContent("task.json", TASK_TEMPLATE),
+                        hideMeta={taskDetailsMode === "manual"}
+                        templateAction={
+                          taskDetailsMode === "file"
+                            ? {
+                                label: "Download template",
+                                onClick: () => downloadContent("task.json", TASK_TEMPLATE),
+                              }
+                            : undefined
+                        }
+                        preSelectAction={{
+                          label: taskDetailsMode === "file" ? "Enter details" : "Use JSON",
+                          onClick: () =>
+                            setTaskDetailsMode((prev) => (prev === "file" ? "manual" : "file")),
                         }}
-                      />
+                      >
+                        {taskDetailsMode === "manual" && (
+                          <Stack gap={8} mt={8} w="100%">
+                          <TextInput
+                            label="Task Name"
+                            placeholder="e.g. Mental health theme detection"
+                            value={manualTaskName}
+                            onChange={(event) => setManualTaskName(event.currentTarget.value)}
+                            classNames={{
+                              label: styles.configLabel,
+                              input: styles.configInput,
+                            }}
+                          />
+                          <Textarea
+                            label="Description"
+                            placeholder="Describe what this task should classify and any scope boundaries."
+                            value={manualTaskDescription}
+                            onChange={(event) =>
+                              setManualTaskDescription(event.currentTarget.value)
+                            }
+                            minRows={3}
+                            autosize
+                            classNames={{
+                              label: styles.configLabel,
+                              input: styles.configInput,
+                            }}
+                          />
+                          </Stack>
+                        )}
+                      </RequiredFileCard>
                     </GuidedTourStep>
 
                     <GuidedTourStep
-                      order={4}
+                      order={2}
                       title="Labels JSON"
                       description="Provide the label list with name, description, keywords, and guidelines."
                     >
@@ -433,6 +525,40 @@ export default function DatasetUploadPage() {
                           label: "Download template",
                           onClick: () => downloadContent("labels.json", LABELS_TEMPLATE),
                         }}
+                      />
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
+                      order={3}
+                      title="Upload labeled data"
+                      description='A subset of the dataset with labels. It should include "text" and "task_label" columns.'
+                    >
+                      <RequiredFileCard
+                        inputId="labeled-dataset"
+                        accept=".csv,text/csv"
+                        icon={<IconFileTypeCsv size={18}/>}
+                        label="Labeled dataset"
+                        selectLabel="Select CSV"
+                        hint="CSV with text + task_label columns"
+                        file={dValFile}
+                        onFileChange={setDValFile}
+                      />
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
+                      order={4}
+                      title="Upload unlabeled data"
+                      description='The remaining dataset without labels. It should include a "text".'
+                    >
+                      <RequiredFileCard
+                        inputId="unlabeled-dataset"
+                        accept=".csv,text/csv"
+                        icon={<IconFileTypeCsv size={18}/>}
+                        label="Unlabeled dataset"
+                        selectLabel="Select CSV"
+                        hint="CSV with text column only"
+                        file={dAllFile}
+                        onFileChange={setDAllFile}
                       />
                     </GuidedTourStep>
                   </Stack>
@@ -453,7 +579,7 @@ export default function DatasetUploadPage() {
               </Button>
               <div>
                 <GuidedTourStep
-                  order={5}
+                  order={6}
                   title="Start the upload"
                   description="When all files are selected, upload to continue."
                   position="top"
@@ -469,6 +595,16 @@ export default function DatasetUploadPage() {
                     Upload bundle
                   </Button>
                 </GuidedTourStep>
+                {isUploading && (
+                  <Stack gap={4} mt="xs">
+                    <Progress value={uploadProgress} animated striped />
+                    <Text size="xs" c="dimmed">
+                      {uploadProgress < 100
+                        ? `Uploading… ${uploadProgress}%`
+                        : "Processing upload…"}
+                    </Text>
+                  </Stack>
+                )}
               </div>
             </Group>
           </Stack>
