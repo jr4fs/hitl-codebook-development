@@ -74,25 +74,34 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   const [error, setError] = useState<string | null>();
   const [sectionsOpen, setSectionsOpen] = useState({
     codebook: true,
+    annotation: true,
   });
   const [overflowState, setOverflowState] = useState({
     codebook: false,
+    annotation: false,
   });
   const [fadeState, setFadeState] = useState({
     codebook: false,
+    annotation: false,
   });
   const [listHeights, setListHeights] = useState({
     codebook: 0,
+    annotation: 0,
   });
   const taskSectionsRef = useRef<HTMLDivElement | null>(null);
   const codebookListRef = useRef<HTMLDivElement | null>(null);
+  const annotationListRef = useRef<HTMLDivElement | null>(null);
 
   const codebookTasks = useMemo(
-    () => tasks.filter((task) => !task.codebookSourceTaskId),
+    () => tasks.filter((task) => task.status !== "auto_label_complete" && !task.codebookSourceTaskId),
+    [tasks],
+  );
+  const annotationOnlyTasks = useMemo(
+    () => tasks.filter((task) => task.status === "auto_label_complete"),
     [tasks],
   );
 
-  const updateListOverflow = useCallback((list: "codebook") => {
+  const updateListOverflow = useCallback((list: "codebook" | "annotation") => {
     const target = codebookListRef.current;
     if (!target) return;
     const hasOverflow = target.scrollHeight > target.clientHeight + 1;
@@ -119,18 +128,45 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
       TASK_SECTION_HEADER_HEIGHT;
 
     if (available <= 0) {
-      setListHeights({ codebook: 0 });
+      setListHeights({ codebook: 0, annotation: 0 });
       return;
     }
 
     if (!codebookOpen) {
-      setListHeights({ codebook: 0 });
+      setListHeights({ codebook: 0, annotation: 0 });
       return;
     }
 
     const codebookNeed = codebookListRef.current?.scrollHeight ?? 0;
-    setListHeights({ codebook: Math.max(0, Math.min(available, codebookNeed)) });
-  }, [sectionsOpen.codebook]);
+    const annotationNeed = annotationListRef.current?.scrollHeight ?? 0;
+    const base = available / 2;
+    let codebookAlloc = Math.min(base, codebookNeed);
+    let annotationAlloc = Math.min(base, annotationNeed);
+
+    let remainder = available - codebookAlloc - annotationAlloc;
+    if (remainder > 0) {
+      const codebookMissing = Math.max(0, codebookNeed - codebookAlloc);
+      const annotationMissing = Math.max(0, annotationNeed - annotationAlloc);
+      const totalMissing = codebookMissing + annotationMissing;
+
+      if (totalMissing > 0) {
+        const codebookExtra = Math.min(
+          codebookMissing,
+          (remainder * codebookMissing) / totalMissing,
+        );
+        codebookAlloc += codebookExtra;
+        remainder -= codebookExtra;
+
+        const annotationExtra = Math.min(annotationMissing, remainder);
+        annotationAlloc += annotationExtra;
+      }
+    }
+
+    setListHeights({
+      codebook: Math.max(0, Math.floor(codebookAlloc)),
+      annotation: Math.max(0, Math.floor(annotationAlloc)),
+    });
+  }, [sectionsOpen.annotation, sectionsOpen.codebook]);
 
   const fetchTasks = useCallback(async () => {
     if (!accessToken) return;
@@ -211,10 +247,10 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   }, [updateListOverflow, updateSectionLayout]);
 
   const renderTaskRows = useCallback(
-    (sectionTasks: Task[], routeBuilder: TaskRouteBuilder) =>
+    (sectionTasks: Task[], routeBuilder: TaskRouteBuilder, disableActive = false) =>
       sectionTasks.map((task) => {
         const taskPath = routeBuilder(task);
-        const isActive = pathname === taskPath;
+        const isActive = !disableActive && pathname === taskPath;
         return (
           <div key={task._id} className="sidebar-task-row-wrap">
             <Button
@@ -289,13 +325,15 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
       listRef,
       listHeight,
       routeBuilder,
+      disableActive = false,
     }: {
-      keyName: "codebook";
+      keyName: "codebook" | "annotation";
       title: string;
       tasksList: Task[];
       listRef: MutableRefObject<HTMLDivElement | null>;
       listHeight: number;
       routeBuilder: TaskRouteBuilder;
+      disableActive?: boolean;
     }) => (
       <Box className="sidebar-task-group">
         <Button
@@ -335,7 +373,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
               onScroll={() => updateListOverflow(keyName)}
             >
               <Stack pl="sm" pr="sm" pt={2} pb={2} gap={4}>
-                {renderTaskRows(tasksList, routeBuilder)}
+                {renderTaskRows(tasksList, routeBuilder, disableActive)}
               </Stack>
             </div>
           </Box>
@@ -543,6 +581,14 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
                 routeBuilder: (task) => `/codebook-creation/${task._id}`,
               })}
 
+              {renderTaskSection({
+                keyName: "annotation",
+                title: "Auto Annotation",
+                tasksList: annotationOnlyTasks,
+                listRef: annotationListRef,
+                listHeight: listHeights.annotation,
+                routeBuilder: (task) => `/new-annotation/${task._id}`,
+              })}
             </>
           )}
         </Box>

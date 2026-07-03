@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { CreateTaskRequest, Task } from "@common/types/tasks";
+import { CreateAutoLabelTaskRequest, CreateTaskRequest, StartAutoLabelJobRequest, Task } from "@common/types/tasks";
 import { EmbedDatasetRequest } from "@common/types/embedding";
 import { AnonymizeConfig } from "@common/types/anonymize";
 import { getCollection } from "./database.service";
@@ -15,6 +15,8 @@ import {
   ensureUploadsDir,
   generateUploadFilename,
   getUploadsPath,
+  ensureAnnotationOutputsDir,
+  getAnnotationOutputPath,
 } from "../utils/fileUpload";
 import { ObjectId } from "mongodb";
 import Papa from "papaparse";
@@ -1286,5 +1288,162 @@ export async function deleteTask(req: AuthRequest, res: Response) {
       success: false,
       message: error.message || "Failed to delete task",
     });
+  }
+}
+
+export async function downloadAnnotationOutput(req: AuthRequest, res: Response) {
+  const userId = req.user?.userId;
+  if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  const filename = req.params.filename;
+  if (!filename) return res.status(400).json({ success: false, message: "filename is required" });
+
+  try {
+    const safeName = path.basename(filename);
+    const filePath = getAnnotationOutputPath(safeName);
+    return res.download(filePath, safeName);
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || "Failed to download" });
+  }
+}
+
+export async function uploadAnnotationOutput(req: AuthRequest, res: Response) {
+  const userId = req.user?.userId;
+  if (!userId) {
+    return res.status(401).json({ success: false, message: "Unauthorized - user not authenticated" });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file provided" });
+  }
+
+  try {
+    ensureAnnotationOutputsDir();
+    const filename = generateUploadFilename(req.file.originalname);
+    const outputPath = getAnnotationOutputPath(filename);
+    await fs.writeFile(outputPath, req.file.buffer);
+    return res.status(200).json({ success: true, filePath: filename });
+  } catch (error: any) {
+    console.error("Error saving annotation output:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to save annotation output" });
+  }
+}
+
+export async function createAutoLabelTask(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  if (!userID) {
+    return res.status(401).json({ success: false, message: "Unauthorized - user not authenticated" });
+  }
+
+  try {
+    const body = req.body as CreateAutoLabelTaskRequest;
+    const taskData: Omit<Task, "_id"> = {
+      name: body.name,
+      description: body.description,
+      type: body.type,
+      labels: body.labels,
+      codebook: body.codebook,
+      columns: body.columns,
+      file: body.file,
+      outputFile: body.outputFile,
+      inputFileName: body.inputFileName,
+      modelName: body.modelName,
+      labelColumn: body.labelColumn,
+      taskJsonRaw: body.taskJsonRaw,
+      labelsJsonRaw: body.labelsJsonRaw,
+      userID,
+      status: "auto_label_complete",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    const result = await collection.insertOne(taskData);
+    return res.status(201).json({ success: true, taskId: result.insertedId.toString() });
+  } catch (error: any) {
+    console.error("Error creating auto-label task:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to create auto-label task" });
+  }
+}
+
+export async function startAutoLabelJob(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  if (!userID) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  try {
+    const body = req.body as StartAutoLabelJobRequest;
+    const taskData: Omit<Task, "_id"> = {
+      name: body.name,
+      description: body.description,
+      type: body.type,
+      labels: body.labels,
+      codebook: body.codebook,
+      columns: [],
+      file: body.filePath,
+      inputFileName: body.inputFileName,
+      modelName: body.modelName,
+      labelColumn: body.textColumn,
+      taskJsonRaw: body.taskJsonRaw,
+      labelsJsonRaw: body.labelsJsonRaw,
+      userID,
+      status: "auto_labeling",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    const result = await collection.insertOne(taskData);
+    const taskId = result.insertedId.toString();
+
+    const userInput = Array.isArray(body.codebook) ? body.codebook.join("\n") : "";
+    void axios.post(
+      `${ML_BASE_URL}/inference/auto-label`,
+      {
+        file_path: body.filePath,
+        text_column: body.textColumn,
+        labels: body.labels,
+        task_definition: body.description,
+        model_name: body.modelName,
+        user_input: userInput || null,
+        task_type: body.type,
+        job_id: taskId,
+      },
+      { timeout: 3_600_000 },
+    ).catch((err: Error) => {
+      console.error("[startAutoLabelJob] Python job error:", err.message);
+    });
+
+    return res.status(201).json({ success: true, taskId });
+  } catch (error: any) {
+    console.error("[startAutoLabelJob] Error:", error);
+    return res.status(500).json({ success: false, message: error.message || "Failed to start auto-label job" });
+  }
+}
+
+export async function getAutoLabelProgress(req: AuthRequest, res: Response) {
+  const { taskId } = req.params;
+  try {
+    const { data } = await axios.get(
+      `${ML_BASE_URL}/inference/auto-label/progress/${taskId}`,
+      { timeout: 5_000 },
+    );
+    return res.json(data);
+  } catch {
+    return res.json({ completed: 0, total: 0, done: false });
+  }
+}
+
+export async function completeAutoLabel(req: AuthRequest, res: Response) {
+  try {
+    const { taskId } = req.params;
+    const { outputFile } = req.body as { outputFile: string };
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    await collection.updateOne(
+      { _id: new ObjectId(taskId) as any },
+      { $set: { status: "auto_label_complete", outputFile, updatedAt: new Date().toISOString() } },
+    );
+    return res.json({ success: true });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 }

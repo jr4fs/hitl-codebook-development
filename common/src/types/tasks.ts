@@ -5,6 +5,14 @@ export interface LabelItem {
   guidelines?: string;
 }
 
+export interface EvalResults {
+  predictionsFilename: string;
+  macroF1: number;
+  accuracy: number;
+  numSamples: number;
+  completedAt: string;
+}
+
 export interface Task {
   _id?: string; // MongoDB ObjectId as string
   name: string;
@@ -13,7 +21,7 @@ export interface Task {
   labels: LabelItem[];
   labelColumn: string;
   modelName: string;
-  status?: "sampling_pending" | "ready" | "sampling_error";
+  status?: "sampling_pending" | "ready" | "sampling_error" | "auto_labeling" | "auto_label_complete";
   // Number of sampling jobs ahead of this one in the queue (0 = running now).
   // Set by the pybackend sampling queue; used to show a queue position in the UI.
   samplingQueuePosition?: number;
@@ -25,8 +33,11 @@ export interface Task {
   userID: string;
   columns: string[];
   file: string; // filename stored in /backend/uploads
+  outputFile?: string; // server path of the auto-labeled output CSV
+  inputFileName?: string; // original CSV filename from the user's disk
   restFile?: string;
   valFile?: string;
+  evalResults?: EvalResults;
   createdAt: string; // ISO 8601 timestamp
   updatedAt?: string; // ISO 8601 timestamp
 }
@@ -44,7 +55,7 @@ export interface CreateTaskRequest {
   restFile?: string;
   valFile?: string;
   userID: string;
-  status?: "sampling_pending" | "ready" | "sampling_error";
+  status?: "sampling_pending" | "ready" | "sampling_error" | "auto_labeling" | "auto_label_complete";
 }
 
 export interface UpdateTaskRequest {
@@ -87,4 +98,55 @@ export interface UploadFileResponse {
   message?: string;
   filePath?: string; // The saved filename with timestamp
   errors?: Record<string, string[]>;
+}
+
+export interface CreateAutoLabelTaskRequest {
+  name: string;
+  description: string;
+  type: "Multiclass" | "Single-class";
+  labels: LabelItem[];
+  codebook: string[];
+  columns: string[];
+  file: string; // server path of the uploaded input CSV
+  outputFile: string; // server path of the labeled output CSV
+  inputFileName: string; // original CSV filename from the user's disk
+  modelName: string;
+  labelColumn: string;
+  taskJsonRaw: string;
+  labelsJsonRaw: string;
+  userID: string;
+}
+
+export interface CreateAutoLabelTaskResponse {
+  success: boolean;
+  message?: string;
+  taskId?: string;
+}
+
+export interface StartAutoLabelJobRequest {
+  name: string;
+  description: string;
+  type: "Multiclass" | "Single-class";
+  labels: LabelItem[];
+  codebook: string[];
+  inputFileName: string;
+  filePath: string;         // server-side filename in shared_uploads/
+  modelName: string;
+  taskJsonRaw: string;
+  labelsJsonRaw: string;
+  textColumn: string;
+}
+
+export interface StartAutoLabelJobResponse {
+  success: boolean;
+  message?: string;
+  taskId?: string;
+}
+
+export interface AutoLabelProgressResponse {
+  completed: number;
+  total: number;
+  done: boolean;
+  rows?: Array<Record<string, string>>;
+  error?: string;
 }
