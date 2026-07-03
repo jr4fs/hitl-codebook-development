@@ -15,6 +15,7 @@ import {
   IconLayoutSidebar,
   IconUserCircle,
   IconBook2,
+  IconPencil,
   IconDots,
   IconTrash,
   IconMoon,
@@ -316,6 +317,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   );
 
   const isCreateCodebookActive = pathname === "/new-codebook";
+  const isAnnotateDatasetActive = pathname === "/new-annotation";
 
   const renderTaskSection = useCallback(
     ({
@@ -447,6 +449,25 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             <IconBook2 size={24} stroke={1.6} />
           </ActionIcon>
         </Tooltip>
+        <Tooltip label="Annotate Dataset" position="top" withArrow>
+          <ActionIcon
+            onClick={() => {
+              navigate("/new-annotation");
+            }}
+            w="100%"
+            size="xl"
+            radius="md"
+            c="var(--app-sidebar-text)"
+            variant="subtle"
+            classNames={{
+              root: `sidebar-button-collapsed ${
+                isAnnotateDatasetActive ? "sidebar-button-collapsed-active" : ""
+              }`,
+            }}
+          >
+            <IconPencil size={24} stroke={1.6} />
+          </ActionIcon>
+        </Tooltip>
 
         <Menu
           shadow="md"
@@ -551,6 +572,27 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             }}
           >
             Create Codebook
+          </Button>
+
+          <Button
+            onClick={() => {
+              navigate("/new-annotation");
+            }}
+            fullWidth
+            radius="md"
+            c="var(--app-sidebar-text)"
+            px="sm"
+            h={36}
+            justify="flex-start"
+            leftSection={<IconPencil size={16} stroke={1.8} />}
+            fz="sm"
+            classNames={{
+              root: `sidebar-button sidebar-create-row ${
+                isAnnotateDatasetActive ? "sidebar-button-active" : ""
+              }`,
+            }}
+          >
+            Annotate Dataset
           </Button>
 
           <Text c="dimmed">Your Tasks</Text>
