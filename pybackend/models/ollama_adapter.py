@@ -70,6 +70,41 @@ registry = {
     "llama3.3:70b": OllamaAdapter(model="llama3.3:70b")
 }
 
+class ValEvalSample(BaseModel):
+    case_notes: str
+    ground_truth: List[str]
+
+class ValEvalRequest(BaseModel):
+    samples: List[ValEvalSample]
+    labels: List[Label]
+    task_definition: str
+    model_name: str
+    user_input: Optional[str] = None
+    task_type: str
+    task_id: Optional[str] = None
+
+class ValEvalSampleResult(BaseModel):
+    predicted: List[str]
+    ground_truth: List[str]
+
+class ValEvalResponse(BaseModel):
+    results: List[ValEvalSampleResult]
+
+
+class AutoLabelRequest(BaseModel):
+    file_path: str            # filename relative to shared_uploads/
+    text_column: str          # CSV column containing text to annotate
+    labels: List[Label]
+    task_definition: str
+    model_name: str
+    user_input: Optional[str] = None
+    task_type: str
+    job_id: Optional[str] = None
+
+
+class AutoLabelJobResponse(BaseModel):
+    job_id: str
+
 configs = {
     "mistral:7b": {
         "temperature": 0.4,

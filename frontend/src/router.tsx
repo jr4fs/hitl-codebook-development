@@ -8,6 +8,10 @@ import { PublicRoute } from "./components/auth/PublicRoute";
 import AnnotationPage from "./pages/AIAnnotationPage";
 import CodebookLandingPage from "./pages/CodebookLandingPage";
 import LandingPage from "./pages/LandingPage";
+import DashboardPage from "./pages/DashboardPage";
+import NewAnnotationTaskPage from "./pages/NewAnnotationTaskPage";
+import AnnotateDatasetPage from "./pages/AnnotateDatasetPage.tsx";
+import AnnotateDatasetLandingPage from "./pages/AnnotateDatasetLandingPage.tsx";
 
 export const router = createBrowserRouter([
   // Public landing page (no auth required)
@@ -47,6 +51,26 @@ export const router = createBrowserRouter([
           {
             path: "/codebook-creation/:taskId?",
             element: <AnnotationPage />,
+          },
+          {
+            path: "/new-annotation",
+            element: <NewAnnotationTaskPage />,
+          },
+          {
+            path: "/new-annotation/:taskId",
+            element: <NewAnnotationTaskPage />,
+          },
+          {
+            path: "/annotate-dataset/:id",
+            element: <AnnotateDatasetPage />,
+          },
+          {
+            path: "/annotate-dataset-landing",
+            element: <AnnotateDatasetLandingPage />,
+          },
+          {
+            path: "/dashboard/:taskId",
+            element: <DashboardPage />,
           },
         ],
       },

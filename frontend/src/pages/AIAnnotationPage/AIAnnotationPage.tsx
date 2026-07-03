@@ -25,6 +25,8 @@ export default function AnnotationPage() {
   const tourOpen = isDemo ? demoTourOpen : liveTourOpen;
   const setTourOpen = isDemo ? setDemoTourOpen : setLiveTourOpen;
 
+  const showRunEvalButton = import.meta.env.VITE_APP_MODE !== "pilot";
+
   const mutedColor = isLight ? "#3b4750" : "dimmed";
   const surface = isLight ? "#ffffff" : "var(--app-surface)";
   const surface2 = isLight ? "#f4f7f9" : "var(--app-surface-2)";
@@ -100,6 +102,21 @@ export default function AnnotationPage() {
               </Text>
             </div>
             <Group gap="xs" className={styles.taskMetrics} wrap="nowrap">
+              {showRunEvalButton && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="teal"
+                  disabled={controller.isRunningValEval}
+                  onClick={() => controller.handleRunValEval()}
+                >
+                  {controller.isRunningValEval
+                    ? controller.valEvalProgress.total > 0
+                      ? `${controller.valEvalProgress.completed} / ${controller.valEvalProgress.total}`
+                      : "Starting..."
+                    : "Run Evaluation"}
+                </Button>
+              )}
               <Tooltip
                 label={`Current Accuracy: ${controller.totalAttempted > 0 ? Math.round((controller.totalCorrect / controller.totalAttempted) * 100) : 0}% (${controller.totalCorrect}/${controller.totalAttempted})`}
               >
@@ -155,6 +172,7 @@ export default function AnnotationPage() {
           onClose={() => controller.setMetricsModalOpen(false)}
           onDownload={controller.handleDownloadMetrics}
           onExportCodebook={controller.handleExportCodebookFromModal}
+          taskId={controller.task?._id}
         />
 
         <PageIntro
