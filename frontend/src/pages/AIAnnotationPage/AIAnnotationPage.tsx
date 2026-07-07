@@ -1,5 +1,6 @@
 import { Badge, Box, Button, Container, Grid, Group, Paper, Stack, Text, Tooltip, useMantineColorScheme } from "@mantine/core";
 import { useEffect, useRef, useState } from "react";
+import ConfirmActionModal from "../../components/common/ConfirmActionModal";
 import PageIntro from "../../components/common/PageIntro";
 import GuidedTour, { GuidedTourStep } from "../../components/common/GuidedTour";
 import StepTrackerBanner from "../../components/StepTrackerBanner";
@@ -21,6 +22,8 @@ export default function AnnotationPage() {
   const isLight = colorScheme === "light";
   const { isDemo, tourOpen: demoTourOpen, setTourOpen: setDemoTourOpen } = useDemo();
   const [liveTourOpen, setLiveTourOpen] = useState(false);
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const [exiting, setExiting] = useState(false);
 
   const tourOpen = isDemo ? demoTourOpen : liveTourOpen;
   const setTourOpen = isDemo ? setDemoTourOpen : setLiveTourOpen;
@@ -183,6 +186,27 @@ export default function AnnotationPage() {
           onDownloadFinalInference={controller.handleDownloadFinalInference}
         />
 
+        <ConfirmActionModal
+          opened={exitConfirmOpen}
+          title="Exit review?"
+          message="You'll skip the remaining samples and finish now. We'll finalize your codebook and compute final metrics as if you'd reviewed the whole set. You can't resume this review afterward."
+          confirmLabel="Exit & finish"
+          cancelLabel="Keep reviewing"
+          loading={exiting}
+          onConfirm={async () => {
+            setExiting(true);
+            try {
+              await controller.handleExitReview();
+              setExitConfirmOpen(false);
+            } finally {
+              setExiting(false);
+            }
+          }}
+          onCancel={() => {
+            if (!exiting) setExitConfirmOpen(false);
+          }}
+        />
+
         <PageIntro
           mode={controller.introShowCheckbox ? "firstRun" : "help"}
           opened={isDemo ? false : controller.introOpen}
@@ -223,6 +247,17 @@ export default function AnnotationPage() {
                         />
 
                         <Group gap="xs" wrap="nowrap">
+                          {!controller.isCompleteStep && (
+                            <Button
+                              variant="subtle"
+                              color="red"
+                              size="sm"
+                              onClick={() => setExitConfirmOpen(true)}
+                              disabled={controller.isLoading || exiting}
+                            >
+                              Exit
+                            </Button>
+                          )}
                           <Button
                             variant="default"
                             size="sm"

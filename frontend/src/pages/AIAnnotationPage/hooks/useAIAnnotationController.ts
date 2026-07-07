@@ -194,6 +194,43 @@ export const useAIAnnotationController = () => {
     return committedCodebook;
   };
 
+  // Finalize the review session: generate metrics, export the codebook, open the
+  // completion popup, and kick off the held-out (d_val) evaluation. Shared by the
+  // normal "complete the last batch" path and the "Exit" button.
+  const finalizeReview = async (committedCodebook: string[]) => {
+    if (!task?._id) return;
+
+    const [sampleRes, metadataRes, batchRes] = await Promise.all([
+      generateSampleMetrics(task._id),
+      generateMetadataMetrics(task._id),
+      generateBatchMetrics(task._id),
+    ]);
+
+    setMetricsFiles({
+      sample: sampleRes.filename,
+      metadata: metadataRes.filename,
+      batch: batchRes.filename,
+    });
+
+    try {
+      await exportCodebookSnapshot(
+        task._id,
+        committedCodebook.length > 0 ? committedCodebook : codebookState.codebook,
+        codebookState.lastPromptUsed,
+      );
+    } catch (error: any) {
+      console.error("Failed to export codebook:", error);
+      toast.error(error?.message || "Failed to export codebook on server");
+    }
+
+    setMetricsModalOpen(true);
+    setReviewCompleted(true);
+
+    // Compute final metrics on the held-out validation set (d_val) with the
+    // final codebook, shown in the completion popup.
+    void handleRunValEval();
+  };
+
   const handleNextOrCommit = async () => {
     if (reviewCompleted) {
       setMetricsModalOpen(true);
@@ -217,36 +254,32 @@ export const useAIAnnotationController = () => {
     await reviewState.handleNextClick();
 
     if (shouldGenerateMetrics && task?._id) {
-      const [sampleRes, metadataRes, batchRes] = await Promise.all([
-        generateSampleMetrics(task._id),
-        generateMetadataMetrics(task._id),
-        generateBatchMetrics(task._id),
-      ]);
-
-      setMetricsFiles({
-        sample: sampleRes.filename,
-        metadata: metadataRes.filename,
-        batch: batchRes.filename,
-      });
-
-      try {
-        await exportCodebookSnapshot(
-          task._id,
-          committedCodebook.length > 0 ? committedCodebook : codebookState.codebook,
-          codebookState.lastPromptUsed,
-        );
-      } catch (error: any) {
-        console.error("Failed to export codebook:", error);
-        toast.error(error?.message || "Failed to export codebook on server");
-      }
-
-      setMetricsModalOpen(true);
-      setReviewCompleted(true);
-
-      // Compute final metrics on the held-out validation set (d_val) with the
-      // final codebook, shown in the completion popup.
-      void handleRunValEval();
+      await finalizeReview(committedCodebook);
     }
+  };
+
+  // Exit the review loop early: treat the session as done (same as completing the
+  // whole sample set) and go straight to the completion popup. Any feedback in the
+  // in-progress batch is committed first so it isn't lost.
+  const handleExitReview = async () => {
+    if (reviewCompleted) {
+      setMetricsModalOpen(true);
+      return;
+    }
+
+    let committedCodebook = codebookState.codebook;
+    if (reviewState.currentBatchProgress > 0) {
+      committedCodebook = await handleCommitBatch();
+      if (task?._id) {
+        try {
+          await saveTaskCodebook(task._id, committedCodebook);
+        } catch (error: any) {
+          toast.error(error?.message || "Failed to auto-save codebook on exit");
+        }
+      }
+    }
+
+    await finalizeReview(committedCodebook);
   };
 
   const downloadLabeledRows = (
@@ -440,6 +473,7 @@ export const useAIAnnotationController = () => {
     },
 
     handleNextOrCommit,
+    handleExitReview,
     goPrev: reviewState.goPrev,
     goHome,
 
