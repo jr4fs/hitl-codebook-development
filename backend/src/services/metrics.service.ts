@@ -697,6 +697,18 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
     ).length;
     const accuracy = pairs.length > 0 ? exactMatches / pairs.length : 0;
 
+    // Macro-averaged precision/recall (simple mean over labels, matching macroF1).
+    const macroPrecision =
+      labelNames.length > 0
+        ? labelNames.reduce((sum, l) => sum + (metrics.precision[l] ?? 0), 0) /
+          labelNames.length
+        : 0;
+    const macroRecall =
+      labelNames.length > 0
+        ? labelNames.reduce((sum, l) => sum + (metrics.recall[l] ?? 0), 0) /
+          labelNames.length
+        : 0;
+
     const tp: Record<string, number> = {};
     const fp: Record<string, number> = {};
     const tn: Record<string, number> = {};
@@ -762,6 +774,8 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
     const evalResults = {
       predictionsFilename,
       macroF1: metrics.macroF1,
+      macroPrecision,
+      macroRecall,
       accuracy,
       numSamples: samples.length,
       completedAt: new Date().toISOString(),
@@ -771,7 +785,16 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
       { $set: { evalResults } },
     );
 
-    return res.status(200).json({ success: true, filename, predictionsFilename, macroF1: metrics.macroF1, accuracy, evalResults });
+    return res.status(200).json({
+      success: true,
+      filename,
+      predictionsFilename,
+      macroF1: metrics.macroF1,
+      macroPrecision,
+      macroRecall,
+      accuracy,
+      evalResults,
+    });
   } catch (error: any) {
     console.error("Error running val evaluation:", error);
     return res.status(500).json({

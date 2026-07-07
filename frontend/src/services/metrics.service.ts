@@ -54,6 +54,8 @@ export interface RunValEvalResponse {
   filename?: string;
   predictionsFilename?: string;
   macroF1?: number;
+  macroPrecision?: number;
+  macroRecall?: number;
   accuracy?: number;
   evalResults?: EvalResults;
   message?: string;

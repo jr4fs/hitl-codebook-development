@@ -173,6 +173,9 @@ export default function AnnotationPage() {
           onDownload={controller.handleDownloadMetrics}
           onExportCodebook={controller.handleExportCodebookFromModal}
           taskId={controller.task?._id}
+          valMetrics={controller.valMetrics}
+          isRunningValEval={controller.isRunningValEval}
+          valEvalProgress={controller.valEvalProgress}
           finalInferencePhase={controller.finalInferencePhase}
           finalInferenceProgress={controller.finalInferenceProgress}
           finalLabeledRowCount={controller.finalLabeledRows.length}

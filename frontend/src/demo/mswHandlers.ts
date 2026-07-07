@@ -135,6 +135,23 @@ export const handlersReady = [
   http.post(`${API}/api/metrics/batches`, () => {
     return HttpResponse.json({ success: true, filename: "batch_metrics_demo.csv" });
   }),
+  http.post(`${API}/api/metrics/val-eval`, () => {
+    return HttpResponse.json({
+      success: true,
+      macroF1: 0.9,
+      macroPrecision: 0.91,
+      macroRecall: 0.89,
+      accuracy: 0.9,
+      filename: "val_eval_demo.csv",
+      predictionsFilename: "val_eval_predictions_demo.csv",
+    });
+  }),
+  http.get(`${API}/api/metrics/val-eval/progress/:taskId`, () => {
+    return HttpResponse.json({ completed: 15, total: 15, done: true });
+  }),
+  http.post(`${API}/api/metrics/val-eval/cancel`, () => {
+    return HttpResponse.json({ success: true });
+  }),
   http.post(`${API}/api/tasks/final-inference`, () => {
     return HttpResponse.json({ success: true, taskId: "demo-task" });
   }),

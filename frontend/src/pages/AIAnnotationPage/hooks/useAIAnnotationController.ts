@@ -56,6 +56,13 @@ export const useAIAnnotationController = () => {
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalAttempted, setTotalAttempted] = useState(0);
   const [predictedAccuracy, setPredictedAccuracy] = useState<number | null>(null);
+  // Final macro precision/recall/F1 on the held-out validation set (d_val),
+  // shown in the completion popup.
+  const [valMetrics, setValMetrics] = useState<{
+    precision: number;
+    recall: number;
+    f1: number;
+  } | null>(null);
 
   // Final step: run inference over d_all with the latest codebook.
   const [finalInferencePhase, setFinalInferencePhase] = useState<
@@ -235,6 +242,10 @@ export const useAIAnnotationController = () => {
 
       setMetricsModalOpen(true);
       setReviewCompleted(true);
+
+      // Compute final metrics on the held-out validation set (d_val) with the
+      // final codebook, shown in the completion popup.
+      void handleRunValEval();
     }
   };
 
@@ -330,6 +341,17 @@ export const useAIAnnotationController = () => {
       clearInterval(pollInterval);
       if (res.success) {
         if (res.macroF1 != null) setPredictedAccuracy(res.macroF1);
+        if (
+          res.macroPrecision != null &&
+          res.macroRecall != null &&
+          res.macroF1 != null
+        ) {
+          setValMetrics({
+            precision: res.macroPrecision,
+            recall: res.macroRecall,
+            f1: res.macroF1,
+          });
+        }
         toast.success("Evaluation complete");
       } else {
         toast.error(res.message || "Evaluation failed");
@@ -365,6 +387,7 @@ export const useAIAnnotationController = () => {
     handleDownloadMetrics,
     isRunningValEval,
     valEvalProgress,
+    valMetrics,
     handleRunValEval,
 
     finalInferencePhase,

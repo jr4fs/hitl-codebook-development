@@ -8,6 +8,8 @@ export interface LabelItem {
 export interface EvalResults {
   predictionsFilename: string;
   macroF1: number;
+  macroPrecision?: number;
+  macroRecall?: number;
   accuracy: number;
   numSamples: number;
   completedAt: string;
