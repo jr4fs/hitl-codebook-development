@@ -17,6 +17,8 @@ import {
   getAutoLabelProgress,
   completeAutoLabel,
   startFinalInference,
+  markCodebookComplete,
+  saveFinalInferenceResult,
 } from "../services/tasks.service";
 import { uploadCSV, uploadBundle } from "../utils/fileUpload";
 import { authenticateToken } from "../middleware/auth.middleware";
@@ -94,5 +96,10 @@ router.patch("/auto-label/complete/:taskId", completeAutoLabel);
 // Run inference over d_all with the latest codebook (final codebook-dev step).
 // Progress is polled via the shared /auto-label/progress/:taskId endpoint.
 router.post("/final-inference", startFinalInference);
+// Persist the final-inference output file path (so it survives a reload).
+router.post("/final-inference/save", saveFinalInferenceResult);
+
+// Mark a codebook-development task complete (locks it read-only).
+router.post("/complete", markCodebookComplete);
 
 export default router;

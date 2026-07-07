@@ -215,6 +215,15 @@ export const handlersReady = [
   http.post(`${API}/api/tasks/final-inference`, () => {
     return HttpResponse.json({ success: true, taskId: "demo-task" });
   }),
+  http.post(`${API}/api/tasks/final-inference/save`, () => {
+    return HttpResponse.json({ success: true });
+  }),
+  http.post(`${API}/api/tasks/upload-output`, () => {
+    return HttpResponse.json({ success: true, filePath: "demo-labeled.csv" });
+  }),
+  http.post(`${API}/api/tasks/complete`, () => {
+    return HttpResponse.json({ success: true });
+  }),
   http.get(`${API}/api/tasks/auto-label/progress/:taskId`, () => {
     return HttpResponse.json({
       completed: 3,

@@ -29,6 +29,7 @@ interface MetricsModalProps {
   finalInferencePhase: FinalInferencePhase;
   finalInferenceProgress: { completed: number; total: number };
   finalLabeledRowCount: number;
+  finalInferenceHasResult: boolean;
   onRunFinalInference: () => void;
   onDownloadFinalInference: () => void;
 }
@@ -47,6 +48,7 @@ export function MetricsModal({
   finalInferencePhase,
   finalInferenceProgress,
   finalLabeledRowCount,
+  finalInferenceHasResult,
   onRunFinalInference,
   onDownloadFinalInference,
 }: MetricsModalProps) {
@@ -187,9 +189,11 @@ export function MetricsModal({
             Inference failed. Please try again.
           </Text>
         )}
-        {finalInferencePhase === "done" && finalLabeledRowCount > 0 && (
+        {finalInferencePhase === "done" && finalInferenceHasResult && (
           <Button fullWidth variant="light" onClick={onDownloadFinalInference}>
-            Download labeled dataset ({finalLabeledRowCount} rows)
+            {finalLabeledRowCount > 0
+              ? `Download labeled dataset (${finalLabeledRowCount} rows)`
+              : "Download labeled dataset"}
           </Button>
         )}
 

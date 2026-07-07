@@ -29,6 +29,7 @@ interface SectionProps {
   borderColor: string;
   borderStrong: string;
   isLoading: boolean;
+  readOnly?: boolean;
 }
 
 const infoIcon = (label: string) => (
@@ -98,6 +99,7 @@ export function AIPredictionsSection({
   borderColor,
   borderStrong,
   isLoading,
+  readOnly,
   generatedLabels,
   generatedSpanText,
   generatedReasoning,
@@ -147,6 +149,7 @@ export function AIPredictionsSection({
               color="green"
               style={{ opacity: batchResult?.isCorrect === true ? 1 : 0.55 }}
               onClick={() => onSetCorrect(true)}
+              disabled={readOnly}
             >
               <IconCheck size={18} />
             </ActionIcon>
@@ -156,6 +159,7 @@ export function AIPredictionsSection({
               color="red"
               style={{ opacity: batchResult?.isCorrect === false ? 1 : 0.55 }}
               onClick={() => onSetCorrect(false)}
+              disabled={readOnly}
             >
               <IconX size={18} />
             </ActionIcon>
@@ -185,6 +189,7 @@ export function AIPredictionsSection({
                 color="green"
                 style={{ opacity: spanTextFeedback === true ? 1 : 0.55 }}
                 onClick={() => onSetSpanFeedback(true)}
+              disabled={readOnly}
               >
                 <IconCheck size={18} />
               </ActionIcon>
@@ -194,6 +199,7 @@ export function AIPredictionsSection({
                 color="red"
                 style={{ opacity: spanTextFeedback === false ? 1 : 0.55 }}
                 onClick={() => onSetSpanFeedback(false)}
+              disabled={readOnly}
               >
                 <IconX size={18} />
               </ActionIcon>
@@ -219,6 +225,7 @@ export function AIPredictionsSection({
                 color="green"
                 style={{ opacity: reasoningFeedback === true ? 1 : 0.55 }}
                 onClick={() => onSetReasoningFeedback(true)}
+              disabled={readOnly}
               >
                 <IconCheck size={18} />
               </ActionIcon>
@@ -228,6 +235,7 @@ export function AIPredictionsSection({
                 color="red"
                 style={{ opacity: reasoningFeedback === false ? 1 : 0.55 }}
                 onClick={() => onSetReasoningFeedback(false)}
+              disabled={readOnly}
               >
                 <IconX size={18} />
               </ActionIcon>
@@ -247,6 +255,7 @@ export function FeedbackSection({
   borderColor: ____,
   borderStrong: _____,
   isLoading: ______,
+  readOnly,
   mutedColor,
   batchResult,
   spanTextFeedback,
@@ -288,8 +297,10 @@ export function FeedbackSection({
                         <Badge
                           variant="light"
                           color="gray"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => onSetCorrectLabel(label.name)}
+                          style={{ cursor: readOnly ? "default" : "pointer" }}
+                          onClick={() => {
+                            if (!readOnly) onSetCorrectLabel(label.name);
+                          }}
                         >
                           {label.name}
                         </Badge>
@@ -310,6 +321,7 @@ export function FeedbackSection({
                 onChange={(value) => onSetCorrectLabel(value ?? null)}
                 required
                 allowDeselect={false}
+                disabled={readOnly}
               />
             </>
           )}
@@ -322,6 +334,7 @@ export function FeedbackSection({
             value={batchResult?.feedback ?? ""}
             required
             onChange={(e) => onSetFeedback(e.currentTarget.value)}
+            disabled={readOnly}
           />
         </Stack>
       )}

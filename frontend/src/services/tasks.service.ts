@@ -244,6 +244,29 @@ export async function startFinalInference(
   return data;
 }
 
+// Persist the final-inference output file path so it survives a reload.
+export async function saveFinalInferenceResult(
+  taskId: string,
+  outputFile: string,
+): Promise<{ success: boolean; message?: string }> {
+  const { data } = await apiClient.post<{ success: boolean; message?: string }>(
+    "/api/tasks/final-inference/save",
+    { taskId, outputFile },
+  );
+  return data;
+}
+
+// Mark a codebook-development task complete (locks it read-only).
+export async function markCodebookComplete(
+  taskId: string,
+): Promise<{ success: boolean; message?: string }> {
+  const { data } = await apiClient.post<{ success: boolean; message?: string }>(
+    "/api/tasks/complete",
+    { taskId },
+  );
+  return data;
+}
+
 export async function completeAutoLabelTask(
   taskId: string,
   outputFile: string,

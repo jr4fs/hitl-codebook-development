@@ -669,6 +669,67 @@ export async function saveTaskCodebook(req: AuthRequest, res: Response) {
   }
 }
 
+// Mark a codebook-development task as complete (review finished). After this the
+// codebook + sample review are locked read-only in the UI.
+export async function markCodebookComplete(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  const { taskId } = req.body as { taskId?: string };
+
+  if (!userID) return res.status(401).json({ success: false, message: "Unauthorized" });
+  if (!taskId) return res.status(400).json({ success: false, message: "taskId is required" });
+
+  try {
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    const result = await collection.updateOne(
+      { _id: new ObjectId(taskId) as any, userID },
+      {
+        $set: {
+          codebookComplete: true,
+          completedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    );
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+    return res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error("Error marking codebook complete:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: error.message || "Failed to mark complete" });
+  }
+}
+
+// Persist the server path of the final full-dataset (d_all) inference output so
+// it survives a reload and can be re-downloaded.
+export async function saveFinalInferenceResult(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  const { taskId, outputFile } = req.body as { taskId?: string; outputFile?: string };
+
+  if (!userID) return res.status(401).json({ success: false, message: "Unauthorized" });
+  if (!taskId) return res.status(400).json({ success: false, message: "taskId is required" });
+  if (!outputFile) return res.status(400).json({ success: false, message: "outputFile is required" });
+
+  try {
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    const result = await collection.updateOne(
+      { _id: new ObjectId(taskId) as any, userID },
+      { $set: { finalInferenceFile: outputFile, updatedAt: new Date().toISOString() } },
+    );
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+    return res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error("Error saving final inference result:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: error.message || "Failed to save result" });
+  }
+}
+
 export async function exportCodebookSnapshot(req: AuthRequest, res: Response) {
   try {
     const userID = req.user?.userId;

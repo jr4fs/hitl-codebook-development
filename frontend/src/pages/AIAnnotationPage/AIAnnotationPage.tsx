@@ -188,6 +188,7 @@ export default function AnnotationPage() {
           finalInferencePhase={controller.finalInferencePhase}
           finalInferenceProgress={controller.finalInferenceProgress}
           finalLabeledRowCount={controller.finalLabeledRows.length}
+          finalInferenceHasResult={controller.finalInferenceHasResult}
           onRunFinalInference={controller.handleRunFinalInference}
           onDownloadFinalInference={controller.handleDownloadFinalInference}
         />
@@ -253,33 +254,45 @@ export default function AnnotationPage() {
                         />
 
                         <Group gap="xs" wrap="nowrap">
-                          {!controller.isCompleteStep && (
+                          {controller.readOnly ? (
                             <Button
-                              variant="subtle"
-                              color="red"
+                              variant="filled"
                               size="sm"
-                              onClick={() => setExitConfirmOpen(true)}
-                              disabled={controller.isLoading || exiting}
+                              onClick={controller.handleNextOrCommit}
                             >
-                              Exit
+                              View results
                             </Button>
+                          ) : (
+                            <>
+                              {!controller.isCompleteStep && (
+                                <Button
+                                  variant="subtle"
+                                  color="red"
+                                  size="sm"
+                                  onClick={() => setExitConfirmOpen(true)}
+                                  disabled={controller.isLoading || exiting}
+                                >
+                                  Exit
+                                </Button>
+                              )}
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={controller.goPrev}
+                                disabled={controller.currentIndex <= controller.currentBatchStartIndex || controller.isLoading}
+                              >
+                                Previous
+                              </Button>
+                              <Button
+                                variant="filled"
+                                size="sm"
+                                onClick={controller.handleNextOrCommit}
+                                disabled={controller.nextDisabled}
+                              >
+                                {controller.isCompleteStep ? "Complete" : controller.isCommitStep ? "Commit Batch" : "Next Sample"}
+                              </Button>
+                            </>
                           )}
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={controller.goPrev}
-                            disabled={controller.currentIndex <= controller.currentBatchStartIndex || controller.isLoading}
-                          >
-                            Previous
-                          </Button>
-                          <Button
-                            variant="filled"
-                            size="sm"
-                            onClick={controller.handleNextOrCommit}
-                            disabled={controller.nextDisabled}
-                          >
-                            {controller.isCompleteStep ? "Complete" : controller.isCommitStep ? "Commit Batch" : "Next Sample"}
-                          </Button>
                         </Group>
                       </Group>
 
@@ -307,6 +320,7 @@ export default function AnnotationPage() {
                           borderColor={borderColor}
                           borderStrong={borderStrong}
                           isLoading={controller.isLoading}
+                          readOnly={controller.readOnly}
                           generatedLabels={controller.generatedLabels}
                           generatedSpanText={controller.generatedSpanText}
                           generatedReasoning={controller.generatedReasoning}
@@ -329,6 +343,7 @@ export default function AnnotationPage() {
                           borderColor={borderColor}
                           borderStrong={borderStrong}
                           isLoading={controller.isLoading}
+                          readOnly={controller.readOnly}
                           batchResult={controller.batchResults[controller.currentIndex]}
                           spanTextFeedback={controller.spanTextFeedback}
                           reasoningFeedback={controller.reasoningFeedback}
@@ -359,6 +374,7 @@ export default function AnnotationPage() {
                     stagedRules={controller.stagedRules}
                     stagedRulesDeletion={controller.stagedRulesDeletion}
                     newRule={controller.newRule}
+                    readOnly={controller.readOnly}
                     onNewRuleChange={controller.setNewRule}
                     onAddRule={controller.addRule}
                     onExport={controller.handleExportCodebook}

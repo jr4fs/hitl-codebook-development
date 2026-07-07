@@ -13,10 +13,14 @@ import {
 } from "../../../services/metrics.service";
 import { ruleSynthesis } from "../../../services/ruleSynthesis.service";
 import {
+  downloadAnnotationOutputFile,
   exportCodebookSnapshot,
   getAutoLabelProgress,
+  markCodebookComplete,
+  saveFinalInferenceResult,
   saveTaskCodebook,
   startFinalInference,
+  uploadOutputFile,
 } from "../../../services/tasks.service";
 import { downloadContent } from "../../../utils/downloadContent";
 import { INTRO_STORAGE_KEY } from "../constants";
@@ -96,6 +100,9 @@ export const useAIAnnotationController = () => {
   >("idle");
   const [finalInferenceProgress, setFinalInferenceProgress] = useState({ completed: 0, total: 0 });
   const [finalLabeledRows, setFinalLabeledRows] = useState<Array<Record<string, string>>>([]);
+  // Server path of a persisted final-inference output (set after a run or on
+  // reload), so the labeled dataset can be re-downloaded from the server.
+  const [finalInferenceFile, setFinalInferenceFile] = useState<string | null>(null);
   const finalInferencePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(
@@ -104,6 +111,33 @@ export const useAIAnnotationController = () => {
     },
     [],
   );
+
+  // Rehydrate persisted state once per task load: completion (locks the UI),
+  // held-out validation metrics, and any saved final-inference output.
+  const hydratedTaskIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!task?._id || hydratedTaskIdRef.current === task._id) return;
+    hydratedTaskIdRef.current = task._id;
+
+    if (task.codebookComplete) setReviewCompleted(true);
+
+    if (task.evalResults) {
+      const { macroF1, macroPrecision, macroRecall } = task.evalResults;
+      if (typeof macroF1 === "number") setPredictedAccuracy(macroF1);
+      if (
+        typeof macroPrecision === "number" &&
+        typeof macroRecall === "number" &&
+        typeof macroF1 === "number"
+      ) {
+        setValMetrics({ precision: macroPrecision, recall: macroRecall, f1: macroF1 });
+      }
+    }
+
+    if (task.finalInferenceFile) {
+      setFinalInferenceFile(task.finalInferenceFile);
+      setFinalInferencePhase("done");
+    }
+  }, [task]);
 
   useEffect(() => {
     if (!task?._id) return;
@@ -252,6 +286,14 @@ export const useAIAnnotationController = () => {
     setMetricsModalOpen(true);
     setReviewCompleted(true);
 
+    // Persist completion so the task stays locked/read-only across reloads.
+    try {
+      await markCodebookComplete(task._id);
+    } catch (error: any) {
+      console.error("Failed to persist completion:", error);
+    }
+    window.dispatchEvent(new Event("tasks:updated"));
+
     // Compute final metrics on the held-out validation set (d_val) with the
     // final codebook, shown in the completion popup.
     void handleRunValEval();
@@ -308,19 +350,43 @@ export const useAIAnnotationController = () => {
     await finalizeReview(committedCodebook);
   };
 
+  const rowsToCsv = (rows: Array<Record<string, string>>) => {
+    if (rows.length === 0) return "";
+    const csvEscape = (val: string) =>
+      /[",\n]/.test(val) ? `"${val.replace(/"/g, '""')}"` : val;
+    const headers = Object.keys(rows[0]);
+    return [
+      headers.join(","),
+      ...rows.map((r) => headers.map((h) => csvEscape(r[h] ?? "")).join(",")),
+    ].join("\n");
+  };
+
   const downloadLabeledRows = (
     rows: Array<Record<string, string>>,
     filename: string,
   ) => {
     if (rows.length === 0) return;
-    const csvEscape = (val: string) =>
-      /[",\n]/.test(val) ? `"${val.replace(/"/g, '""')}"` : val;
-    const headers = Object.keys(rows[0]);
-    const csv = [
-      headers.join(","),
-      ...rows.map((r) => headers.map((h) => csvEscape(r[h] ?? "")).join(",")),
-    ].join("\n");
-    downloadContent(filename, csv, "text/csv");
+    downloadContent(filename, rowsToCsv(rows), "text/csv");
+  };
+
+  // Save the labeled full-dataset output to the server so it survives a reload.
+  const persistFinalInference = async (
+    taskId: string,
+    rows: Array<Record<string, string>>,
+  ) => {
+    try {
+      const file = new File([rowsToCsv(rows)], `labeled_d_all_${taskId}.csv`, {
+        type: "text/csv",
+      });
+      const upload = await uploadOutputFile(file);
+      if (upload.success && upload.filePath) {
+        await saveFinalInferenceResult(taskId, upload.filePath);
+        setFinalInferenceFile(upload.filePath);
+        window.dispatchEvent(new Event("tasks:updated"));
+      }
+    } catch (error) {
+      console.error("Failed to persist final inference output:", error);
+    }
   };
 
   const handleRunFinalInference = async () => {
@@ -363,6 +429,8 @@ export const useAIAnnotationController = () => {
           setFinalInferencePhase("done");
           if (rows.length > 0) {
             downloadLabeledRows(rows, filename);
+            // Persist the labeled output on the server so it survives a reload.
+            void persistFinalInference(taskId, rows);
             toast.success("Inference complete — labeled dataset downloaded.");
           } else {
             toast.success("Inference complete.");
@@ -374,9 +442,29 @@ export const useAIAnnotationController = () => {
     }, 1500);
   };
 
-  const handleDownloadFinalInference = () => {
-    if (!task?._id || finalLabeledRows.length === 0) return;
-    downloadLabeledRows(finalLabeledRows, `labeled_d_all_${task.name || task._id}.csv`);
+  const handleDownloadFinalInference = async () => {
+    if (!task?._id) return;
+    // Fresh run this session: download from the in-memory rows.
+    if (finalLabeledRows.length > 0) {
+      downloadLabeledRows(finalLabeledRows, `labeled_d_all_${task.name || task._id}.csv`);
+      return;
+    }
+    // Rehydrated after a reload: fetch the persisted file from the server.
+    if (finalInferenceFile) {
+      try {
+        const blob = await downloadAnnotationOutputFile(finalInferenceFile);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = finalInferenceFile.split("/").pop() ?? "labeled_d_all.csv";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch {
+        toast.error("Failed to download labeled dataset.");
+      }
+    }
   };
 
   const handleRunValEval = async () => {
@@ -475,6 +563,7 @@ export const useAIAnnotationController = () => {
     finalInferencePhase,
     finalInferenceProgress,
     finalLabeledRows,
+    finalInferenceHasResult: finalLabeledRows.length > 0 || finalInferenceFile !== null,
     handleRunFinalInference,
     handleDownloadFinalInference,
 
@@ -506,6 +595,9 @@ export const useAIAnnotationController = () => {
     isCompleteStep:
       reviewCompleted &&
       reviewState.currentIndex === Math.max(reviewState.totalSamples - 1, 0),
+    // Once the review is completed the codebook + sample review are locked.
+    reviewCompleted,
+    readOnly: reviewCompleted,
     nextDisabled: reviewState.nextDisabled,
 
     handleExportCodebookFromModal: async () => {
