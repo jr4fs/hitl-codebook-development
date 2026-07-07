@@ -230,6 +230,20 @@ export async function getAutoLabelProgress(
   return data;
 }
 
+// Run inference over the task's full unlabeled dataset (d_all) with the latest
+// codebook. Poll getAutoLabelProgress(taskId) for completion + labeled rows.
+export async function startFinalInference(
+  taskId: string,
+  codebook: string[],
+): Promise<{ success: boolean; taskId?: string; message?: string }> {
+  const { data } = await apiClient.post<{
+    success: boolean;
+    taskId?: string;
+    message?: string;
+  }>("/api/tasks/final-inference", { taskId, codebook }, { timeout: 60_000 });
+  return data;
+}
+
 export async function completeAutoLabelTask(
   taskId: string,
   outputFile: string,

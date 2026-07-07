@@ -1,5 +1,5 @@
 import { RuleSynthesisItem, RuleSynthesisRequest } from "@common/types/ruleSynthesis";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAITaskData } from "../../../hooks/useAITaskData";
 import { toast } from "../../../lib/toast";
@@ -12,7 +12,13 @@ import {
   runValEvaluation,
 } from "../../../services/metrics.service";
 import { ruleSynthesis } from "../../../services/ruleSynthesis.service";
-import { exportCodebookSnapshot, saveTaskCodebook } from "../../../services/tasks.service";
+import {
+  exportCodebookSnapshot,
+  getAutoLabelProgress,
+  saveTaskCodebook,
+  startFinalInference,
+} from "../../../services/tasks.service";
+import { downloadContent } from "../../../utils/downloadContent";
 import { INTRO_STORAGE_KEY } from "../constants";
 import { MetricsFiles } from "../types";
 import { getSampleText } from "../utils";
@@ -50,6 +56,21 @@ export const useAIAnnotationController = () => {
   const [totalCorrect, setTotalCorrect] = useState(0);
   const [totalAttempted, setTotalAttempted] = useState(0);
   const [predictedAccuracy, setPredictedAccuracy] = useState<number | null>(null);
+
+  // Final step: run inference over d_all with the latest codebook.
+  const [finalInferencePhase, setFinalInferencePhase] = useState<
+    "idle" | "running" | "done" | "error"
+  >("idle");
+  const [finalInferenceProgress, setFinalInferenceProgress] = useState({ completed: 0, total: 0 });
+  const [finalLabeledRows, setFinalLabeledRows] = useState<Array<Record<string, string>>>([]);
+  const finalInferencePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (finalInferencePollRef.current) clearInterval(finalInferencePollRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!task?._id) return;
@@ -217,6 +238,77 @@ export const useAIAnnotationController = () => {
     }
   };
 
+  const downloadLabeledRows = (
+    rows: Array<Record<string, string>>,
+    filename: string,
+  ) => {
+    if (rows.length === 0) return;
+    const csvEscape = (val: string) =>
+      /[",\n]/.test(val) ? `"${val.replace(/"/g, '""')}"` : val;
+    const headers = Object.keys(rows[0]);
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => headers.map((h) => csvEscape(r[h] ?? "")).join(",")),
+    ].join("\n");
+    downloadContent(filename, csv, "text/csv");
+  };
+
+  const handleRunFinalInference = async () => {
+    if (!task?._id || finalInferencePhase === "running") return;
+
+    const taskId = task._id;
+    const filename = `labeled_d_all_${task.name || taskId}.csv`;
+    setFinalInferencePhase("running");
+    setFinalInferenceProgress({ completed: 0, total: 0 });
+    setFinalLabeledRows([]);
+
+    try {
+      const res = await startFinalInference(taskId, codebookState.codebook);
+      if (!res.success) {
+        toast.error(res.message || "Failed to start inference");
+        setFinalInferencePhase("error");
+        return;
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to start inference");
+      setFinalInferencePhase("error");
+      return;
+    }
+
+    if (finalInferencePollRef.current) clearInterval(finalInferencePollRef.current);
+    finalInferencePollRef.current = setInterval(async () => {
+      try {
+        const progress = await getAutoLabelProgress(taskId);
+        setFinalInferenceProgress({ completed: progress.completed, total: progress.total });
+        if (progress.done) {
+          if (finalInferencePollRef.current) clearInterval(finalInferencePollRef.current);
+          finalInferencePollRef.current = null;
+          if (progress.error) {
+            toast.error(progress.error);
+            setFinalInferencePhase("error");
+            return;
+          }
+          const rows = progress.rows ?? [];
+          setFinalLabeledRows(rows);
+          setFinalInferencePhase("done");
+          if (rows.length > 0) {
+            downloadLabeledRows(rows, filename);
+            toast.success("Inference complete — labeled dataset downloaded.");
+          } else {
+            toast.success("Inference complete.");
+          }
+        }
+      } catch {
+        // ignore transient polling errors
+      }
+    }, 1500);
+  };
+
+  const handleDownloadFinalInference = () => {
+    if (!task?._id || finalLabeledRows.length === 0) return;
+    downloadLabeledRows(finalLabeledRows, `labeled_d_all_${task.name || task._id}.csv`);
+  };
+
   const handleRunValEval = async () => {
     if (!task?._id) return;
     setIsRunningValEval(true);
@@ -274,6 +366,12 @@ export const useAIAnnotationController = () => {
     isRunningValEval,
     valEvalProgress,
     handleRunValEval,
+
+    finalInferencePhase,
+    finalInferenceProgress,
+    finalLabeledRows,
+    handleRunFinalInference,
+    handleDownloadFinalInference,
 
     isLoading: reviewState.isLoading,
     generatedLabels: reviewState.generatedLabels,

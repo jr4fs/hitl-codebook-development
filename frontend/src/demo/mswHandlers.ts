@@ -135,6 +135,21 @@ export const handlersReady = [
   http.post(`${API}/api/metrics/batches`, () => {
     return HttpResponse.json({ success: true, filename: "batch_metrics_demo.csv" });
   }),
+  http.post(`${API}/api/tasks/final-inference`, () => {
+    return HttpResponse.json({ success: true, taskId: "demo-task" });
+  }),
+  http.get(`${API}/api/tasks/auto-label/progress/:taskId`, () => {
+    return HttpResponse.json({
+      completed: 3,
+      total: 3,
+      done: true,
+      rows: [
+        { text: "Sample post one", generated_label: "positive" },
+        { text: "Sample post two", generated_label: "negative" },
+        { text: "Sample post three", generated_label: "not relevant" },
+      ],
+    });
+  }),
 ];
 
 export const handlersSamplingPending = [

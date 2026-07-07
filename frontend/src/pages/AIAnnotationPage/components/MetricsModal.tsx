@@ -1,7 +1,9 @@
-import { Button, Modal, Stack, Text } from "@mantine/core";
+import { Button, Divider, Modal, Progress, Stack, Text } from "@mantine/core";
 import { useNavigate } from "react-router-dom";
 import { cancelValEval } from "../../../services/metrics.service";
 import { MetricsFiles } from "../types";
+
+type FinalInferencePhase = "idle" | "running" | "done" | "error";
 
 interface MetricsModalProps {
   opened: boolean;
@@ -11,6 +13,11 @@ interface MetricsModalProps {
   onDownload: (filename?: string) => void;
   onExportCodebook: () => void;
   taskId?: string;
+  finalInferencePhase: FinalInferencePhase;
+  finalInferenceProgress: { completed: number; total: number };
+  finalLabeledRowCount: number;
+  onRunFinalInference: () => void;
+  onDownloadFinalInference: () => void;
 }
 
 export function MetricsModal({
@@ -20,7 +27,12 @@ export function MetricsModal({
   onClose,
   onDownload,
   onExportCodebook,
-  taskId
+  taskId,
+  finalInferencePhase,
+  finalInferenceProgress,
+  finalLabeledRowCount,
+  onRunFinalInference,
+  onDownloadFinalInference,
 }: MetricsModalProps) {
   const navigate = useNavigate();
   return (
@@ -71,6 +83,53 @@ export function MetricsModal({
         >
           Download metadata metrics
         </Button>
+
+        <Divider my="xs" />
+        <Text size="sm">
+          As a final step, run inference over your full dataset (D_all) using the
+          latest codebook to extract a label for every row.
+        </Text>
+        <Button
+          fullWidth
+          variant="filled"
+          color="grape"
+          loading={finalInferencePhase === "running"}
+          disabled={finalInferencePhase === "running" || !taskId}
+          onClick={onRunFinalInference}
+        >
+          {finalInferencePhase === "done"
+            ? "Re-run inference on full dataset (D_all)"
+            : "Run inference on full dataset (D_all)"}
+        </Button>
+        {finalInferencePhase === "running" && (
+          <>
+            <Text size="xs">
+              {finalInferenceProgress.total > 0
+                ? `${finalInferenceProgress.completed} / ${finalInferenceProgress.total} rows labeled`
+                : "Starting…"}
+            </Text>
+            <Progress
+              value={
+                finalInferenceProgress.total > 0
+                  ? (finalInferenceProgress.completed / finalInferenceProgress.total) * 100
+                  : 0
+              }
+              animated
+              size="sm"
+            />
+          </>
+        )}
+        {finalInferencePhase === "error" && (
+          <Text size="xs" c="red">
+            Inference failed. Please try again.
+          </Text>
+        )}
+        {finalInferencePhase === "done" && finalLabeledRowCount > 0 && (
+          <Button fullWidth variant="light" onClick={onDownloadFinalInference}>
+            Download labeled dataset ({finalLabeledRowCount} rows)
+          </Button>
+        )}
+
         {taskId && (
           <Button
             fullWidth

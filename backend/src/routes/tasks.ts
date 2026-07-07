@@ -16,6 +16,7 @@ import {
   startAutoLabelJob,
   getAutoLabelProgress,
   completeAutoLabel,
+  startFinalInference,
 } from "../services/tasks.service";
 import { uploadCSV, uploadBundle } from "../utils/fileUpload";
 import { authenticateToken } from "../middleware/auth.middleware";
@@ -89,5 +90,9 @@ router.get("/checkValFile/:fileName", checkValFileExists);
 router.post("/auto-label", startAutoLabelJob);
 router.get("/auto-label/progress/:taskId", getAutoLabelProgress);
 router.patch("/auto-label/complete/:taskId", completeAutoLabel);
+
+// Run inference over d_all with the latest codebook (final codebook-dev step).
+// Progress is polled via the shared /auto-label/progress/:taskId endpoint.
+router.post("/final-inference", startFinalInference);
 
 export default router;

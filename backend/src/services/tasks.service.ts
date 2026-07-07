@@ -1425,6 +1425,66 @@ export async function startAutoLabelJob(req: AuthRequest, res: Response) {
   }
 }
 
+// Final step of codebook development: run inference over the task's full
+// unlabeled dataset (d_all / restFile) using the latest codebook as the prompt,
+// extracting a label for every row. Runs on the EXISTING task (no new task
+// record, no status change); the client polls the shared auto-label progress
+// endpoint (keyed by taskId) for completion and the labeled rows.
+export async function startFinalInference(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  if (!userID) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  const { taskId, codebook } = req.body as { taskId?: string; codebook?: string[] };
+  if (!taskId) return res.status(400).json({ success: false, message: "taskId is required" });
+
+  try {
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    let taskQueryId: ObjectId | string = taskId;
+    if (ObjectId.isValid(taskId)) taskQueryId = new ObjectId(taskId);
+    const task = await collection.findOne({ _id: taskQueryId as any, userID });
+
+    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
+    if (!task.restFile) {
+      return res.status(400).json({
+        success: false,
+        message: "Task has no unlabeled dataset (d_all) to run inference on",
+      });
+    }
+
+    const finalCodebook = Array.isArray(codebook) ? codebook : task.codebook ?? [];
+    const userInput = finalCodebook.join("\n") || null;
+    const textColumn = task.columns?.[0] || "text";
+
+    // Fire-and-forget: pybackend reads d_all from shared_uploads/ and runs the
+    // job in the background keyed by job_id === taskId.
+    void axios
+      .post(
+        `${ML_BASE_URL}/inference/auto-label`,
+        {
+          file_path: task.restFile,
+          text_column: textColumn,
+          labels: task.labels,
+          task_definition: task.description,
+          model_name: task.modelName,
+          user_input: userInput,
+          task_type: task.type,
+          job_id: taskId,
+        },
+        { timeout: 3_600_000 },
+      )
+      .catch((err: Error) => {
+        console.error("[startFinalInference] Python job error:", err.message);
+      });
+
+    return res.status(200).json({ success: true, taskId });
+  } catch (error: any) {
+    console.error("[startFinalInference] Error:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: error.message || "Failed to start final inference" });
+  }
+}
+
 export async function getAutoLabelProgress(req: AuthRequest, res: Response) {
   const { taskId } = req.params;
   try {
