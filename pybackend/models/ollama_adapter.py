@@ -131,7 +131,7 @@ class OpenRouterAdapter(BaseModel):
 class InferenceRequest(BaseModel):
     labels:  List[Label] = Field(..., min_length=1)
     task_definition: str = Field(..., min_length=1)
-    case_notes: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1)
     model_name: str = Field(..., min_length=1)
     user_input: Optional[str] = Field(None, min_length=0)
     task_type: str = Field(..., min_length=1)
@@ -151,7 +151,7 @@ class InferenceResponse(BaseModel):
 class BatchInferenceRequest(BaseModel):
     ground_truth_labels:  List[Label] = Field(..., min_length=1)
     task_definition: str = Field(..., min_length=1)
-    case_notes: str = Field(..., min_length=1)
+    text: str = Field(..., min_length=1)
     model_name: str = Field(..., min_length=1)
     user_input: Optional[str] = Field(None, min_length=0)
     task_type: str = Field(..., min_length=1)
@@ -215,7 +215,7 @@ def _build_registry() -> Dict[str, Any]:
 registry = _build_registry()
 
 class ValEvalSample(BaseModel):
-    case_notes: str
+    text: str
     ground_truth: List[str]
 
 class ValEvalRequest(BaseModel):

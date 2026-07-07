@@ -620,7 +620,7 @@ const VAL_EVAL_HEADERS = [
 
 const VAL_EVAL_PREDICTIONS_HEADERS = [
   "sample_index",
-  "case_notes",
+  "text",
   "ground_truth",
   "predicted",
   "is_correct",
@@ -662,13 +662,13 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
 
     const samples = valRows
       .map((row) => ({
-        case_notes: getTextData(row, preferredTextCol),
+        text: getTextData(row, preferredTextCol),
         ground_truth: String(row[labelColumn] ?? "")
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
       }))
-      .filter((s) => s.case_notes.length > 0);
+      .filter((s) => s.text.length > 0);
 
     const ML_BASE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
     const { data: evalData } = await axios.post(
@@ -758,7 +758,7 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
         result.predicted.every((lbl) => result.ground_truth.includes(lbl));
       const predRow = {
         sample_index: i + 1,
-        case_notes: sample.case_notes,
+        text: sample.text,
         ground_truth: formatLabelList(result.ground_truth),
         predicted: formatLabelList(result.predicted),
         is_correct: isCorrect ? "TRUE" : "FALSE",

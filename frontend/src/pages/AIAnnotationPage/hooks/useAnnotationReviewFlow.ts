@@ -157,7 +157,7 @@ export function useAnnotationReviewFlow({
     const payload: InferenceRequest = {
       labels: task?.labels || [],
       task_definition: task?.description || "",
-      case_notes: finalText,
+      text: finalText,
       model_name: task?.modelName || "mistral:7b",
       task_type: "annotation",
       user_input: codebook.join("\n"),
