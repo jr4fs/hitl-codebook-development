@@ -256,13 +256,16 @@ export async function saveFinalInferenceResult(
   return data;
 }
 
-// Mark a codebook-development task complete (locks it read-only).
+// Mark a codebook-development task complete (locks it read-only). Optionally
+// persists the generated metrics filenames so the completion popup's download
+// buttons still work after a reload.
 export async function markCodebookComplete(
   taskId: string,
+  metricsFiles?: { sample?: string; batch?: string; metadata?: string },
 ): Promise<{ success: boolean; message?: string }> {
   const { data } = await apiClient.post<{ success: boolean; message?: string }>(
     "/api/tasks/complete",
-    { taskId },
+    { taskId, metricsFiles },
   );
   return data;
 }

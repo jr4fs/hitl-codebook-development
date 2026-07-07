@@ -6,6 +6,7 @@ import GuidedTour, { GuidedTourStep } from "../../components/common/GuidedTour";
 import StepTrackerBanner from "../../components/StepTrackerBanner";
 import { useDemo } from "../../demo/DemoContext";
 import styles from "./AIAnnotationPage.module.css";
+
 import { CodebookPanel } from "./components/CodebookPanel";
 import { MetricsModal } from "./components/MetricsModal";
 import {

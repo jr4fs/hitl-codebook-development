@@ -44,6 +44,13 @@ export interface Task {
   // true the codebook + sample review are locked read-only.
   codebookComplete?: boolean;
   completedAt?: string; // ISO 8601 timestamp when the review was completed
+  // Generated metrics CSV filenames captured at completion, so the completion
+  // popup's download buttons still work after a reload.
+  metricsFiles?: {
+    sample?: string;
+    batch?: string;
+    metadata?: string;
+  };
   // Server path of the labeled full-dataset (d_all) output from the final
   // inference step, so it can be re-downloaded after a reload.
   finalInferenceFile?: string;

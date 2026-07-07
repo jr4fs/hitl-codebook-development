@@ -121,6 +121,8 @@ export const useAIAnnotationController = () => {
 
     if (task.codebookComplete) setReviewCompleted(true);
 
+    if (task.metricsFiles) setMetricsFiles(task.metricsFiles);
+
     if (task.evalResults) {
       const { macroF1, macroPrecision, macroRecall } = task.evalResults;
       if (typeof macroF1 === "number") setPredictedAccuracy(macroF1);
@@ -266,11 +268,12 @@ export const useAIAnnotationController = () => {
       generateBatchMetrics(task._id),
     ]);
 
-    setMetricsFiles({
+    const files: MetricsFiles = {
       sample: sampleRes.filename,
       metadata: metadataRes.filename,
       batch: batchRes.filename,
-    });
+    };
+    setMetricsFiles(files);
 
     try {
       await exportCodebookSnapshot(
@@ -286,9 +289,10 @@ export const useAIAnnotationController = () => {
     setMetricsModalOpen(true);
     setReviewCompleted(true);
 
-    // Persist completion so the task stays locked/read-only across reloads.
+    // Persist completion (and the metrics filenames, so the popup's download
+    // buttons still work after a reload) to keep the task locked/read-only.
     try {
-      await markCodebookComplete(task._id);
+      await markCodebookComplete(task._id, files);
     } catch (error: any) {
       console.error("Failed to persist completion:", error);
     }

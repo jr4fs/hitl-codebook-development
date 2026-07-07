@@ -673,7 +673,10 @@ export async function saveTaskCodebook(req: AuthRequest, res: Response) {
 // codebook + sample review are locked read-only in the UI.
 export async function markCodebookComplete(req: AuthRequest, res: Response) {
   const userID = req.user?.userId;
-  const { taskId } = req.body as { taskId?: string };
+  const { taskId, metricsFiles } = req.body as {
+    taskId?: string;
+    metricsFiles?: { sample?: string; batch?: string; metadata?: string };
+  };
 
   if (!userID) return res.status(401).json({ success: false, message: "Unauthorized" });
   if (!taskId) return res.status(400).json({ success: false, message: "taskId is required" });
@@ -687,6 +690,7 @@ export async function markCodebookComplete(req: AuthRequest, res: Response) {
           codebookComplete: true,
           completedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          ...(metricsFiles ? { metricsFiles } : {}),
         },
       },
     );
