@@ -59,31 +59,34 @@ methodology is documented in [docs/sampling_methodology.md](./docs/sampling_meth
 
 ## Implementation details
 
-The system is a three-tier application: a **React** (Vite) single-page frontend, a
-**Node/Express** backend-for-frontend for authentication, task management, and file
-storage, and a **Python/FastAPI** ML service for embeddings, sampling, anonymization,
-and LLM calls. The codebook is built through a retrieval-and-memory loop:
-sentence-transformer (mpnet) or API embeddings index the unlabeled pool in **FAISS**,
-and coverage/representative sampling selects a diverse guide set; as the user reviews
-each batch, the LLM synthesizes rules that accumulate in a persistent, exported
-codebook, which is fed back into later prompts as long-term memory. To stay responsive
-over corpora of hundreds of thousands of rows, blocking LLM and embedding calls are
-offloaded from the event loop and batched under a bounded-concurrency semaphore, the
-candidate pool can be subsampled before embedding, sampling jobs are queued (FIFO)
-behind a memory guard, and validation and full-dataset inference fan out concurrently.
-The implementation is fully open-source and reproducible from a single `.env` plus
-one-command Docker or Terraform-driven deploys.
-
-Deployment is containerized with **Docker Compose** and provisioned on **AWS** with
-**Terraform** through a single idempotent script. Data storage and model APIs are
-configurable for three targets, selected purely through env switches (`LLM_PROVIDER`,
-`EMBEDDINGS_PROVIDER`, `DB_CONN_STRING`): **(1) public AWS deployment** — MongoDB Atlas
-for persistence, OpenRouter for LLM inference, and OpenAI (or Amazon Bedrock)
-for embeddings, behind Caddy auto-HTTPS on a single EC2 VM; **(2) hosted on CARC** —
-the same containers run on the CARC research-computing cluster for institutionally
-hosted compute and data; and **(3) fully local with Ollama** — MongoDB in a container
-with LLM inference via a local Ollama server and embeddings computed in-process, so no
-external API keys or data egress are required.
+- **Software stack.** React (Vite) single-page frontend, a Node/Express
+  backend-for-frontend (authentication, task management, file storage, ML proxy),
+  and a Python/FastAPI ML service (embeddings, sampling, anonymization, LLM calls).
+  Shared TypeScript types; MongoDB for persistence.
+- **Deployment (Docker + AWS).** Containerized with Docker Compose and provisioned
+  on AWS with Terraform via a single idempotent `deploy.sh` (EC2 + Elastic IP,
+  Caddy auto-HTTPS). The same stack runs locally with one Docker command.
+- **Open-source & reproducible.** Fully open-source and reproducible from a single
+  repo-root `.env` plus one-command Docker or Terraform-driven deploys; seeded
+  sampling and versioned, exportable codebooks make runs repeatable.
+- **Retrieval & memory.** The unlabeled pool is embedded (sentence-transformer
+  mpnet or an embeddings API) and indexed in **FAISS**; representative + coverage
+  sampling retrieves a diverse guide set. Synthesized rules accumulate in a
+  persistent codebook that is fed back into later prompts as long-term memory.
+- **Parallelization & optimizations.** Blocking LLM/embedding calls are offloaded
+  from the event loop and batched under a bounded-concurrency semaphore; the
+  candidate pool can be subsampled before embedding; sampling jobs are queued
+  (FIFO) behind a memory guard; validation and full-dataset inference fan out
+  concurrently; and large dataset uploads are gzip-compressed.
+- **Data storage & APIs** — switchable via env (`LLM_PROVIDER`,
+  `EMBEDDINGS_PROVIDER`, `DB_CONN_STRING`), with three target environments:
+  - **Public AWS deployment** — MongoDB Atlas, OpenRouter (LLM), and OpenAI or
+    Amazon Bedrock (embeddings), behind Caddy auto-HTTPS on a single EC2 VM.
+  - **Hosted on CARC** — the same containers run on the CARC research-computing
+    cluster for institutionally hosted compute and data.
+  - **Local with Ollama** — MongoDB in a container, LLM inference via a local
+    Ollama server, and embeddings computed in-process (mpnet); no external API
+    keys or data egress.
 
 ## Repository layout
 
