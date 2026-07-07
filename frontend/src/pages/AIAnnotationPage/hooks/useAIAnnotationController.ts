@@ -27,6 +27,32 @@ import { useCodebookManager } from "./useCodebookManager";
 import { useIntroState } from "./useIntroState";
 import { useSamplingStatus } from "./useSamplingStatus";
 
+// Macro-averaged F1 over (predicted, ground-truth) label-set pairs — the simple
+// mean of per-label F1, matching the backend's val-eval macroF1.
+function computeMacroF1(
+  pairs: { predicted: string[]; truth: string[] }[],
+  labelNames: string[],
+): number {
+  if (pairs.length === 0 || labelNames.length === 0) return 0;
+  let f1Sum = 0;
+  for (const label of labelNames) {
+    let tp = 0;
+    let fp = 0;
+    let fn = 0;
+    for (const { predicted, truth } of pairs) {
+      const inPred = predicted.includes(label);
+      const inTruth = truth.includes(label);
+      if (inPred && inTruth) tp += 1;
+      else if (inPred) fp += 1;
+      else if (inTruth) fn += 1;
+    }
+    const prec = tp + fp > 0 ? tp / (tp + fp) : 0;
+    const rec = tp + fn > 0 ? tp / (tp + fn) : 0;
+    f1Sum += prec + rec > 0 ? (2 * prec * rec) / (prec + rec) : 0;
+  }
+  return f1Sum / labelNames.length;
+}
+
 export const useAIAnnotationController = () => {
   const navigate = useNavigate();
   const { loading, task, guideAnnotations, refreshTaskData } = useAITaskData();
@@ -404,6 +430,29 @@ export const useAIAnnotationController = () => {
     [task, reviewState.annotationsForReview.length],
   );
 
+  // Live macro-F1 on the examples the user has annotated so far (d_guide),
+  // reconstructing ground truth from their correct/incorrect marks. Correct →
+  // truth is the AI's labels; incorrect with a chosen label → that label.
+  // Incorrect without a chosen correction can't be scored, so it's skipped.
+  const annotatedMetrics = useMemo(() => {
+    const labelNames = task?.labels?.map((l) => l.name) ?? [];
+    if (labelNames.length === 0) return null;
+
+    const pairs: { predicted: string[]; truth: string[] }[] = [];
+    for (const result of Object.values(reviewState.batchResults)) {
+      if (result.isCorrect === null || result.isCorrect === undefined) continue;
+      const predicted = Array.isArray(result.label) ? result.label : [];
+      let truth: string[];
+      if (result.isCorrect) truth = predicted;
+      else if (result.correctLabel) truth = [result.correctLabel];
+      else continue;
+      pairs.push({ predicted, truth });
+    }
+
+    if (pairs.length === 0) return null;
+    return { f1: computeMacroF1(pairs, labelNames), count: pairs.length };
+  }, [reviewState.batchResults, task?.labels]);
+
   return {
     loading,
     task,
@@ -442,6 +491,7 @@ export const useAIAnnotationController = () => {
 
     totalCorrect,
     totalAttempted,
+    annotatedMetrics,
     predictedAccuracy,
 
     codebook: codebookState.codebook,

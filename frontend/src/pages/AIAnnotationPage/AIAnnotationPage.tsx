@@ -117,18 +117,18 @@ export default function AnnotationPage() {
                     ? controller.valEvalProgress.total > 0
                       ? `${controller.valEvalProgress.completed} / ${controller.valEvalProgress.total}`
                       : "Starting..."
-                    : "Run Evaluation"}
+                    : "Run eval on full validation set"}
                 </Button>
               )}
               <Tooltip
-                label={`Current Accuracy: ${controller.totalAttempted > 0 ? Math.round((controller.totalCorrect / controller.totalAttempted) * 100) : 0}% (${controller.totalCorrect}/${controller.totalAttempted})`}
+                label={`F1 on annotated examples so far${controller.annotatedMetrics ? ` (${controller.annotatedMetrics.count} reviewed)` : ""}`}
               >
                 <Badge
                   variant="filled"
                   color={
-                    controller.totalAttempted === 0
+                    controller.annotatedMetrics === null
                       ? "gray"
-                      : controller.totalCorrect / controller.totalAttempted > 0.8
+                      : controller.annotatedMetrics.f1 > 0.8
                         ? "green"
                         : "orange"
                   }
@@ -137,12 +137,18 @@ export default function AnnotationPage() {
                   circle
                   style={{ border: `1px solid ${borderColor}` }}
                 >
-                  {controller.totalAttempted > 0
-                    ? Math.round((controller.totalCorrect / controller.totalAttempted) * 100)
-                    : "—"}
+                  {controller.annotatedMetrics === null
+                    ? "—"
+                    : Math.round(controller.annotatedMetrics.f1 * 100)}
                 </Badge>
               </Tooltip>
-              <Tooltip label="Unseen Data Accuracy (Predicted)">
+              <Tooltip
+                label={
+                  controller.predictedAccuracy === null
+                    ? "F1 on held-out validation set — run eval on the full validation set to populate"
+                    : "F1 on held-out validation set"
+                }
+              >
                 <Badge
                   variant="outline"
                   color={
