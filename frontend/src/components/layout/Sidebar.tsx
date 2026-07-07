@@ -15,7 +15,7 @@ import {
   IconLayoutSidebar,
   IconUserCircle,
   IconBook2,
-  IconPencil,
+  // IconPencil, // Annotate Dataset feature hidden for now
   IconDots,
   IconTrash,
   IconMoon,
@@ -91,16 +91,18 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   });
   const taskSectionsRef = useRef<HTMLDivElement | null>(null);
   const codebookListRef = useRef<HTMLDivElement | null>(null);
-  const annotationListRef = useRef<HTMLDivElement | null>(null);
+  // Annotate Dataset feature hidden for now
+  // const annotationListRef = useRef<HTMLDivElement | null>(null);
 
   const codebookTasks = useMemo(
     () => tasks.filter((task) => task.status !== "auto_label_complete" && !task.codebookSourceTaskId),
     [tasks],
   );
-  const annotationOnlyTasks = useMemo(
-    () => tasks.filter((task) => task.status === "auto_label_complete"),
-    [tasks],
-  );
+  // Annotate Dataset feature hidden for now
+  // const annotationOnlyTasks = useMemo(
+  //   () => tasks.filter((task) => task.status === "auto_label_complete"),
+  //   [tasks],
+  // );
 
   const updateListOverflow = useCallback((list: "codebook" | "annotation") => {
     const target = codebookListRef.current;
@@ -139,7 +141,8 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
     }
 
     const codebookNeed = codebookListRef.current?.scrollHeight ?? 0;
-    const annotationNeed = annotationListRef.current?.scrollHeight ?? 0;
+    // Annotate Dataset feature hidden for now
+    const annotationNeed = 0;
     const base = available / 2;
     let codebookAlloc = Math.min(base, codebookNeed);
     let annotationAlloc = Math.min(base, annotationNeed);
@@ -317,7 +320,8 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
   );
 
   const isCreateCodebookActive = pathname === "/new-codebook";
-  const isAnnotateDatasetActive = pathname === "/new-annotation";
+  // Annotate Dataset feature hidden for now
+  // const isAnnotateDatasetActive = pathname === "/new-annotation";
 
   const renderTaskSection = useCallback(
     ({
@@ -449,6 +453,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             <IconBook2 size={24} stroke={1.6} />
           </ActionIcon>
         </Tooltip>
+        {/* Annotate Dataset feature hidden for now
         <Tooltip label="Annotate Dataset" position="top" withArrow>
           <ActionIcon
             onClick={() => {
@@ -468,6 +473,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             <IconPencil size={24} stroke={1.6} />
           </ActionIcon>
         </Tooltip>
+        */}
 
         <Menu
           shadow="md"
@@ -574,6 +580,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             Create Codebook
           </Button>
 
+          {/* Annotate Dataset feature hidden for now
           <Button
             onClick={() => {
               navigate("/new-annotation");
@@ -594,6 +601,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
           >
             Annotate Dataset
           </Button>
+          */}
 
           <Text c="dimmed">Your Tasks</Text>
         </Stack>
@@ -623,6 +631,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
                 routeBuilder: (task) => `/codebook-creation/${task._id}`,
               })}
 
+              {/* Auto Annotation task section hidden for now
               {renderTaskSection({
                 keyName: "annotation",
                 title: "Auto Annotation",
@@ -631,6 +640,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
                 listHeight: listHeights.annotation,
                 routeBuilder: (task) => `/new-annotation/${task._id}`,
               })}
+              */}
             </>
           )}
         </Box>
