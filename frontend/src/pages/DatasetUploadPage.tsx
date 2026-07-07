@@ -368,8 +368,8 @@ export default function DatasetUploadPage() {
                     </Text>
                     <Divider my={4} color={dividerColor}/>
                     <NumberInput
-                      label="Coverage sample size"
-                      description="How many samples to include in the guide set. 150 by default."
+                      label="Budget"
+                      description="The maximum number of samples used for codebook development."
                       value={config.coverageSampleSize}
                       min={1}
                       onChange={(value) =>
