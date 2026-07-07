@@ -80,6 +80,8 @@ services:
       # Email of the single admin account (gates /api/admin + the /admin UI).
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       APP_MODE: ${APP_MODE:-DEFAULT}
+      # Default total number of samples when a request omits coverage_n.
+      DEFAULT_COVERAGE_SAMPLES: ${DEFAULT_COVERAGE_SAMPLES:-15}
     volumes: *data-volumes
     expose:
       - "8080"
@@ -90,6 +92,7 @@ services:
       dockerfile: frontend/Dockerfile
       args:
         VITE_APP_MODE: ${VITE_APP_MODE:-}
+        VITE_DEFAULT_COVERAGE_SAMPLES: ${VITE_DEFAULT_COVERAGE_SAMPLES:-15}
     restart: unless-stopped
     depends_on:
       - node

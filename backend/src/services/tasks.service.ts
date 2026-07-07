@@ -53,6 +53,8 @@ const ML_BASE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
 // Backstop so a hung ML request can't leave a task pending forever. A dropped
 // connection (e.g. pybackend restart) already rejects fast; this bounds true hangs.
 const SAMPLING_TIMEOUT_MS = Number(process.env.SAMPLING_TIMEOUT_MS) || 20 * 60 * 1000;
+// Default total number of samples to draw when the request doesn't specify one.
+const DEFAULT_COVERAGE_SAMPLES = Number(process.env.DEFAULT_COVERAGE_SAMPLES) || 15;
 
 /** Built-in "not relevant" label added by default to all upload-task-bundle tasks */
 const NOT_RELEVANT_LABEL = {
@@ -1005,7 +1007,10 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       labels: taskData.labels,
       taskId,
       userId: userID,
-      coverage_n: Number(req.body.coverage_n) > 0 ? Number(req.body.coverage_n) : 150,
+      coverage_n:
+        Number(req.body.coverage_n) > 0
+          ? Number(req.body.coverage_n)
+          : DEFAULT_COVERAGE_SAMPLES,
       use_representative_sampling:
         String(req.body.use_representative_sampling).toLowerCase() === "true",
     };

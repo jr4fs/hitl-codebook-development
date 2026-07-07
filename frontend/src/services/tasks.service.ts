@@ -134,7 +134,13 @@ export async function uploadTaskBundle(params: {
   formData.append("text_column", String(params.textColumn));
   formData.append("label_column", String(params.labelColumn));
   formData.append("model_name", String(params.modelName));
-  formData.append("coverage_n", String(params.coverageN ?? 150));
+  formData.append(
+    "coverage_n",
+    String(
+      params.coverageN ??
+        (Number(import.meta.env.VITE_DEFAULT_COVERAGE_SAMPLES) || 15),
+    ),
+  );
   formData.append(
     "use_representative_sampling",
     String(Boolean(params.useRepresentativeSampling)),

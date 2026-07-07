@@ -22,6 +22,10 @@ COPY common ./common
 ARG VITE_APP_MODE=
 ENV VITE_APP_MODE=${VITE_APP_MODE}
 
+# Default total number of samples pre-filled in the dataset upload form.
+ARG VITE_DEFAULT_COVERAGE_SAMPLES=15
+ENV VITE_DEFAULT_COVERAGE_SAMPLES=${VITE_DEFAULT_COVERAGE_SAMPLES}
+
 RUN cd frontend && npm run build
 
 # ---- runtime stage ----

@@ -39,11 +39,15 @@ interface UploadConfig {
   useRepresentativeSampling: boolean;
 }
 
+// Default total number of samples; overridable at build time via env.
+const DEFAULT_COVERAGE_SAMPLES =
+  Number(import.meta.env.VITE_DEFAULT_COVERAGE_SAMPLES) || 15;
+
 const defaultUploadConfig: UploadConfig = {
   selectedModel: "mistral:7b",
   textColumn: "translated_text",
   labelColumn: "Final Label",
-  coverageSampleSize: 150,
+  coverageSampleSize: DEFAULT_COVERAGE_SAMPLES,
   useRepresentativeSampling: false,
 };
 
@@ -274,7 +278,7 @@ export default function DatasetUploadPage() {
         coverageN:
           typeof config.coverageSampleSize === "number"
             ? config.coverageSampleSize
-            : 150,
+            : DEFAULT_COVERAGE_SAMPLES,
         useRepresentativeSampling: config.useRepresentativeSampling,
       });
 

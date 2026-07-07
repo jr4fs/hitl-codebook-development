@@ -434,7 +434,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
             </span>
           </Button>
         </Tooltip>
-        <Tooltip label="Create Codebook" position="top" withArrow>
+        <Tooltip label="Create Task" position="top" withArrow>
           <ActionIcon
             onClick={() => {
               navigate("/new-codebook");
@@ -577,7 +577,7 @@ export const SideBar = ({ collapsed, toggleCollapsed }: SideBarProps) => {
               }`,
             }}
           >
-            Create Codebook
+            Create Task
           </Button>
 
           {/* Annotate Dataset feature hidden for now
