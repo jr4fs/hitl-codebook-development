@@ -340,12 +340,26 @@ export default function DatasetUploadPage() {
             New here? Try the tool with a ready-made sample dataset:
           </Text>
           <Button
-            component="a"
-            href="/pangolin_sample_bundle.zip"
-            download
             size="xs"
             variant="light"
             leftSection={<IconDownload size={16} />}
+            onClick={async () => {
+              try {
+                const res = await fetch("/pangolin_sample_bundle.zip");
+                if (!res.ok) throw new Error(String(res.status));
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "pangolin_sample_bundle.zip";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+              } catch {
+                toast.error("Failed to download the sample dataset.");
+              }
+            }}
           >
             Download sample dataset
           </Button>
