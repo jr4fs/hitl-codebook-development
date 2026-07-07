@@ -34,10 +34,10 @@ export default function CodebookLandingPage() {
         </Badge>
         <div className={styles.heroGrid}>
           <Paper className={styles.heroCard}>
-            <Title className={styles.title}>Annotation Assistant</Title>
+            <Title className={styles.title}>Human in the loop codebook development</Title>
             <Text className={styles.subtitle} mt="sm">
-              Build, test, and refine a production-ready codebook from labeled and
-              unlabeled datasets in one streamlined workflow.
+              To get started, create a task, define your labels, and work with
+              language models to develop a codebook.
             </Text>
             <Group mt="lg" gap="sm">
               <Button
