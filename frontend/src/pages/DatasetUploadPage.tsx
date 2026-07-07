@@ -18,7 +18,7 @@ import {
   Title,
   useMantineColorScheme,
 } from "@mantine/core";
-import {IconAlertCircle, IconArrowRight, IconBraces, IconFileTypeCsv, IconUpload,} from "@tabler/icons-react";
+import {IconAlertCircle, IconArrowRight, IconBraces, IconDownload, IconFileTypeCsv, IconUpload,} from "@tabler/icons-react";
 import {type ReactNode, useCallback, useState, useEffect} from "react";
 import {useNavigate} from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
@@ -335,6 +335,21 @@ export default function DatasetUploadPage() {
           Upload your labeled examples, the remaining unlabeled data, and the task definition files to get
           started.
         </Text>
+        <Group gap="sm" align="center" mt="sm" wrap="nowrap">
+          <Text size="sm" c="dimmed">
+            New here? Try the tool with a ready-made sample dataset:
+          </Text>
+          <Button
+            component="a"
+            href="/pangolin_sample_bundle.zip"
+            download
+            size="xs"
+            variant="light"
+            leftSection={<IconDownload size={16} />}
+          >
+            Download sample dataset
+          </Button>
+        </Group>
       </Container>
 
       <Container fluid className={styles.tableSection} style={{height: "auto", overflow: "visible"}}>
