@@ -93,6 +93,7 @@ export default function AnnotationPage() {
       style={{ height: "100dvh", overflowX: "hidden", display: "flex", flexDirection: "column" }}
     >
       <div className={styles.orbOne} />
+      <GuidedTour open={tourOpen} onClose={() => setTourOpen(false)}>
       <Container fluid className={styles.hero}>
         <StepTrackerBanner currentStep={controller.isCompleteStep ? 3 : 2} activeSteps={[controller.isCompleteStep ? 3 : 2]} onHelp={controller.handleHelp} />
         <Paper className={styles.taskHeader} radius="md">
@@ -105,6 +106,12 @@ export default function AnnotationPage() {
                 {controller.task.description}
               </Text>
             </div>
+            <GuidedTourStep
+              order={0}
+              position="bottom"
+              title="Evaluation bar"
+              description="Track quality as you go: the first circle is F1 on the examples you've reviewed so far; the second is F1 on the held-out validation set once you run an evaluation. Click 'Run eval on full validation set' any time to score the current codebook."
+            >
             <Group gap="xs" className={styles.taskMetrics} wrap="nowrap">
               {showRunEvalButton && (
                 <Button
@@ -170,6 +177,7 @@ export default function AnnotationPage() {
                 </Badge>
               </Tooltip>
             </Group>
+            </GuidedTourStep>
           </Group>
         </Paper>
       </Container>
@@ -232,7 +240,6 @@ export default function AnnotationPage() {
           onStart={() => { controller.handleCloseIntro(); setTourOpen(true); }}
         />
 
-        <GuidedTour open={tourOpen} onClose={() => setTourOpen(false)}>
             <Grid gutter="md" align="stretch" className={styles.annotationGrid}>
               <Grid.Col span={{ base: 12, md: 8 }} h="100%" className={styles.mainColumn}>
                 <GuidedTourStep order={1} position="bottom" title="Batch Progress" description="Each batch contains ~10 samples. You review and mark each as correct or incorrect. After completing the batch, click 'Commit Batch' to synthesize rules.">
@@ -266,15 +273,22 @@ export default function AnnotationPage() {
                           ) : (
                             <>
                               {!controller.isCompleteStep && (
-                                <Button
-                                  variant="subtle"
-                                  color="red"
-                                  size="sm"
-                                  onClick={() => setExitConfirmOpen(true)}
-                                  disabled={controller.isLoading || exiting}
+                                <GuidedTourStep
+                                  order={6}
+                                  position="bottom"
+                                  title="Finish early"
+                                  description="Don't want to review every sample? Click Exit to wrap up now — we'll finalize your codebook and compute the final metrics as if you'd reviewed the whole set."
                                 >
-                                  Exit
-                                </Button>
+                                  <Button
+                                    variant="subtle"
+                                    color="red"
+                                    size="sm"
+                                    onClick={() => setExitConfirmOpen(true)}
+                                    disabled={controller.isLoading || exiting}
+                                  >
+                                    Exit
+                                  </Button>
+                                </GuidedTourStep>
                               )}
                               <Button
                                 variant="default"
@@ -386,8 +400,8 @@ export default function AnnotationPage() {
                 </GuidedTourStep>
               </Grid.Col>
             </Grid>
-        </GuidedTour>
       </Container>
+      </GuidedTour>
     </Box>
   );
 }
