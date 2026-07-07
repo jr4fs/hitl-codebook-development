@@ -1,7 +1,7 @@
 # Single-VM deployment: static SPA + Node BFF + Python ML service, behind Caddy.
 #
 # Usage:
-#   cp deploy/.env.example .env   # then fill in secrets
+#   cp .env.example .env   # then fill in secrets
 #   docker compose up -d --build
 #
 # The Node and Python containers share the SAME host data directories, mounted at

@@ -2,7 +2,7 @@
 # EC2 first-boot provisioning (runs as root via cloud-init). Installs Docker +
 # Compose, adds swap for build headroom, creates the persistent data dirs, and
 # generates a GitHub deploy key for the 'ubuntu' user. The repo clone + .env +
-# `docker compose up` remain manual (private repo + secrets) — see DEPLOY_AWS.md.
+# `docker compose up` remain manual (private repo + secrets) — see docs/deploy-aws.md.
 set -euxo pipefail
 
 # Docker Engine + Compose plugin

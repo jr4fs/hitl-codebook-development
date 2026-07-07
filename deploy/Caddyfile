@@ -1,7 +1,7 @@
 # Caddy serves the static SPA and reverse-proxies the API to the Node backend.
 # TLS is obtained automatically from Let's Encrypt for {$DOMAIN}.
 #
-# Required env (see deploy/.env.example):
+# Required env (see .env.example):
 #   DOMAIN      e.g. annotate.example.org
 #   ACME_EMAIL  contact email for the TLS certificate
 #
