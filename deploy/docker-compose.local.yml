@@ -23,5 +23,11 @@ services:
       - pybackend
       - mongo
 
+  # Serve over http://localhost so the in-app /demo (MSW service worker) works
+  # locally — browsers block service workers on the self-signed HTTPS cert.
+  caddy:
+    volumes:
+      - ./deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+
 volumes:
   mongo_data:
