@@ -1,7 +1,8 @@
 from typing import Dict, Any, List, Optional
-from models.ollama_adapter import OllamaAdapter, registry, configs
+from models.ollama_adapter import OllamaAdapter, AnnotationLLMOutput, registry, configs
 import json
 import logging
+import re
 
 from models.embedding_schemas import Label
 
@@ -13,18 +14,18 @@ class ChatService:
         self.configs = configs
         self.logger = logging.getLogger("uvicorn.error")
 
-    def send_chat(self, labels: List[Label], task_def:str, model_name: str, system: str, case_notes: str, user_input: Optional[str] = None, **opts) -> Dict[str, Any]:
+    def send_chat(self, labels: List[Label], task_def:str, model_name: str, system: str, text: str, user_input: Optional[str] = None, **opts) -> Dict[str, Any]:
         model = self.registry[model_name] #TODO: add check to see if model is present, if not, need to download if it is a valid model name
         inference_payload = {
             "labels": [l.dict() for l in labels],
-            "case_notes": case_notes,
+            "text": text,
             "task_definition": task_def,
             "user_input": user_input
         }
         payload_str = json.dumps(inference_payload, ensure_ascii=False)
         messages = [{"role": "system", "content": system}, {"role": "user", "content": payload_str}]
         # token check, caching, metrics hooks go here
-        response = model.chat(messages, **opts)
+        response = model.chat(messages, format=AnnotationLLMOutput.model_json_schema(), **opts)
         response_json = response.json()
         prompt_tokens = response_json.get("prompt_eval_count")
         eval_tokens = response_json.get("eval_count")
@@ -60,11 +61,19 @@ class ChatService:
         try:
             model_output = json.loads(raw_content)
         except json.JSONDecodeError:
-            self.logger.error("ollama response not json: %s", raw_content)
-            raise ValueError("Model response was not valid JSON")
+            model_output = self._extract_json(raw_content)
+            if model_output is None:
+                self.logger.error("ollama response not json: %s", raw_content)
+                raise ValueError("Model response was not valid JSON")
 
         label = model_output.get("label", [])
+        if isinstance(label, str):
+            label = [label]
+        if not label:
+            label = ["not relevant"]
         span_text = model_output.get("span_text", "")
+        if not span_text:
+            span_text = "No span text identified." 
         reason = model_output.get("reason", "")
 
         if not reason:
@@ -78,6 +87,18 @@ class ChatService:
             "label": label,
             "span_text": span_text,
             "reason": reason,
+            "raw_response": raw_content,
             "tokens": total_tokens,
             "time": (duration_ns / 1e9) if duration_ns else 0.0,
         }
+
+    def _extract_json(self, content: str) -> Optional[Dict[str, Any]]:
+        if not content:
+            return None
+        match = re.search(r"\{[\s\S]*\}", content)
+        if not match:
+            return None
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return None

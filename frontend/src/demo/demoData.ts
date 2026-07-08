@@ -1,0 +1,52 @@
+import type { Task } from "@common/types/tasks";
+import type { AnnotationItem } from "@common/types/annotations";
+
+export const demoTask: Task = {
+  _id: "demo-task-1",
+  name: "Pangolin Conservation Sentiment",
+  description: "Classify the sentiment of pangolin-related social media posts toward wildlife conservation.",
+  type: "Multiclass",
+  labels: [
+    { name: "positive", definition: "Supports protecting pangolins — rescue stories, anti-trafficking, conservation awareness, fundraising, or education", keywords: ["save", "protect", "conservation", "awareness", "endangered", "rescue"] },
+    { name: "negative", definition: "Promotes selling, eating, or using pangolins, or blames/wishes them harm — bushmeat, scales, trade, disease blame", keywords: ["for sale", "meat", "scales", "medicine", "poaching", "bushmeat"] },
+    { name: "neutral", definition: "Mentions pangolins with no clear stance — memes, games, logos, plush toys, descriptive references", keywords: ["meme", "cartoon", "plushie", "logo", "game", "mascot"] },
+  ],
+  labelColumn: "label",
+  modelName: "claude-3-5-sonnet",
+  columns: ["translated_text"],
+  file: "pangolin_posts.csv",
+  status: "ready",
+  codebook: [
+    "positive: posts that promote rescuing, protecting, or raising awareness about pangolins",
+    "negative: posts that promote selling, eating, or using pangolin parts, or blame them for disease",
+    "neutral: posts that mention pangolins with no stance — memes, games, logos, plush toys",
+  ],
+  userID: "demo-user",
+  createdAt: new Date().toISOString(),
+};
+
+const samples = [
+  "Just donated to a pangolin rescue center! These shy, scaly little mammals deserve all the protection we can give them. Please chip in if you can 💚 #SavePangolins",
+  "Did you know pangolins are the most trafficked mammal on Earth? Share this post to raise awareness and help stop the poaching before it's too late.",
+  "Fresh pangolin scales available now — traditional remedy trusted for generations. DM me for prices and shipping, limited stock this week.",
+  "Honestly pangolin meat is a delicacy everyone should try at least once. Slow-cooked with herbs, it's a real gastronomic marvel 🍲",
+  "My little cousin will not stop showing off her new cartoon pangolin plushie 🥰 it's genuinely the cutest thing.",
+  "TIL there's a playable pangolin character in that new indie video game. Rolled into a ball to dodge every attack lol.",
+];
+
+const labels = ["positive", "positive", "negative", "negative", "neutral", "neutral"];
+
+export const demoAnnotations: AnnotationItem[] = samples.map((text, idx) => {
+  return {
+    _id: `a${String(idx + 1)}`,
+    taskId: "demo-task-1",
+    sampleId: idx + 1,
+    sampleContent: { text },
+    labels: [labels[idx]],
+    createdBy: "demo-user",
+    source: "guide",
+    aiAnnotation: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  } as AnnotationItem;
+});

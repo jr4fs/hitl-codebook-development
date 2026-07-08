@@ -3,10 +3,7 @@ import { IconHelpCircle } from "@tabler/icons-react";
 import styles from "./StepTrackerBanner.module.css";
 
 const steps = [
-  "Configure anonymization",
-  "Upload CSV",
-  "Task definition",
-  "Manual seed annotation",
+  "Upload task bundle",
   "AI annotation review",
   "Codebook completion",
 ];
@@ -35,8 +32,8 @@ export default function StepTrackerBanner({
       : `Step ${currentStep} of ${steps.length}`;
   return (
     <Box className={styles.banner}>
-      <Group justify="space-between" align="center" wrap="wrap" gap="sm">
-        <Group gap="xs" align="center">
+      <div className={styles.row}>
+        <Group gap="xs" align="center" className={styles.summary}>
           <Text className={styles.kicker}>{stepLabel}</Text>
           {onHelp && (
             <Tooltip label={helpLabel} withArrow>
@@ -67,7 +64,7 @@ export default function StepTrackerBanner({
             );
           })}
         </div>
-      </Group>
+      </div>
     </Box>
   );
 }

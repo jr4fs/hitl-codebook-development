@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { AnnotationItem, AddAnnotationRequest, UpdateAnnotationRequest } from "@common/types/annotations";
+import { AnnotationItem, AddAnnotationRequest, UpdateValAnnotationRequest } from "@common/types/annotations";
 import { ObjectId } from "mongodb";
 import { getCollection } from "./database.service";
 import { AuthRequest } from "./tasks.service";
@@ -63,6 +63,8 @@ export async function addAnnotation(req: AuthRequest, res: Response) {
             sampleId: req.body.sampleId,
             sampleContent: payload.annotationSampleRow,
             labels: payload.labels,
+            source: "val",
+            aiAnnotation: null,
             createdBy: userId,
             createdAt: new Date().toISOString()
         };
@@ -79,6 +81,65 @@ export async function addAnnotation(req: AuthRequest, res: Response) {
         return res.status(500).json({
             success: false,
             message: error.message || "Failed to save annotation"
+        });
+    }
+}
+
+export async function updateGuideAnnotation(req: AuthRequest, res: Response) {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+        return res.status(401).json({
+            success: false,
+            message: "Unauthorized - user not authenticated"
+        });
+    }
+
+    const payload = req.body as any; // Cast to UpdateGuideAnnotationRequest
+
+    if (!payload.taskId || !payload.sampleId) {
+        return res.status(400).json({
+            success: false,
+            message: "taskId and sampleId are required to update guide annotations"
+        });
+    }
+
+    try {
+        const collection = getCollection<AnnotationItem>(ANNOTATION_COLLECTION);
+        // Find existing annotation for this user and sample
+        const existing = await collection.findOne({
+            taskId: payload.taskId,
+            sampleId: payload.sampleId,
+            createdBy: userId,
+            source: "guide"
+        });
+
+        if (existing) {
+            const updateDoc: any = { updatedAt: new Date().toISOString() };
+            if (payload.labels !== undefined) updateDoc.labels = payload.labels;
+            if (payload.aiAnnotation !== undefined) updateDoc.aiAnnotation = payload.aiAnnotation;
+
+            await collection.updateOne(
+                { _id: existing._id },
+                { $set: updateDoc }
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: "Guide annotation updated successfully",
+                annotationId: existing._id?.toString()
+            });
+        } else {
+            return res.status(404).json({
+                success: false,
+                message: "Guide annotation not found"
+            });
+        }
+    } catch (error: any) {
+        console.error("Error updating guide annotation:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to update guide annotation"
         });
     }
 }
@@ -104,7 +165,8 @@ export async function getTaskAnnotations(req: AuthRequest, res: Response) {
         const collection = getCollection<AnnotationItem>(ANNOTATION_COLLECTION);
         const result = await collection.find({
             "taskId": taskId,
-            "createdBy": userId
+            "createdBy": userId,
+            "source": "guide"
         }).toArray();
 
         if (!result || result.length === 0) {
@@ -129,7 +191,7 @@ export async function getTaskAnnotations(req: AuthRequest, res: Response) {
         });
     }
 }
-export async function updateAnnotation(req: AuthRequest, res: Response) {
+export async function updateValAnnotation(req: AuthRequest, res: Response) {
     const userId = req.user?.userId;
 
     if (!userId) {
@@ -139,7 +201,7 @@ export async function updateAnnotation(req: AuthRequest, res: Response) {
         });
     }
 
-    const { annotationId, labels } = req.body as UpdateAnnotationRequest;
+    const { annotationId, labels } = req.body as UpdateValAnnotationRequest;
 
     if (!annotationId || !labels || labels.length === 0) {
         return res.status(400).json({
@@ -152,7 +214,7 @@ export async function updateAnnotation(req: AuthRequest, res: Response) {
         const collection = getCollection<AnnotationItem>(ANNOTATION_COLLECTION);
 
         const result = await collection.updateOne(
-            { _id: new ObjectId(annotationId) as any, createdBy: userId },
+            { _id: new ObjectId(annotationId) as any, createdBy: userId, source: "val" },
             { $set: { labels, updatedAt: new Date().toISOString() } }
         );
 

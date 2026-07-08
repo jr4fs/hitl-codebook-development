@@ -3,8 +3,12 @@ import time
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+from pathlib import Path
 
 from api.routes import embedding_router, anonymize_router, chat_router
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
 def create_app() -> FastAPI:
     """

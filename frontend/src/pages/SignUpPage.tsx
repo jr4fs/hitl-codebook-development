@@ -12,13 +12,15 @@ import {
   Box,
   Checkbox,
   Alert,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconExclamationMark } from "@tabler/icons-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CreateUserRequest } from "@common/types/accounts";
 import { createUser, loginUser } from "../services/account.service";
+import { getClientConfig } from "../services/config.service";
 import { AxiosError } from "axios";
 import { useDispatch } from "react-redux";
 import { setUser } from "../store/userSlice";
@@ -48,9 +50,21 @@ const getPasswordErrors = (password: string) => {
 
 export default function SignUpPage() {
   const navigate = useNavigate();
+  const { colorScheme } = useMantineColorScheme();
+  const isLight = colorScheme === "light";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // null = still loading config; drives whether the form is shown at all.
+  const [signupAllowed, setSignupAllowed] = useState<boolean | null>(null);
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    getClientConfig()
+      .then((cfg) => setSignupAllowed(cfg.allowSignup))
+      // If the config check fails, fall back to showing the form; the API still
+      // enforces the real rule (403) on submit.
+      .catch(() => setSignupAllowed(true));
+  }, []);
 
   const form = useForm({
     mode: "controlled",
@@ -127,7 +141,14 @@ export default function SignUpPage() {
   return (
     <BackgroundImage src="/paint.jpg" radius="xs" w="100vw" h="100vh">
       <Center w="100%" h="100%">
-        <Paper c="white" bg="#343434" p="40" w="500" radius="xl" shadow="xl">
+        <Paper
+          c={isLight ? "#0f1418" : "white"}
+          bg={isLight ? "#ffffff" : "#343434"}
+          p="40"
+          w="500"
+          radius="xl"
+          shadow="xl"
+        >
           <Stack gap="xl">
             <Text size="32px" fw={900} c="#50C878" ta="center">
               Welcome to the Annotation Tool
@@ -140,6 +161,18 @@ export default function SignUpPage() {
                 icon={<IconExclamationMark />}
               />
             )}
+            {signupAllowed === false && (
+              <Alert
+                variant="light"
+                color="yellow"
+                title="Sign-up is disabled"
+                icon={<IconExclamationMark />}
+              >
+                Self-service registration is turned off for this deployment. Contact an
+                administrator to have an account created for you.
+              </Alert>
+            )}
+            {signupAllowed !== false && (
             <form onSubmit={form.onSubmit(handleSubmit)}>
               <Stack gap="lg">
                 <TextInput
@@ -191,6 +224,7 @@ export default function SignUpPage() {
                 />
               </Stack>
             </form>
+            )}
             <Box>
               <Text ta="center">
                 Have an account already?{" "}

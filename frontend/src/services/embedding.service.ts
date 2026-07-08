@@ -1,21 +1,39 @@
-import { MLapiClient } from "../lib/MLapiClient";
-import { EmbedDatasetRequest, EmbedDatasetResponse } from '@common/types/embedding';
+import { apiClient } from "../lib/apiClient";
+import { EmbedDatasetRequest, EmbedDatasetResponse } from "@common/types/embedding";
 import { AxiosError } from "axios";
 
 export async function embedDataset(
-    payload: EmbedDatasetRequest
-  ): Promise<EmbedDatasetResponse> {
-    try {
-      const { data } = await MLapiClient.post<EmbedDatasetResponse>(
-        "/embedding/run",
-        payload
-      );
-      return data;
-    } catch (error) {
-      if (error instanceof AxiosError) {
-        console.error("API Error:", error.response?.data || error.message);
-        throw error;
-      }
+  payload: EmbedDatasetRequest,
+): Promise<EmbedDatasetResponse> {
+  try {
+    const { data } = await apiClient.post<EmbedDatasetResponse>(
+      "/embedding/run",
+      payload,
+    );
+    return data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      console.error("API Error:", error.response?.data || error.message);
       throw error;
     }
+    throw error;
   }
+}
+
+export async function runSampling(
+  payload: EmbedDatasetRequest,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const { data } = await apiClient.post<{ success: boolean; message: string }>(
+      "/api/embedding/sample",
+      payload,
+    );
+    return data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      console.error("API Error:", error.response?.data || error.message);
+      throw error;
+    }
+    throw error;
+  }
+}

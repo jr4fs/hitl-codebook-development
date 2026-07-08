@@ -17,8 +17,73 @@
     ),
     linear-gradient(180deg, #11171c 0%, #080c10 100%);
   color: #e8eef1;
-  overflow: hidden;
+  overflow-x: hidden;
   font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+:global([data-mantine-color-scheme="light"]) .page {
+  background:
+    radial-gradient(
+      1200px 800px at 10% 20%,
+      rgba(54, 194, 179, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 600px at 90% 0%,
+      rgba(243, 165, 120, 0.22),
+      transparent 55%
+    ),
+    linear-gradient(180deg, #f7fafb 0%, #eef3f5 100%);
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .dropCard,
+:global([data-mantine-color-scheme="light"]) .fileRow,
+:global([data-mantine-color-scheme="light"]) .infoCard {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 20, 24, 0.08);
+}
+
+:global([data-mantine-color-scheme="light"]) .subtitle,
+:global([data-mantine-color-scheme="light"]) .fileName,
+:global([data-mantine-color-scheme="light"]) .dropTitle,
+:global([data-mantine-color-scheme="light"]) .iconIdle {
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .fileSubtext,
+:global([data-mantine-color-scheme="light"]) .tableMeta,
+:global([data-mantine-color-scheme="light"]) .dropHint {
+  color: rgba(15, 20, 24, 0.65);
+}
+
+:global([data-mantine-color-scheme="light"]) .fileHint {
+  color: rgba(15, 20, 24, 0.7);
+}
+
+:global([data-mantine-color-scheme="light"]) .fileButton {
+  background: #ffffff;
+  color: #0f1418;
+  border-color: rgba(124, 231, 225, 0.55);
+}
+
+:global([data-mantine-color-scheme="light"]) .fileButtonAction {
+  background: #ffffff;
+  color: #0f1418;
+  border-color: rgba(124, 231, 225, 0.55);
+}
+
+:global([data-mantine-color-scheme="light"]) .fileButton:hover {
+  background: #f4f7f9;
+}
+
+:global([data-mantine-color-scheme="light"]) .fileButtonAction:hover {
+  background: #f4f7f9;
+}
+
+:global([data-mantine-color-scheme="light"]) .tableCard {
+  background: #ffffff;
+  border-color: rgba(15, 20, 24, 0.08);
 }
 
 .page::before {
@@ -55,11 +120,11 @@
 .hero {
   position: relative;
   z-index: 1;
-  padding: 72px 24px 32px;
+  padding: 26px 24px 4px;
   animation: fadeUp 700ms ease both;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -79,35 +144,217 @@
 .subtitle {
   max-width: 560px;
   color: rgba(232, 238, 241, 0.7);
-  font-size: 1.05rem;
+  font-size: 1.15rem;
 }
 
 .dropCard {
   background: rgba(18, 24, 29, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
-  padding: 12px;
+  padding: 14px;
   backdrop-filter: blur(6px);
+  height: 100%;
 }
 
-.dropzone {
+.configLabel {
+  color: #e8eef1;
+  font-weight: 600;
+}
+
+.configDescription {
+  color: rgba(232, 238, 241, 0.6);
+}
+
+.configInput {
+  background: rgba(12, 18, 23, 0.8);
+  border: 1px solid rgba(124, 231, 225, 0.3);
+  color: #e8eef1;
+  border-radius: 10px;
+}
+
+.configDropdown {
+  background: rgba(18, 24, 29, 0.98);
+  border: 1px solid rgba(124, 231, 225, 0.3);
+  color: #e8eef1;
+}
+
+:global([data-mantine-color-scheme="light"]) .configLabel {
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .configDescription {
+  color: rgba(15, 20, 24, 0.6);
+}
+
+:global([data-mantine-color-scheme="light"]) .configInput {
+  background: #ffffff;
+  border: 1px solid rgba(124, 231, 225, 0.55);
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .configDropdown {
+  background: #ffffff;
+  border: 1px solid rgba(124, 231, 225, 0.4);
+  color: #0f1418;
+}
+
+.fileRow {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 231, 225, 0.25);
+  background: linear-gradient(
+    120deg,
+    rgba(12, 18, 23, 0.84),
+    rgba(14, 21, 27, 0.72)
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.fileButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 10px;
+  min-height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 231, 225, 0.4);
+  color: #e8eef1;
+  background: rgba(20, 30, 36, 0.9);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.fileButton:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 231, 225, 0.7);
+  background: rgba(26, 38, 45, 0.95);
+}
+
+.fileButtonAction {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 10px;
+  min-height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 231, 225, 0.4);
+  color: #e8eef1;
+  background: rgba(20, 30, 36, 0.9);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.fileButtonAction:hover {
+  transform: translateY(-1px);
+  border-color: rgba(124, 231, 225, 0.7);
+  background: rgba(26, 38, 45, 0.95);
+}
+
+.fileName {
+  align-self: flex-start;
+  text-align: left;
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  padding-left: 2px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileNameMissing {
+  color: #ff6b6b;
+}
+
+.fileNameSelected {
+  color: #5aa9ff;
+}
+
+.fileLabel {
+  line-height: 1.2;
+}
+
+.fileHint {
+  color: rgba(232, 238, 241, 0.58);
+  line-height: 1.2;
+  padding-left: 2px;
+}
+
+.fileSubtext {
+  color: rgba(232, 238, 241, 0.6);
+  align-self: flex-start;
+  text-align: left;
+  width: 100%;
+  padding-left: 4px;
+  font-size: 0.85rem;
+}
+
+.fileActions {
+  width: auto;
+  align-self: flex-end;
+  justify-content: flex-end;
+  align-items: flex-end;
+  display: flex;
+  margin-top: -1px;
+}
+
+.fileMetaRow {
+  width: 100%;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  margin-bottom: -2px;
+}
+
+.fileTemplateButton {
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-bottom: 0;
+}
+
+.fileMeta {
+  width: 100%;
+  padding-left: 4px;
+}
+
+.infoCard {
   border-radius: 16px;
-  border: 1px dashed rgba(124, 231, 225, 0.3);
+  border: 1px solid rgba(124, 231, 225, 0.2);
   background: rgba(18, 24, 29, 0.65);
-  min-height: 260px;
+  min-height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    transform 0.2s ease;
-}
-
-.dropzone:hover {
-  border-color: rgba(124, 231, 225, 0.6);
-  background: rgba(22, 30, 36, 0.82);
-  transform: translateY(-2px);
 }
 
 .iconIdle {
@@ -135,6 +382,20 @@
   font-weight: 600;
 }
 
+.primaryCta:disabled,
+.primaryCta[data-disabled="true"] {
+  background: rgba(124, 231, 225, 0.2);
+  color: rgba(3, 16, 22, 0.45);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+:global([data-mantine-color-scheme="light"]) .primaryCta:disabled,
+:global([data-mantine-color-scheme="light"]) .primaryCta[data-disabled="true"] {
+  background: rgba(15, 20, 24, 0.12);
+  color: rgba(15, 20, 24, 0.45);
+}
+
 .secondaryCta {
   background: rgba(124, 231, 225, 0.12);
   color: #baf3ee;
@@ -143,12 +404,10 @@
 .tableSection {
   position: relative;
   z-index: 1;
-  padding: 48px 24px 72px;
-  height: 100dvh;
+  padding: 6px 24px 36px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  overflow: hidden;
+  gap: 12px;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -160,6 +419,7 @@
 
 .tableMeta {
   color: rgba(232, 238, 241, 0.6);
+  font-size: 1rem;
 }
 
 .tableCard {
@@ -202,6 +462,6 @@
 
 @media (max-width: 768px) {
   .hero {
-    padding-top: 56px;
+    padding-top: 22px;
   }
 }

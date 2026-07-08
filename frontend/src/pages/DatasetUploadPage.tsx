@@ -1,310 +1,648 @@
 import {
-  Badge,
+  Alert,
   Box,
   Button,
-  Center,
   Container,
+  Divider,
+  Grid,
   Group,
-  Modal,
+  NumberInput,
   Paper,
-  Pagination,
+  Progress,
+  Select,
   Stack,
-  Table,
+  Switch,
   Text,
+  Textarea,
+  TextInput,
   Title,
-  Checkbox,
+  useMantineColorScheme,
 } from "@mantine/core";
-import { Dropzone } from "@mantine/dropzone";
-import { useDisclosure } from "@mantine/hooks";
-import {
-  IconArrowRight,
-  IconUpload,
-  IconX,
-  IconFile,
-  IconSettings,
-} from "@tabler/icons-react";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getCsvData, uploadFile } from "../services/tasks.service";
-import AnonymizeConfigModal from "../components/anonymize/AnonymizeConfigModal";
+import {IconAlertCircle, IconArrowRight, IconBraces, IconDownload, IconFileTypeCsv, IconUpload,} from "@tabler/icons-react";
+import {type ReactNode, useCallback, useState, useEffect} from "react";
+import {useNavigate} from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
+import GuidedTour, {GuidedTourStep} from "../components/common/GuidedTour";
+import PageIntro, {usePageIntroTour} from "../components/common/PageIntro";
+import {LABELS_TEMPLATE, TASK_TEMPLATE, modelOptions} from "../constants/datasetUpload.constants";
+import {toast} from "../lib/toast";
+import {uploadTaskBundle} from "../services/tasks.service";
+import {downloadContent} from "../utils/downloadContent";
+import { useDemo } from "../demo/DemoContext";
 import styles from "./DatasetUploadPage.module.css";
 
-const MAX_ROWS_PER_PAGE = 50;
+interface UploadConfig {
+  selectedModel: string | null;
+  textColumn: string;
+  labelColumn: string;
+  coverageSampleSize: number | "";
+  useRepresentativeSampling: boolean;
+}
 
-interface CsvRow {
-  [key: string]: string;
+// Default total number of samples; overridable at build time via env.
+const DEFAULT_COVERAGE_SAMPLES =
+  Number(import.meta.env.VITE_DEFAULT_COVERAGE_SAMPLES) || 15;
+
+const defaultUploadConfig: UploadConfig = {
+  selectedModel: "mistral:7b",
+  textColumn: "translated_text",
+  labelColumn: "Final Label",
+  coverageSampleSize: DEFAULT_COVERAGE_SAMPLES,
+  useRepresentativeSampling: false,
+};
+
+interface RequiredFileCardProps {
+  inputId: string;
+  accept: string;
+  icon: ReactNode;
+  label: string;
+  selectLabel: string;
+  hint: string;
+  file: File | null;
+  onFileChange: (file: File | null) => void;
+  templateAction?: {
+    label: string;
+    onClick: () => void;
+  };
+  preSelectAction?: {
+    label: string;
+    onClick: () => void;
+  };
+  hideMeta?: boolean;
+  children?: ReactNode;
+}
+
+function RequiredFileCard({
+                            inputId,
+                            accept,
+                            icon,
+                            label,
+                            selectLabel,
+                            hint,
+                            file,
+                            onFileChange,
+                            templateAction,
+                            preSelectAction,
+                            hideMeta,
+                            children,
+                          }: RequiredFileCardProps) {
+  return (
+    <div className={styles.fileRow}>
+      <input
+        id={inputId}
+        className={styles.fileInput}
+        type="file"
+        accept={accept}
+        onChange={(event) => onFileChange(event.currentTarget.files?.[0] || null)}
+      />
+      <Group justify="space-between" w="100%" wrap="nowrap">
+        <Group gap={8} wrap="nowrap">
+          {icon}
+          <Text fw={600} className={styles.fileLabel}>
+            {label}
+          </Text>
+        </Group>
+        <Group gap={6} wrap="nowrap">
+          {preSelectAction ? (
+            <button
+              type="button"
+              className={styles.fileButtonAction}
+              onClick={preSelectAction.onClick}
+            >
+              {preSelectAction.label}
+            </button>
+          ) : null}
+          <label htmlFor={inputId} className={styles.fileButton}>
+            <IconUpload size={14}/>
+            {selectLabel}
+          </label>
+        </Group>
+      </Group>
+      <Text size="xs" className={styles.fileHint}>
+        {hint}
+      </Text>
+      {children}
+      {!hideMeta && templateAction ? (
+        <Group className={styles.fileMetaRow} wrap="nowrap">
+          <Text
+            size="xs"
+            className={`${styles.fileName} ${file ? styles.fileNameSelected : styles.fileNameMissing}`}
+          >
+            {file ? file.name : "No file selected"}
+          </Text>
+          <Button
+            size="compact-xs"
+            variant="light"
+            className={styles.fileTemplateButton}
+            onClick={templateAction.onClick}
+          >
+            {templateAction.label}
+          </Button>
+        </Group>
+      ) : !hideMeta ? (
+        <Text
+          size="xs"
+          className={`${styles.fileName} ${file ? styles.fileNameSelected : styles.fileNameMissing}`}
+        >
+          {file ? file.name : "No file selected"}
+        </Text>
+      ) : null
+      }
+    </div>
+  );
 }
 
 export default function DatasetUploadPage() {
   const navigate = useNavigate();
-  const [csvData, setCsvData] = useState<CsvRow[]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [fileName, setFileName] = useState<string>("");
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [introOpen, setIntroOpen] = useState(false);
-  const [introDontShow, setIntroDontShow] = useState(false);
-  const [introShowCheckbox, setIntroShowCheckbox] = useState(true);
-  const [
-    configModalOpened,
-    { open: openConfigModal, close: closeConfigModal },
-  ] = useDisclosure(false);
+  const {colorScheme} = useMantineColorScheme();
+  const isLight = colorScheme === "light";
+  const { isDemo, tourOpen: demoTourOpen, setTourOpen: setDemoTourOpen } = useDemo();
 
-  const totalPages = Math.ceil(csvData.length / MAX_ROWS_PER_PAGE);
-  const startIndex = (currentPage - 1) * MAX_ROWS_PER_PAGE;
-  const endIndex = startIndex + MAX_ROWS_PER_PAGE;
-  const paginatedData = csvData.slice(startIndex, endIndex);
+  const [dValFile, setDValFile] = useState<File | null>(null);
+  const [dAllFile, setDAllFile] = useState<File | null>(null);
+  const [taskJsonFile, setTaskJsonFile] = useState<File | null>(null);
+  const [taskDetailsMode, setTaskDetailsMode] = useState<"file" | "manual">("file");
+  const [manualTaskName, setManualTaskName] = useState("");
+  const [manualTaskDescription, setManualTaskDescription] = useState("");
+  const [labelsJsonFile, setLabelsJsonFile] = useState<File | null>(null);
+  const [config, setConfig] = useState<UploadConfig>(defaultUploadConfig);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFileUpload = async (files: File[]) => {
-    const inputFile = files[0];
-    if (inputFile) {
-      console.log("Selected file:", inputFile);
-      const response = await uploadFile(inputFile);
-      if (response.success) {
-        const uploadedFileName = response.filePath ?? "";
-        setFileName(uploadedFileName);
-        const csvResponse = await getCsvData(uploadedFileName);
-        setCsvData((csvResponse.data || []) as CsvRow[]);
-        setHeaders(csvResponse.headers || []);
-        setCurrentPage(1);
-      } else {
-        console.log("Error uploading csv: ", response.errors);
-      }
-    }
-  };
+  const {
+    introOpen,
+    introMode,
+    tourOpen: pageTourOpen,
+    setIntroOpen,
+    setTourOpen: setPageTourOpen,
+    openHelpIntro,
+  } = usePageIntroTour("hideStep1Intro");
 
+  // In demo mode, use demo tour state; otherwise use page intro tour state
+  const tourOpen = isDemo ? demoTourOpen : pageTourOpen;
+  const setTourOpen = isDemo ? setDemoTourOpen : setPageTourOpen;
+
+  // Pre-fill demo form and set mock files on mount
   useEffect(() => {
-    const hideIntro = localStorage.getItem("hideStep12Intro") === "true";
-    if (!hideIntro) {
-      setIntroShowCheckbox(true);
-      setIntroOpen(true);
+    if (isDemo) {
+      setTaskDetailsMode("manual");
+      setManualTaskName("Pangolin Conservation Sentiment");
+      setManualTaskDescription("Classify social media posts about pangolin conservation as positive, negative, or neutral toward conservation.");
+      setConfig(prev => ({
+        ...prev,
+        selectedModel: "claude-3-5-sonnet",
+        textColumn: "translated_text",
+        labelColumn: "Final Label",
+      }));
+
+      // Create mock files for demo
+      const mockLabeledFile = new File(["mock"], "pangolin_labeled.csv", { type: "text/csv" });
+      const mockUnlabeledFile = new File(["mock"], "pangolin_unlabeled.csv", { type: "text/csv" });
+      const mockLabelsFile = new File(["mock"], "labels.json", { type: "application/json" });
+
+      setDValFile(mockLabeledFile);
+      setDAllFile(mockUnlabeledFile);
+      setLabelsJsonFile(mockLabelsFile);
     }
+  }, [isDemo]);
+
+  // Auto-open tour on mount in demo mode (intro is skipped)
+  useEffect(() => {
+    if (isDemo) {
+      setDemoTourOpen(true);
+    }
+  }, [isDemo, setDemoTourOpen]);
+
+  const hasManualTaskDetails =
+    manualTaskName.trim().length > 0 && manualTaskDescription.trim().length > 0;
+  const hasTaskDetails = taskDetailsMode === "file" ? Boolean(taskJsonFile) : hasManualTaskDetails;
+  const isReady = Boolean(dValFile && dAllFile && hasTaskDetails && labelsJsonFile);
+
+  const handleHelp = openHelpIntro;
+
+  const setConfigField = useCallback(
+    <K extends keyof UploadConfig>(key: K, value: UploadConfig[K]) => {
+      setConfig((prev) => ({...prev, [key]: value}));
+    },
+    [],
+  );
+
+  const handleReset = useCallback(() => {
+    setDValFile(null);
+    setDAllFile(null);
+    setTaskJsonFile(null);
+    setTaskDetailsMode("file");
+    setManualTaskName("");
+    setManualTaskDescription("");
+    setLabelsJsonFile(null);
+    setConfig(defaultUploadConfig);
+    setError(null);
   }, []);
 
-  const handleCloseIntro = () => {
-    if (introShowCheckbox && introDontShow) {
-      localStorage.setItem("hideStep12Intro", "true");
+  const dividerColor = isLight ? "rgba(15, 20, 24, 0.12)" : "rgba(255, 255, 255, 0.08)";
+
+  const handleUpload = useCallback(async () => {
+    if (
+      !dValFile ||
+      !dAllFile ||
+      !hasTaskDetails ||
+      !labelsJsonFile ||
+      !config.labelColumn ||
+      !config.selectedModel
+    ) {
+      setError(
+          "Please provide both CSVs, labels JSON, task details (JSON upload or manual entry), label column, and preferred model before continuing.",
+      );
+      return;
     }
-    setIntroOpen(false);
-  };
 
-  const handleHelp = () => {
-    setIntroShowCheckbox(false);
-    setIntroOpen(true);
-  };
+    setError(null);
+    setUploadProgress(0);
+    setIsUploading(true);
 
-  if (csvData.length === 0) {
-    return (
-      <Box className={styles.page}>
-        <div className={styles.orbOne} />
-        <Modal
-          opened={introOpen}
-          onClose={handleCloseIntro}
-          centered
-          title="Steps 1-2: Anonymization and upload"
-          overlayProps={{ blur: 2, opacity: 0.5, color: "#11171c" }}
-          styles={{
-            content: {
-              backgroundColor: "rgba(20, 28, 34, 0.98)",
-              border: "1px solid rgba(124, 231, 225, 0.25)",
-              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.35)",
-              color: "#e8eef1",
-            },
-            header: { backgroundColor: "transparent" },
-            title: { color: "#e8eef1", fontWeight: 600 },
-            close: { color: "#e8eef1" },
-          }}
-        >
-          <Stack gap="sm">
-            <Text>
-              Configure anonymization rules, then upload your CSV so the dataset
-              is ready for task definition.
-            </Text>
-            {introShowCheckbox && (
-              <Checkbox
-                label="Don't show again"
-                checked={introDontShow}
-                onChange={(event) =>
-                  setIntroDontShow(event.currentTarget.checked)
-                }
-              />
-            )}
-            <Group justify="flex-end">
-              <Button onClick={handleCloseIntro}>Got it</Button>
-            </Group>
-          </Stack>
-        </Modal>
-        <Container fluid className={styles.hero}>
-          <StepTrackerBanner
-            currentStep={2}
-            activeSteps={[1, 2]}
-            onHelp={handleHelp}
-            helpLabel="About steps 1 and 2"
-          />
-          <Badge className={styles.kicker} variant="light" color="gray">
-            Steps 1-2 of 6
-          </Badge>
-          <Title className={styles.title} mt="md">
-            Upload your CSV dataset
-          </Title>
-          <Text className={styles.subtitle} mt="sm">
-            Add the dataset you want to label so you can preview samples before
-            defining the task.
-          </Text>
+    try {
+      const response = await uploadTaskBundle({
+        onProgress: setUploadProgress,
+        dValFile,
+        dAllFile,
+        taskJsonFile: taskDetailsMode === "file" ? taskJsonFile ?? undefined : undefined,
+        taskName: taskDetailsMode === "manual" ? manualTaskName.trim() : undefined,
+        taskDescription:
+          taskDetailsMode === "manual" ? manualTaskDescription.trim() : undefined,
+        taskType: "Multiclass",
+        labelsJsonFile,
+        textColumn: config.textColumn,
+        labelColumn: config.labelColumn,
+        modelName: config.selectedModel ?? "",
+        coverageN:
+          typeof config.coverageSampleSize === "number"
+            ? config.coverageSampleSize
+            : DEFAULT_COVERAGE_SAMPLES,
+        useRepresentativeSampling: config.useRepresentativeSampling,
+      });
 
-          <Paper className={styles.dropCard} mt="lg">
-            <Dropzone
-              onDrop={handleFileUpload}
-              accept={["text/csv"]}
-              className={styles.dropzone}
-            >
-              <Stack align="center" h="100%" gap="sm">
-                <Dropzone.Accept>
-                  <IconFile
-                    size={40}
-                    stroke={1.5}
-                    className={styles.iconIdle}
-                  />
-                </Dropzone.Accept>
-                <Dropzone.Reject>
-                  <IconX size={40} stroke={1.5} className={styles.iconReject} />
-                </Dropzone.Reject>
-                <Dropzone.Idle>
-                  <IconUpload
-                    size={40}
-                    stroke={1.5}
-                    className={styles.iconIdle}
-                  />
-                </Dropzone.Idle>
-                <Text className={styles.dropTitle}>Drop CSV file here</Text>
-                <Text className={styles.dropHint}>or click to browse</Text>
-              </Stack>
-            </Dropzone>
-          </Paper>
+      if (!response.success || !response.taskId) {
+        throw new Error(response.message || "Upload failed.");
+      }
 
-          <Group mt="lg" gap="sm">
-            <Button
-              variant="light"
-              radius="xl"
-              className={styles.secondaryCta}
-              leftSection={<IconSettings size={18} />}
-              onClick={openConfigModal}
-            >
-              Configure anonymization
-            </Button>
-          </Group>
-        </Container>
-        <AnonymizeConfigModal
-          opened={configModalOpened}
-          onClose={closeConfigModal}
-        />
-      </Box>
-    );
-  }
+      if (response.valSummary && response.restSummary) {
+        toast.success(
+          `Task created. Sampling is pending. Labeled rows: ${response.valSummary.rows}. Unlabeled rows: ${response.restSummary.rows}.`,
+        );
+      } else {
+        toast.success("Task created. Sampling is pending.");
+      }
+
+      window.dispatchEvent(new Event("tasks:updated"));
+      navigate(`/codebook-creation/${response.taskId}`, {
+        state: {
+          task: response.task,
+          fileName: response.fileName,
+        },
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "Failed to upload files.");
+      } else {
+        setError("Failed to upload files.");
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  }, [
+    config,
+    dAllFile,
+    dValFile,
+    hasTaskDetails,
+    labelsJsonFile,
+    manualTaskDescription,
+    manualTaskName,
+    navigate,
+    taskDetailsMode,
+    taskJsonFile,
+  ]);
 
   return (
-    <Box className={styles.page}>
-      <div className={styles.orbOne} />
-      <Container fluid className={styles.tableSection}>
-        <StepTrackerBanner
-          currentStep={2}
-          activeSteps={[1, 2]}
-          onHelp={handleHelp}
-          helpLabel="About steps 1 and 2"
-        />
-        <Group justify="space-between" align="center" wrap="wrap" gap="md">
-          <div>
-            <Title className={styles.tableTitle}>
-              {fileName || "Dataset preview"}
-            </Title>
-            <Text className={styles.tableMeta}>{csvData.length} rows</Text>
-          </div>
+    <Box className={styles.page} style={{minHeight: "100dvh", overflowX: "hidden", overflowY: "auto"}}>
+      <div className={styles.orbOne}/>
+      <Container fluid className={styles.hero}>
+        <StepTrackerBanner currentStep={1} onHelp={handleHelp}/>
+        <Group justify="space-between" align="center" wrap="nowrap">
+          <Title className={styles.title}>Upload Your Task Files</Title>
+        </Group>
+        <Text className={styles.subtitle}>
+          Upload your labeled examples, the remaining unlabeled data, and the task definition files to get
+          started.
+        </Text>
+        <Group gap="sm" align="center" mt="sm" wrap="nowrap">
+          <Text size="sm" c="dimmed">
+            New here? Try the tool with a ready-made sample dataset:
+          </Text>
           <Button
+            size="xs"
             variant="light"
-            radius="xl"
-            className={styles.secondaryCta}
-            leftSection={<IconSettings size={18} />}
-            onClick={openConfigModal}
-          >
-            Configure anonymization
-          </Button>
-        </Group>
-
-        <Paper className={styles.tableCard} mt="lg">
-          <Table.ScrollContainer minWidth={500} h="100%">
-            <Table
-              withColumnBorders
-              withTableBorder
-              borderColor="rgba(232, 238, 241, 0.2)"
-            >
-              <Table.Thead>
-                <Table.Tr>
-                  {headers.map((header, index) => (
-                    <Table.Th key={index} className={styles.tableHeader}>
-                      {header}
-                    </Table.Th>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {paginatedData.map((row, rowIndex) => (
-                  <Table.Tr key={rowIndex}>
-                    {headers.map((header, cellIndex) => (
-                      <Table.Td key={cellIndex} className={styles.tableCell}>
-                        <div className={styles.tableCellContent}>
-                          {row[header]}
-                        </div>
-                      </Table.Td>
-                    ))}
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        </Paper>
-
-        <Group justify="center" mt="lg">
-          <Pagination
-            total={totalPages}
-            value={currentPage}
-            onChange={setCurrentPage}
-            color="gray"
-            withEdges
-            styles={{
-              control: {
-                backgroundColor: "#1a232b",
-                border: "none",
-                color: "#e8eef1",
-              },
-              dots: {
-                color: "#e8eef1",
-              },
-            }}
-          />
-        </Group>
-        <Center w="100%" mt="md">
-          <Button
-            className={styles.primaryCta}
-            radius="xl"
-            rightSection={<IconArrowRight size={18} />}
-            onClick={() => {
-              navigate("/new-task", {
-                state: {
-                  csvData,
-                  headers,
-                  fileName,
-                },
-              });
+            leftSection={<IconDownload size={16} />}
+            onClick={async () => {
+              try {
+                const res = await fetch("/pangolin_sample_bundle.zip");
+                if (!res.ok) throw new Error(String(res.status));
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "pangolin_sample_bundle.zip";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+              } catch {
+                toast.error("Failed to download the sample dataset.");
+              }
             }}
           >
-            Continue to task definition
+            Download sample dataset
           </Button>
-        </Center>
+        </Group>
       </Container>
-      <AnonymizeConfigModal
-        opened={configModalOpened}
-        onClose={closeConfigModal}
-      />
+
+      <Container fluid className={styles.tableSection} style={{height: "auto", overflow: "visible"}}>
+
+        <PageIntro
+          mode={introMode}
+          opened={isDemo ? false : introOpen}
+          onClose={() => setIntroOpen(false)}
+          title="Step 1: Upload your task files"
+          description="Upload the labeled dataset, the unlabeled dataset, and the two JSON files. We will validate and move you to AI review."
+          storageKey="hideStep1Intro"
+          onStart={() => setTourOpen(true)}
+        />
+
+        <GuidedTour open={tourOpen} onClose={() => setTourOpen(false)}>
+          <Stack gap="md">
+            <Grid gutter="md" align="stretch">
+              <Grid.Col span={{base: 12, md: 7}}>
+                <GuidedTourStep
+                  order={5}
+                  title="Configure your task"
+                  description="Select the model and specify which columns contain your text and labels."
+                >
+                  <Paper className={styles.dropCard} radius="lg" h="100%">
+                    <Stack gap="sm">
+                      <Title order={4} className={styles.tableTitle}>
+                        Task config
+                      </Title>
+                    <Text size="sm" className={styles.tableMeta}>
+                      Configure model and dataset columns before upload.
+                    </Text>
+                    <Divider my={4} color={dividerColor}/>
+                    <NumberInput
+                      label="Budget"
+                      description="The maximum number of samples used for codebook development."
+                      value={config.coverageSampleSize}
+                      min={1}
+                      onChange={(value) =>
+                        setConfigField(
+                          "coverageSampleSize",
+                          typeof value === "number" ? value : "",
+                        )
+                      }
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                        input: styles.configInput,
+                      }}
+                    />
+                    <Switch
+                      label="Enable representative sampling"
+                      description="Off by default for this pilot. When enabled, we run representative sampling before coverage."
+                      checked={config.useRepresentativeSampling}
+                      onChange={(event) =>
+                        setConfigField(
+                          "useRepresentativeSampling",
+                          event.currentTarget.checked,
+                        )
+                      }
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                      }}
+                    />
+                    <Select
+                      label="Model"
+                      description="Choose the model to use for AI annotation."
+                      placeholder="Select a model…"
+                      value={config.selectedModel}
+                      onChange={(value) => setConfigField("selectedModel", value)}
+                      data={modelOptions}
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                        input: styles.configInput,
+                        dropdown: styles.configDropdown,
+                      }}
+                    />
+                    <TextInput
+                      label="Text column name"
+                      description="The column in your CSV that contains the text to annotate."
+                      placeholder="e.g. text, translated_text, content…"
+                      value={config.textColumn}
+                      onChange={(event) => setConfigField("textColumn", event.currentTarget.value)}
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                        input: styles.configInput,
+                      }}
+                    />
+                    <TextInput
+                      label="Label column name"
+                      description="The column in your CSV that contains the human-annotated labels."
+                      placeholder="e.g. annotations, final label, labels"
+                      value={config.labelColumn}
+                      onChange={(event) => setConfigField("labelColumn", event.currentTarget.value)}
+                      classNames={{
+                        label: styles.configLabel,
+                        description: styles.configDescription,
+                        input: styles.configInput,
+                      }}
+                    />
+                  </Stack>
+                </Paper>
+                </GuidedTourStep>
+              </Grid.Col>
+              <Grid.Col span={{base: 12, md: 5}}>
+                <Paper className={styles.dropCard} radius="lg" h="100%">
+                  <Stack gap="sm">
+                    <Title order={4} className={styles.tableTitle}>
+                      Required files
+                    </Title>
+                    <Text size="sm" className={styles.tableMeta}>
+                      Upload both CSVs and both JSON files to continue.
+                    </Text>
+                    <Divider my={4} color={dividerColor}/>
+                    <GuidedTourStep
+                      order={1}
+                      title="Task details"
+                      description="Provide the task name and description in JSON."
+                    >
+                      <RequiredFileCard
+                        inputId="task-json"
+                        accept=".json,application/json"
+                        icon={<IconBraces size={18}/>}
+                        label="Task details"
+                        selectLabel="Select JSON"
+                        hint="JSON with taskname + description"
+                        file={taskJsonFile}
+                        onFileChange={setTaskJsonFile}
+                        hideMeta={taskDetailsMode === "manual"}
+                        templateAction={
+                          taskDetailsMode === "file"
+                            ? {
+                                label: "Download template",
+                                onClick: () => downloadContent("task.json", TASK_TEMPLATE),
+                              }
+                            : undefined
+                        }
+                        preSelectAction={{
+                          label: taskDetailsMode === "file" ? "Enter details" : "Use JSON",
+                          onClick: () =>
+                            setTaskDetailsMode((prev) => (prev === "file" ? "manual" : "file")),
+                        }}
+                      >
+                        {taskDetailsMode === "manual" && (
+                          <Stack gap={8} mt={8} w="100%">
+                          <TextInput
+                            label="Task Name"
+                            placeholder="e.g. Mental health theme detection"
+                            value={manualTaskName}
+                            onChange={(event) => setManualTaskName(event.currentTarget.value)}
+                            classNames={{
+                              label: styles.configLabel,
+                              input: styles.configInput,
+                            }}
+                          />
+                          <Textarea
+                            label="Description"
+                            placeholder="Describe what this task should classify and any scope boundaries."
+                            value={manualTaskDescription}
+                            onChange={(event) =>
+                              setManualTaskDescription(event.currentTarget.value)
+                            }
+                            minRows={3}
+                            autosize
+                            classNames={{
+                              label: styles.configLabel,
+                              input: styles.configInput,
+                            }}
+                          />
+                          </Stack>
+                        )}
+                      </RequiredFileCard>
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
+                      order={2}
+                      title="Labels JSON"
+                      description="Provide the label list with name, description, keywords, and guidelines."
+                    >
+                      <RequiredFileCard
+                        inputId="labels-json"
+                        accept=".json,application/json"
+                        icon={<IconBraces size={18}/>}
+                        label="Label set"
+                        selectLabel="Select JSON"
+                        hint="JSON labels with name, keywords, guidelines"
+                        file={labelsJsonFile}
+                        onFileChange={setLabelsJsonFile}
+                        templateAction={{
+                          label: "Download template",
+                          onClick: () => downloadContent("labels.json", LABELS_TEMPLATE),
+                        }}
+                      />
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
+                      order={3}
+                      title="Upload labeled data"
+                      description='A subset of the dataset with labels. It should include "text" and "task_label" columns.'
+                    >
+                      <RequiredFileCard
+                        inputId="labeled-dataset"
+                        accept=".csv,text/csv"
+                        icon={<IconFileTypeCsv size={18}/>}
+                        label="Labeled dataset"
+                        selectLabel="Select CSV"
+                        hint="CSV with text + task_label columns"
+                        file={dValFile}
+                        onFileChange={setDValFile}
+                      />
+                    </GuidedTourStep>
+
+                    <GuidedTourStep
+                      order={4}
+                      title="Upload unlabeled data"
+                      description='The remaining dataset without labels. It should include a "text".'
+                    >
+                      <RequiredFileCard
+                        inputId="unlabeled-dataset"
+                        accept=".csv,text/csv"
+                        icon={<IconFileTypeCsv size={18}/>}
+                        label="Unlabeled dataset"
+                        selectLabel="Select CSV"
+                        hint="CSV with text column only"
+                        file={dAllFile}
+                        onFileChange={setDAllFile}
+                      />
+                    </GuidedTourStep>
+                  </Stack>
+                </Paper>
+              </Grid.Col>
+            </Grid>
+
+            {error && (
+              <Alert icon={<IconAlertCircle size={16}/>} color="red" variant="light">
+                {error}
+              </Alert>
+            )}
+
+
+            <Group justify="space-between" mt={2}>
+              <Button variant="light" className={styles.secondaryCta} onClick={handleReset}>
+                Reset
+              </Button>
+              <div>
+                <GuidedTourStep
+                  order={6}
+                  title="Start the upload"
+                  description="When all files are selected, upload to continue."
+                  position="top"
+                >
+                  <Button
+                    className={styles.primaryCta}
+                    leftSection={<IconUpload size={18}/>}
+                    rightSection={<IconArrowRight size={16}/>}
+                    loading={isUploading}
+                    disabled={!isReady}
+                    onClick={handleUpload}
+                  >
+                    Upload bundle
+                  </Button>
+                </GuidedTourStep>
+                {isUploading && (
+                  <Stack gap={4} mt="xs">
+                    <Progress value={uploadProgress} animated striped />
+                    <Text size="xs" c="dimmed">
+                      {uploadProgress < 100
+                        ? `Uploading… ${uploadProgress}%`
+                        : "Processing upload…"}
+                    </Text>
+                  </Stack>
+                )}
+              </div>
+            </Group>
+          </Stack>
+        </GuidedTour>
+      </Container>
     </Box>
   );
 }

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <style>
+    .hring { fill: none; stroke: #1f2933; stroke-width: 2.8; }
+    .hfill { fill: #1f2933; fill-opacity: 0.18; }
+    .brk   { fill: none; stroke: #1f2933; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+    .dot   { fill: #1f2933; }
+    @media (prefers-color-scheme: dark) {
+      .hring { stroke: #ffffff; }
+      .hfill { fill: #ffffff; fill-opacity: 0.2; }
+      .brk   { stroke: #ffffff; }
+      .dot   { fill: #ffffff; }
+    }
+  </style>
+  <!-- outer hex -->
+  <polygon points="48,12 82,31 82,69 48,88 14,69 14,31" class="hring"/>
+  <!-- inner hex fill -->
+  <polygon points="48,26 72,39 72,65 48,78 24,65 24,39" class="hfill"/>
+  <!-- left bracket [ -->
+  <path d="M36,38 L27,38 L27,58 L36,58" class="brk"/>
+  <!-- right bracket ] -->
+  <path d="M60,38 L69,38 L69,58 L60,58" class="brk"/>
+  <!-- center dot -->
+  <circle cx="48" cy="48" r="5" class="dot"/>
+</svg>

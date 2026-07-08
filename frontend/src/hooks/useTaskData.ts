@@ -1,5 +1,5 @@
 // hooks/useTaskData.ts
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { getTaskById, getCsvData } from "../services/tasks.service";
 import { getTaskAnnotations } from "../services/annotations.service";
@@ -16,6 +16,8 @@ interface NavProps {
   fileName?: string;
   task?: Task;
   subsampledCsv?: CsvRow[];
+  restData?: CsvRow[];
+  guideData?: CsvRow[];
   annotations?: AnnotationItem[];
 }
 
@@ -27,19 +29,22 @@ export const useTaskData = () => {
   const [loading, setLoading] = useState(false);
   const [csvData, setCsvData] = useState<CsvRow[]>([]);
   const [subsampledData, setSubsampledData] = useState<CsvRow[]>([]);
+  const [restData, setRestData] = useState<CsvRow[]>([]);
+  const [guideData, setGuideData] = useState<CsvRow[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
   const [task, setTask] = useState<Task | null>(null);
   const [annotations, setAnnotations] = useState<AnnotationItem[]>([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = useCallback(async () => {
       const hasNavState = Boolean(
         navProps?.csvData ||
         navProps?.headers ||
         navProps?.fileName ||
         navProps?.task ||
         navProps?.subsampledCsv ||
+        navProps?.restData ||
+        navProps?.guideData ||
         navProps?.annotations,
       );
 
@@ -56,6 +61,12 @@ export const useTaskData = () => {
         }
         if (navProps?.subsampledCsv) {
           setSubsampledData(navProps.subsampledCsv);
+        }
+        if (navProps?.restData) {
+          setRestData(navProps.restData);
+        }
+        if (navProps?.guideData) {
+          setGuideData(navProps.guideData);
         }
         if (navProps?.task) {
           setTask(navProps.task);
@@ -93,11 +104,18 @@ export const useTaskData = () => {
         }
 
         const taskFile = taskResponse.task?.file || navProps?.fileName;
+        const taskValFile = taskResponse.task?.valFile;
         if (taskFile && needsCsv) {
-          const csvResponse = await getCsvData(taskFile);
+          const csvResponse = await getCsvData(taskFile, taskValFile);
           setCsvData((prev) => (prev.length ? prev : csvResponse.data || []));
           setSubsampledData((prev) =>
             prev.length ? prev : csvResponse.val_data || [],
+          );
+          setRestData((prev) =>
+            prev.length ? prev : csvResponse.rest_data || [],
+          );
+          setGuideData((prev) =>
+            prev.length ? prev : csvResponse.guide_data || [],
           );
           setHeaders((prev) =>
             prev.length ? prev : csvResponse.headers || [],
@@ -116,18 +134,22 @@ export const useTaskData = () => {
       } finally {
         setLoading(false);
       }
-    };
+    }, [taskId, navProps]);
 
+  useEffect(() => {
     fetchData();
-  }, [taskId]);
+  }, [fetchData]);
 
   return {
     loading,
     csvData,
     subsampledData,
+    restData,
+    guideData,
     headers,
     fileName,
     task,
     annotations,
+    refreshTaskData: fetchData,
   };
 };

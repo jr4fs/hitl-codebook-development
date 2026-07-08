@@ -6,4 +6,35 @@ __pycache__/
 shared_uploads/
 val_datasets/
 rest_datasets
+guide_datasets/
+metrics/
 venv
+at_slurm_job.sh
+generated_codebooks/
+annotation_outputs/
+
+# Dist
+backend/dist
+frontend/dist
+
+.context
+AGENTS.md
+.idea
+temp
+temp_a
+
+# Local docker-compose data dir (DATA_DIR=./data) and browser-test artifacts
+/data/
+.playwright-mcp/
+# Terraform
+deploy/terraform/.terraform/
+deploy/terraform/*.tfstate
+deploy/terraform/*.tfstate.*
+deploy/terraform/terraform.tfvars
+deploy/terraform/*.tfplan
+deploy/terraform/*.plan
+deploy/terraform/tf.plan
+
+# Deployment secrets/config (single untracked source of truth)
+deploy/config.env
+deploy/.generated.env

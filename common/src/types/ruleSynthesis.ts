@@ -5,6 +5,9 @@ export interface RuleSynthesisItem {
     ai_span_text: string;
     ground_truth_labels: string[];
     user_feedback: string;
+    user_label_feedback: boolean;
+    user_span_feedback: boolean;
+    user_reasoning_feedback: boolean;
 }
 
 export interface RuleSynthesisRequest {

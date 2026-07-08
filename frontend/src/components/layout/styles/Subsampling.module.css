@@ -31,3 +31,31 @@
 .option:hover {
   background-color: #1a232b;
 }
+
+:global([data-mantine-color-scheme="light"]) .input {
+  background-color: #ffffff;
+  color: #0f1418;
+  border-color: rgba(15, 20, 24, 0.12);
+}
+
+:global([data-mantine-color-scheme="light"]) .control {
+  background-color: #ffffff;
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .control:hover {
+  background-color: #f4f7f9;
+}
+
+:global([data-mantine-color-scheme="light"]) .dropdown {
+  background-color: #ffffff;
+  border: 1px solid rgba(15, 20, 24, 0.12);
+}
+
+:global([data-mantine-color-scheme="light"]) .option {
+  color: #0f1418;
+}
+
+:global([data-mantine-color-scheme="light"]) .option:hover {
+  background-color: #eef3f5;
+}

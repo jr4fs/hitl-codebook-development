@@ -1,0 +1,359 @@
+.page {
+  --accent: #1fa68a;
+  --accent-strong: #0d7f69;
+  --ink: #102027;
+  --paper: #f5fbf8;
+  position: relative;
+  min-height: 100dvh;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 600px at 85% -5%, rgba(31, 166, 138, 0.2), transparent 60%),
+    radial-gradient(700px 520px at -5% 20%, rgba(255, 206, 122, 0.22), transparent 55%),
+    linear-gradient(180deg, #fafdff 0%, #eef6f2 100%);
+  overflow-x: hidden;
+  font-family: "Sora", "Space Grotesk", system-ui, sans-serif;
+}
+
+:global([data-mantine-color-scheme="dark"]) .page {
+  --ink: #e7f1ee;
+  --paper: #101a18;
+  background:
+    radial-gradient(900px 600px at 85% -5%, rgba(58, 196, 166, 0.22), transparent 60%),
+    radial-gradient(700px 520px at -5% 20%, rgba(246, 185, 93, 0.18), transparent 55%),
+    linear-gradient(180deg, #0a1110 0%, #0d1514 100%);
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image: linear-gradient(rgba(16, 32, 39, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 32, 39, 0.07) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+:global([data-mantine-color-scheme="dark"]) .page::before {
+  opacity: 0.16;
+  background-image: linear-gradient(rgba(233, 245, 242, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(233, 245, 242, 0.07) 1px, transparent 1px);
+}
+
+.hero,
+.flowSection {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.hero {
+  padding: 44px 24px 10px;
+  animation: fadeUp 600ms ease both;
+}
+
+.kicker {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.heroCard,
+.sideCard {
+  border-radius: 20px;
+  padding: 24px;
+  border: 1px solid rgba(16, 32, 39, 0.12);
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(4px);
+}
+
+:global([data-mantine-color-scheme="dark"]) .heroCard,
+:global([data-mantine-color-scheme="dark"]) .sideCard {
+  border-color: rgba(231, 241, 238, 0.14);
+  background: rgba(14, 24, 22, 0.72);
+}
+
+.title {
+  font-size: clamp(34px, 4.4vw, 58px);
+  font-weight: 700;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+.subtitle {
+  color: rgba(16, 32, 39, 0.8);
+  max-width: 62ch;
+  font-size: 1.02rem;
+}
+
+:global([data-mantine-color-scheme="dark"]) .subtitle {
+  color: rgba(231, 241, 238, 0.82);
+}
+
+.primaryCta {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #f4fffc;
+  font-weight: 700;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.statChip {
+  background: rgba(16, 32, 39, 0.04);
+  border: 1px solid rgba(16, 32, 39, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+:global([data-mantine-color-scheme="dark"]) .statChip {
+  background: rgba(231, 241, 238, 0.04);
+  border-color: rgba(231, 241, 238, 0.14);
+}
+
+.statLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(16, 32, 39, 0.62);
+}
+
+:global([data-mantine-color-scheme="dark"]) .statLabel {
+  color: rgba(231, 241, 238, 0.62);
+}
+
+.statValue {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.sideCardTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(16, 32, 39, 0.62);
+}
+
+:global([data-mantine-color-scheme="dark"]) .sideCardTitle {
+  color: rgba(231, 241, 238, 0.62);
+}
+
+.flowSection {
+  padding: 14px 24px 30px;
+}
+
+.walkthroughSection {
+  border-radius: 20px;
+  padding: 18px;
+  border: 1px solid rgba(16, 32, 39, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+:global([data-mantine-color-scheme="dark"]) .walkthroughSection {
+  border-color: rgba(231, 241, 238, 0.14);
+  background: rgba(14, 24, 22, 0.72);
+}
+
+.sectionTitle {
+  font-size: 1.15rem;
+}
+
+.sectionHint {
+  font-size: 0.9rem;
+  color: rgba(16, 32, 39, 0.66);
+}
+
+:global([data-mantine-color-scheme="dark"]) .sectionHint {
+  color: rgba(231, 241, 238, 0.65);
+}
+
+.walkthroughRow {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 14px;
+}
+
+.walkthroughCard {
+  border: 1px solid rgba(16, 32, 39, 0.12);
+  background: var(--paper);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+:global([data-mantine-color-scheme="dark"]) .walkthroughCard {
+  border-color: rgba(231, 241, 238, 0.12);
+  background: rgba(16, 26, 24, 0.94);
+}
+
+.walkthroughArrow {
+  display: flex;
+  align-items: center;
+  color: rgba(13, 127, 105, 0.92);
+}
+
+.walkthroughTitle {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.walkthroughText {
+  color: rgba(16, 32, 39, 0.78);
+  font-size: 0.9rem;
+}
+
+:global([data-mantine-color-scheme="dark"]) .walkthroughText {
+  color: rgba(231, 241, 238, 0.8);
+}
+
+.mockPanel {
+  border: 1px solid rgba(16, 32, 39, 0.12);
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+:global([data-mantine-color-scheme="dark"]) .mockPanel {
+  border-color: rgba(231, 241, 238, 0.14);
+  background: rgba(9, 15, 14, 0.95);
+}
+
+.mockRow {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.mockRow:last-child {
+  margin-bottom: 0;
+}
+
+.sampleCard,
+.ruleCard {
+  border: 1px solid rgba(16, 32, 39, 0.14);
+  background: rgba(16, 32, 39, 0.03);
+  border-radius: 10px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.ruleCard {
+  margin-top: 8px;
+}
+
+.sampleCardLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(16, 32, 39, 0.62);
+  margin-bottom: 4px;
+}
+
+.fileChip,
+.predictionPill,
+.statusPill,
+.summaryChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+}
+
+:global([data-mantine-color-scheme="dark"]) .summaryChip {
+  border-color: rgba(231, 241, 238, 0.18);
+  background: rgba(231, 241, 238, 0.06);
+}
+
+:global([data-mantine-color-scheme="dark"]) .sampleCard,
+:global([data-mantine-color-scheme="dark"]) .ruleCard {
+  border-color: rgba(231, 241, 238, 0.16);
+  background: rgba(231, 241, 238, 0.04);
+}
+
+:global([data-mantine-color-scheme="dark"]) .sampleCardLabel {
+  color: rgba(231, 241, 238, 0.68);
+}
+
+.fileChip,
+.predictionPill {
+  border: 1px solid rgba(31, 166, 138, 0.34);
+  background: rgba(31, 166, 138, 0.14);
+}
+
+.statusPill {
+  border: 1px solid rgba(96, 179, 112, 0.35);
+  background: rgba(96, 179, 112, 0.14);
+}
+
+.summaryChip {
+  border: 1px solid rgba(16, 32, 39, 0.14);
+  background: rgba(16, 32, 39, 0.04);
+}
+
+.mockPrompt,
+.exampleLabel,
+.walkthroughFootnote {
+  color: rgba(16, 32, 39, 0.74);
+}
+
+:global([data-mantine-color-scheme="dark"]) .mockPrompt,
+:global([data-mantine-color-scheme="dark"]) .exampleLabel,
+:global([data-mantine-color-scheme="dark"]) .walkthroughFootnote {
+  color: rgba(231, 241, 238, 0.76);
+}
+
+.exportButtonMock {
+  margin-top: 8px;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f4fffc;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 960px) {
+  .heroGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .walkthroughRow {
+    grid-template-columns: 1fr;
+  }
+
+  .walkthroughArrow {
+    display: none;
+  }
+
+  .statGrid {
+    grid-template-columns: 1fr;
+  }
+}

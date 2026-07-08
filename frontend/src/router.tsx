@@ -2,19 +2,29 @@ import { createBrowserRouter } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import { AppLayout } from "./components/layout/AppLayout";
-import LandingPage from "./pages/LandingPage";
 import DatasetUploadPage from "./pages/DatasetUploadPage";
-import SubsamplingPage from "./pages/SubsamplingPage";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { AdminRoute } from "./components/auth/AdminRoute";
 import { PublicRoute } from "./components/auth/PublicRoute";
 import AnnotationPage from "./pages/AIAnnotationPage";
-import ManualAnnotationPage from "./pages/ManualAnnotationPage";
+import CodebookLandingPage from "./pages/CodebookLandingPage";
+import LandingPage from "./pages/LandingPage";
+import AdminPage from "./pages/AdminPage";
+import DashboardPage from "./pages/DashboardPage";
+import NewAnnotationTaskPage from "./pages/NewAnnotationTaskPage";
+import AnnotateDatasetPage from "./pages/AnnotateDatasetPage.tsx";
+import AnnotateDatasetLandingPage from "./pages/AnnotateDatasetLandingPage.tsx";
 
 export const router = createBrowserRouter([
+  // Public landing page (no auth required)
+  {
+    path: "/",
+    element: <LandingPage />,
+  },
   {
     element: <PublicRoute />,
     children: [
-      // Redirect to landing page if user is logged in
+      // Redirect to home if user is logged in
       {
         path: "/login",
         element: <LoginPage />,
@@ -28,30 +38,51 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
-      // Protected routes
+      // Protected routes - wrapped in AppLayout
       {
-        path: "/",
         element: <AppLayout />,
         children: [
           {
-            path: "",
-            element: <LandingPage />,
+            path: "/home",
+            element: <CodebookLandingPage />,
           },
           {
-            path: "/upload",
+            path: "/new-codebook",
             element: <DatasetUploadPage />,
           },
           {
-            path: "/new-task/:taskId?",
-            element: <SubsamplingPage />,
-          },
-          {
-            path: "/manual-annotate/:taskId?",
-            element: <ManualAnnotationPage />,
-          },
-          {
-            path: "/auto-annotate/:taskId?",
+            path: "/codebook-creation/:taskId?",
             element: <AnnotationPage />,
+          },
+          {
+            path: "/new-annotation",
+            element: <NewAnnotationTaskPage />,
+          },
+          {
+            path: "/new-annotation/:taskId",
+            element: <NewAnnotationTaskPage />,
+          },
+          {
+            path: "/annotate-dataset/:id",
+            element: <AnnotateDatasetPage />,
+          },
+          {
+            path: "/annotate-dataset-landing",
+            element: <AnnotateDatasetLandingPage />,
+          },
+          {
+            path: "/dashboard/:taskId",
+            element: <DashboardPage />,
+          },
+        ],
+      },
+      // Hidden admin area (no nav tab). Also enforced server-side.
+      {
+        element: <AdminRoute />,
+        children: [
+          {
+            path: "/admin",
+            element: <AdminPage />,
           },
         ],
       },
