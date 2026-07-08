@@ -1,5 +1,5 @@
 
-**Human-in-the-loop codebook development for LLM-assisted text annotation.**
+# Human-in-the-loop codebook development 
 
 Annotation Assistant turns the human effort in large-scale text labeling from
 *annotating every example* into *teaching the model how to label*. You review a
