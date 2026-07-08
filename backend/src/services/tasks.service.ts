@@ -56,14 +56,6 @@ const SAMPLING_TIMEOUT_MS = Number(process.env.SAMPLING_TIMEOUT_MS) || 20 * 60 *
 // Default total number of samples to draw when the request doesn't specify one.
 const DEFAULT_COVERAGE_SAMPLES = Number(process.env.DEFAULT_COVERAGE_SAMPLES) || 15;
 
-/** Built-in "not relevant" label added by default to all upload-task-bundle tasks */
-const NOT_RELEVANT_LABEL = {
-  name: "not relevant",
-  definition:
-    "Use this label when the sample is not relevant to the task domain—i.e., the text falls outside the scope of what the task is designed to classify.",
-  keywords: [] as string[],
-};
-
 function toSafeFilename(value: string): string {
   return value
     .trim()
@@ -238,16 +230,6 @@ function parseLabelsJson(buffer: Buffer) {
     console.error("Error in parseLabelsJson:", error);
     throw error;
   }
-}
-
-/** Appends built-in "not relevant" label. Replaces any user-provided "not relevant" with our canonical version (no keywords). */
-function ensureNotRelevantLabel(
-  labels: Array<{ name: string; definition: string; keywords: string[] }>,
-): Array<{ name: string; definition: string; keywords: string[] }> {
-  const withoutNotRelevant = labels.filter(
-    (l) => l.name?.toLowerCase().trim() !== "not relevant",
-  );
-  return [...withoutNotRelevant, NOT_RELEVANT_LABEL];
 }
 
 function getRowTextValue(row: Record<string, unknown>): string {
@@ -951,8 +933,7 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
     // Parse Labels JSON
     console.log("[uploadTaskBundle] Parsing labels_json...");
     const labelsJsonRaw = labelsJsonFile.buffer.toString("utf-8");
-    const parsedLabels = parseLabelsJson(labelsJsonFile.buffer);
-    const labels = ensureNotRelevantLabel(parsedLabels);
+    const labels = parseLabelsJson(labelsJsonFile.buffer);
     console.log("[uploadTaskBundle] Labels parsed, count:", labels.length);
 
     // Parse the labeled (val) set fully — it is small. Do NOT materialize the
