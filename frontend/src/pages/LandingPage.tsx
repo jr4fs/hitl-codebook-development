@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Button, Group, Paper, Stack, Text, Title, Badge, Collapse, Center } from "@mantine/core";
+import { Anchor, Box, Button, Group, Paper, Stack, Text, Textarea, Title, Badge, Collapse, Center } from "@mantine/core";
 import {
   IconArrowRight,
   IconUpload,
@@ -8,6 +8,7 @@ import {
   IconChecklist,
   IconBook2,
   IconChevronDown,
+  IconSend,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { useDemo } from "../demo/DemoContext";
@@ -15,6 +16,7 @@ import { PilotBanner } from "../components/PilotBanner";
 import styles from "./LandingPage.module.css";
 
 const isPilot = import.meta.env.VITE_APP_MODE === "pilot";
+const CONTACT_EMAIL = "jranjit@usc.edu";
 
 type TabType = "description" | "example" | "demo";
 type StepNumber = 1 | 2 | 3 | 4 | 5 | 6;
@@ -25,6 +27,14 @@ export default function LandingPage() {
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [activeStep, setActiveStep] = useState<StepNumber>(1);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
+  const [inquiry, setInquiry] = useState("");
+  const [feedback, setFeedback] = useState("");
+
+  const sendMail = (subject: string, body: string) => {
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
+      subject,
+    )}&body=${encodeURIComponent(body)}`;
+  };
 
   const steps: Array<{ number: StepNumber; title: string }> = [
     { number: 1, title: "The task" },
@@ -456,10 +466,10 @@ export default function LandingPage() {
               <img src="/annotate-icon.svg" alt="Annotation Assistant" className={styles.logoIcon} />
             </Center>
             <Box className={styles.hero}>
-              <Title className={styles.heroTitle}>Train your LLM like a human annotator.</Title>
+              <Title className={styles.heroTitle}>Human in the loop codebook development</Title>
               <Text className={styles.heroSubtitle}>
-                Most annotation tools scale the work — Annotation Assistant scales the judgment. Build a living
-                playbook that teaches your LLM exactly how to label, batch by batch.
+                To get started, create a task, define your labels, and work with
+                language models to develop a codebook.
               </Text>
             </Box>
 
@@ -506,6 +516,64 @@ export default function LandingPage() {
                 See a step-by-step example
               </Button>
             </Box>
+
+            <Box className={styles.conceptCardsContainer} mt="xl">
+              <Paper className={styles.conceptCard}>
+                <Text className={styles.conceptTitle}>Work with us</Text>
+                <Text className={styles.conceptText} mb="sm">
+                  Are you a community organization interested in working with us?
+                  Send us a message.
+                </Text>
+                <Textarea
+                  autosize
+                  minRows={3}
+                  placeholder="Tell us about your organization and how we might collaborate…"
+                  value={inquiry}
+                  onChange={(e) => setInquiry(e.currentTarget.value)}
+                />
+                <Button
+                  mt="sm"
+                  radius="xl"
+                  leftSection={<IconSend size={16} />}
+                  disabled={!inquiry.trim()}
+                  onClick={() =>
+                    sendMail("Collaboration inquiry — Annotation Assistant", inquiry)
+                  }
+                >
+                  Send message
+                </Button>
+              </Paper>
+
+              <Paper className={styles.conceptCard}>
+                <Text className={styles.conceptTitle}>Share your feedback</Text>
+                <Text className={styles.conceptText} mb="sm">
+                  Did you try out our tool? We'd love to hear from you — tell us how
+                  we can improve and what you'd like to see next.
+                </Text>
+                <Textarea
+                  autosize
+                  minRows={3}
+                  placeholder="What worked well, what didn't, and what you'd like to see next…"
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.currentTarget.value)}
+                />
+                <Button
+                  mt="sm"
+                  radius="xl"
+                  leftSection={<IconSend size={16} />}
+                  disabled={!feedback.trim()}
+                  onClick={() => sendMail("Feedback — Annotation Assistant", feedback)}
+                >
+                  Send feedback
+                </Button>
+              </Paper>
+            </Box>
+            <Center mt="md">
+              <Text size="sm" c="dimmed">
+                Or email us directly at{" "}
+                <Anchor href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Anchor>.
+              </Text>
+            </Center>
           </Box>
         )}
 
