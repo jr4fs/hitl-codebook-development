@@ -620,7 +620,7 @@ const VAL_EVAL_HEADERS = [
 
 const VAL_EVAL_PREDICTIONS_HEADERS = [
   "sample_index",
-  "case_notes",
+  "text",
   "ground_truth",
   "predicted",
   "is_correct",
@@ -662,13 +662,13 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
 
     const samples = valRows
       .map((row) => ({
-        case_notes: getTextData(row, preferredTextCol),
+        text: getTextData(row, preferredTextCol),
         ground_truth: String(row[labelColumn] ?? "")
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
       }))
-      .filter((s) => s.case_notes.length > 0);
+      .filter((s) => s.text.length > 0);
 
     const ML_BASE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
     const { data: evalData } = await axios.post(
@@ -696,6 +696,18 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
         p.predicted.every((lbl) => p.truth.includes(lbl)),
     ).length;
     const accuracy = pairs.length > 0 ? exactMatches / pairs.length : 0;
+
+    // Macro-averaged precision/recall (simple mean over labels, matching macroF1).
+    const macroPrecision =
+      labelNames.length > 0
+        ? labelNames.reduce((sum, l) => sum + (metrics.precision[l] ?? 0), 0) /
+          labelNames.length
+        : 0;
+    const macroRecall =
+      labelNames.length > 0
+        ? labelNames.reduce((sum, l) => sum + (metrics.recall[l] ?? 0), 0) /
+          labelNames.length
+        : 0;
 
     const tp: Record<string, number> = {};
     const fp: Record<string, number> = {};
@@ -746,7 +758,7 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
         result.predicted.every((lbl) => result.ground_truth.includes(lbl));
       const predRow = {
         sample_index: i + 1,
-        case_notes: sample.case_notes,
+        text: sample.text,
         ground_truth: formatLabelList(result.ground_truth),
         predicted: formatLabelList(result.predicted),
         is_correct: isCorrect ? "TRUE" : "FALSE",
@@ -762,6 +774,8 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
     const evalResults = {
       predictionsFilename,
       macroF1: metrics.macroF1,
+      macroPrecision,
+      macroRecall,
       accuracy,
       numSamples: samples.length,
       completedAt: new Date().toISOString(),
@@ -771,7 +785,16 @@ export async function runValEvaluation(req: AuthRequest, res: Response) {
       { $set: { evalResults } },
     );
 
-    return res.status(200).json({ success: true, filename, predictionsFilename, macroF1: metrics.macroF1, accuracy, evalResults });
+    return res.status(200).json({
+      success: true,
+      filename,
+      predictionsFilename,
+      macroF1: metrics.macroF1,
+      macroPrecision,
+      macroRecall,
+      accuracy,
+      evalResults,
+    });
   } catch (error: any) {
     console.error("Error running val evaluation:", error);
     return res.status(500).json({

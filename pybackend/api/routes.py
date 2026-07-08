@@ -123,7 +123,7 @@ async def run_inference(request: InferenceRequest):
         system_prompt = prompt_template_obj.get_task_system_prompt(request.task_type)
         inference_payload = {
             "labels": [l.dict() for l in request.labels],
-            "case_notes": request.case_notes,
+            "text": request.text,
             "task_definition": request.task_definition,
             "user_input": request.user_input,
         }
@@ -138,7 +138,7 @@ async def run_inference(request: InferenceRequest):
             request.task_definition,
             request.model_name,
             system_prompt,
-            request.case_notes,
+            request.text,
             request.user_input,
         )
         inference_response: InferenceResponse = {
@@ -206,7 +206,7 @@ async def process_single_sample(
         sample.task_definition,
         sample.model_name,
         system_prompt,
-        sample.case_notes,
+        sample.text,
         sample.user_input,
     )
     
@@ -283,7 +283,7 @@ async def run_val_eval(request: ValEvalRequest):
                         request.task_definition,
                         request.model_name,
                         system_prompt,
-                        sample.case_notes,
+                        sample.text,
                         request.user_input,
                     )
                     predicted = response["label"]
@@ -365,7 +365,7 @@ async def _run_auto_label_job(job_id: str, run_id: str, request: AutoLabelReques
 
         async def infer_one(row: dict) -> dict:
             row_data = {k: str(v) for k, v in row.items()}
-            case_notes = row_data.get(request.text_column, "")
+            text = row_data.get(request.text_column, "")
             if not is_active():
                 _auto_label_progress[job_id]["completed"] += 1
                 return {**row_data, "generated_label": ""}
@@ -380,7 +380,7 @@ async def _run_auto_label_job(job_id: str, run_id: str, request: AutoLabelReques
                         request.task_definition,
                         request.model_name,
                         system_prompt,
-                        case_notes,
+                        text,
                         request.user_input,
                     )
                     generated_label = "|".join(response["label"])

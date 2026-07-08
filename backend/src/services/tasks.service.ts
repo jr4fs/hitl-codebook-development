@@ -53,6 +53,8 @@ const ML_BASE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
 // Backstop so a hung ML request can't leave a task pending forever. A dropped
 // connection (e.g. pybackend restart) already rejects fast; this bounds true hangs.
 const SAMPLING_TIMEOUT_MS = Number(process.env.SAMPLING_TIMEOUT_MS) || 20 * 60 * 1000;
+// Default total number of samples to draw when the request doesn't specify one.
+const DEFAULT_COVERAGE_SAMPLES = Number(process.env.DEFAULT_COVERAGE_SAMPLES) || 15;
 
 /** Built-in "not relevant" label added by default to all upload-task-bundle tasks */
 const NOT_RELEVANT_LABEL = {
@@ -667,6 +669,71 @@ export async function saveTaskCodebook(req: AuthRequest, res: Response) {
   }
 }
 
+// Mark a codebook-development task as complete (review finished). After this the
+// codebook + sample review are locked read-only in the UI.
+export async function markCodebookComplete(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  const { taskId, metricsFiles } = req.body as {
+    taskId?: string;
+    metricsFiles?: { sample?: string; batch?: string; metadata?: string };
+  };
+
+  if (!userID) return res.status(401).json({ success: false, message: "Unauthorized" });
+  if (!taskId) return res.status(400).json({ success: false, message: "taskId is required" });
+
+  try {
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    const result = await collection.updateOne(
+      { _id: new ObjectId(taskId) as any, userID },
+      {
+        $set: {
+          codebookComplete: true,
+          completedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          ...(metricsFiles ? { metricsFiles } : {}),
+        },
+      },
+    );
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+    return res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error("Error marking codebook complete:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: error.message || "Failed to mark complete" });
+  }
+}
+
+// Persist the server path of the final full-dataset (d_all) inference output so
+// it survives a reload and can be re-downloaded.
+export async function saveFinalInferenceResult(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  const { taskId, outputFile } = req.body as { taskId?: string; outputFile?: string };
+
+  if (!userID) return res.status(401).json({ success: false, message: "Unauthorized" });
+  if (!taskId) return res.status(400).json({ success: false, message: "taskId is required" });
+  if (!outputFile) return res.status(400).json({ success: false, message: "outputFile is required" });
+
+  try {
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    const result = await collection.updateOne(
+      { _id: new ObjectId(taskId) as any, userID },
+      { $set: { finalInferenceFile: outputFile, updatedAt: new Date().toISOString() } },
+    );
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ success: false, message: "Task not found" });
+    }
+    return res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error("Error saving final inference result:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: error.message || "Failed to save result" });
+  }
+}
+
 export async function exportCodebookSnapshot(req: AuthRequest, res: Response) {
   try {
     const userID = req.user?.userId;
@@ -1005,7 +1072,10 @@ export async function uploadTaskBundle(req: AuthRequest, res: Response) {
       labels: taskData.labels,
       taskId,
       userId: userID,
-      coverage_n: Number(req.body.coverage_n) > 0 ? Number(req.body.coverage_n) : 150,
+      coverage_n:
+        Number(req.body.coverage_n) > 0
+          ? Number(req.body.coverage_n)
+          : DEFAULT_COVERAGE_SAMPLES,
       use_representative_sampling:
         String(req.body.use_representative_sampling).toLowerCase() === "true",
     };
@@ -1417,6 +1487,66 @@ export async function startAutoLabelJob(req: AuthRequest, res: Response) {
   } catch (error: any) {
     console.error("[startAutoLabelJob] Error:", error);
     return res.status(500).json({ success: false, message: error.message || "Failed to start auto-label job" });
+  }
+}
+
+// Final step of codebook development: run inference over the task's full
+// unlabeled dataset (d_all / restFile) using the latest codebook as the prompt,
+// extracting a label for every row. Runs on the EXISTING task (no new task
+// record, no status change); the client polls the shared auto-label progress
+// endpoint (keyed by taskId) for completion and the labeled rows.
+export async function startFinalInference(req: AuthRequest, res: Response) {
+  const userID = req.user?.userId;
+  if (!userID) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  const { taskId, codebook } = req.body as { taskId?: string; codebook?: string[] };
+  if (!taskId) return res.status(400).json({ success: false, message: "taskId is required" });
+
+  try {
+    const collection = getCollection<Task>(TASKS_COLLECTION);
+    let taskQueryId: ObjectId | string = taskId;
+    if (ObjectId.isValid(taskId)) taskQueryId = new ObjectId(taskId);
+    const task = await collection.findOne({ _id: taskQueryId as any, userID });
+
+    if (!task) return res.status(404).json({ success: false, message: "Task not found" });
+    if (!task.restFile) {
+      return res.status(400).json({
+        success: false,
+        message: "Task has no unlabeled dataset (d_all) to run inference on",
+      });
+    }
+
+    const finalCodebook = Array.isArray(codebook) ? codebook : task.codebook ?? [];
+    const userInput = finalCodebook.join("\n") || null;
+    const textColumn = task.columns?.[0] || "text";
+
+    // Fire-and-forget: pybackend reads d_all from shared_uploads/ and runs the
+    // job in the background keyed by job_id === taskId.
+    void axios
+      .post(
+        `${ML_BASE_URL}/inference/auto-label`,
+        {
+          file_path: task.restFile,
+          text_column: textColumn,
+          labels: task.labels,
+          task_definition: task.description,
+          model_name: task.modelName,
+          user_input: userInput,
+          task_type: task.type,
+          job_id: taskId,
+        },
+        { timeout: 3_600_000 },
+      )
+      .catch((err: Error) => {
+        console.error("[startFinalInference] Python job error:", err.message);
+      });
+
+    return res.status(200).json({ success: true, taskId });
+  } catch (error: any) {
+    console.error("[startFinalInference] Error:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: error.message || "Failed to start final inference" });
   }
 }
 

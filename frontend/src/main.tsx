@@ -21,7 +21,11 @@ function RootApp() {
     setIsDemoRoute(window.location.pathname === '/demo');
   }, []);
 
-  return isDemoRoute ? <DemoApp createRouter initMSW route="/home" /> : <App />;
+  return isDemoRoute ? (
+    <DemoApp createRouter initMSW route="/codebook-creation/demo-task-1" />
+  ) : (
+    <App />
+  );
 }
 
 createRoot(document.getElementById('root')!).render(

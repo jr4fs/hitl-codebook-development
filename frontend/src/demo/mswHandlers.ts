@@ -6,6 +6,84 @@ import { demoAnnotations, demoTask } from "./demoData";
 // (where apiClient uses a relative baseURL). MSW resolves "*" against any origin.
 const API = "*";
 
+// Per-sample mock AI prediction for the demo, keyed off the post text. The first
+// four are correct; the last two (the no-stance plushie/game posts) are wrong on
+// purpose so the demo shows the "mark incorrect → pick the right label" flow.
+type DemoPrediction = { label: string[]; span_text: string; reason: string };
+
+function demoPrediction(text: string): DemoPrediction {
+  const t = text.toLowerCase();
+  if (t.includes("rescue center")) {
+    return {
+      label: ["positive"],
+      span_text: "donated to a pangolin rescue center... deserve all the protection",
+      reason:
+        "The post fundraises for a pangolin rescue and calls the animals worth protecting — a clear pro-conservation stance.",
+    };
+  }
+  if (t.includes("most trafficked mammal")) {
+    return {
+      label: ["positive"],
+      span_text: "the most trafficked mammal on Earth... help stop the poaching",
+      reason:
+        "The post raises anti-trafficking awareness and urges people to help stop poaching — pro-conservation.",
+    };
+  }
+  if (t.includes("fresh pangolin scales")) {
+    return {
+      label: ["negative"],
+      span_text: "Fresh pangolin scales available now — traditional remedy",
+      reason:
+        "The post advertises pangolin scales for sale as a remedy, actively promoting the trade — against conservation.",
+    };
+  }
+  if (t.includes("delicacy")) {
+    return {
+      label: ["negative"],
+      span_text: "pangolin meat is a delicacy everyone should try",
+      reason:
+        "The post praises eating pangolin meat and normalizes consumption — against conservation.",
+    };
+  }
+  // Wrong on purpose: an affectionate toy post has no conservation stance (neutral).
+  if (t.includes("plushie")) {
+    return {
+      label: ["positive"],
+      span_text: "the cutest thing... pangolin plushie",
+      reason:
+        "The warm, affectionate tone toward pangolins reads as support for the species.",
+    };
+  }
+  // Wrong on purpose: a video-game mention has no conservation stance (neutral).
+  if (t.includes("video game")) {
+    return {
+      label: ["negative"],
+      span_text: "Rolled into a ball to dodge every attack",
+      reason:
+        "The mention of dodging attacks suggests the pangolin is being harmed or hunted.",
+    };
+  }
+  return {
+    label: ["positive"],
+    span_text: text.slice(0, 60),
+    reason: "The post appears supportive of pangolins.",
+  };
+}
+
+function demoInferenceResponse(prediction: DemoPrediction) {
+  return HttpResponse.json({
+    ...prediction,
+    raw_response: "mocked",
+    system_prompt: "mocked-system-prompt",
+    user_prompt: "mocked-user-prompt",
+  });
+}
+
+async function demoInferenceHandler({ request }: { request: Request }) {
+  const body = (await request.json().catch(() => ({}))) as { text?: string };
+  return demoInferenceResponse(demoPrediction(String(body?.text ?? "")));
+}
+
 export const handlersReady = [
   http.post(`${API}/api/account/login`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as {
@@ -57,26 +135,8 @@ export const handlersReady = [
       deletedAnnotationsCount: 0,
     });
   }),
-  http.post(`${API}/api/inference`, () => {
-    return HttpResponse.json({
-      label: ["crisis_intervention"],
-      reason: "YP is presenting with acute psychiatric symptoms including paranoid ideation and flight of ideas, requiring immediate risk assessment and intervention.",
-      span_text: "flight of ideas about being hurt by others... paranoia",
-      raw_response: "mocked",
-      system_prompt: "mocked-system-prompt",
-      user_prompt: "mocked-user-prompt",
-    });
-  }),
-  http.post(`${API}/api/inference/`, () => {
-    return HttpResponse.json({
-      label: ["crisis_intervention"],
-      reason: "YP is presenting with acute psychiatric symptoms including paranoid ideation and flight of ideas, requiring immediate risk assessment and intervention.",
-      span_text: "flight of ideas about being hurt by others... paranoia",
-      raw_response: "mocked",
-      system_prompt: "mocked-system-prompt",
-      user_prompt: "mocked-user-prompt",
-    });
-  }),
+  http.post(`${API}/api/inference`, demoInferenceHandler),
+  http.post(`${API}/api/inference/`, demoInferenceHandler),
   http.post(`${API}/api/annotate/update-guide`, () => {
     return HttpResponse.json({ success: true, message: "Guide annotation updated" });
   }),
@@ -88,8 +148,8 @@ export const handlersReady = [
         return HttpResponse.json({
           success: true,
           rules: [
-            "If note describes flight of ideas, paranoid ideation, or unresponsiveness to prompts, label crisis_intervention.",
-            "If note involves inter-agency emails, court coordination, or external referrals, label service_coordination.",
+            "If a post promotes rescuing, protecting, or raising awareness about pangolins, label positive.",
+            "If a post promotes selling, eating, or using pangolin parts, label negative.",
           ],
         });
       }
@@ -97,8 +157,8 @@ export const handlersReady = [
         return HttpResponse.json({
           success: true,
           rules: [
-            "If note documents a risk assessment or acute safety concern, label crisis_intervention.",
-            "If note describes a routine check-in, basic needs support, or emotional follow-up without crisis indicators, label routine_support.",
+            "If a post blames pangolins for disease or wishes them harm, label negative.",
+            "If a post mentions pangolins with no stance — memes, games, plushies, or logos — label neutral.",
           ],
         });
       }
@@ -134,6 +194,47 @@ export const handlersReady = [
   }),
   http.post(`${API}/api/metrics/batches`, () => {
     return HttpResponse.json({ success: true, filename: "batch_metrics_demo.csv" });
+  }),
+  http.post(`${API}/api/metrics/val-eval`, () => {
+    return HttpResponse.json({
+      success: true,
+      macroF1: 0.9,
+      macroPrecision: 0.91,
+      macroRecall: 0.89,
+      accuracy: 0.9,
+      filename: "val_eval_demo.csv",
+      predictionsFilename: "val_eval_predictions_demo.csv",
+    });
+  }),
+  http.get(`${API}/api/metrics/val-eval/progress/:taskId`, () => {
+    return HttpResponse.json({ completed: 15, total: 15, done: true });
+  }),
+  http.post(`${API}/api/metrics/val-eval/cancel`, () => {
+    return HttpResponse.json({ success: true });
+  }),
+  http.post(`${API}/api/tasks/final-inference`, () => {
+    return HttpResponse.json({ success: true, taskId: "demo-task" });
+  }),
+  http.post(`${API}/api/tasks/final-inference/save`, () => {
+    return HttpResponse.json({ success: true });
+  }),
+  http.post(`${API}/api/tasks/upload-output`, () => {
+    return HttpResponse.json({ success: true, filePath: "demo-labeled.csv" });
+  }),
+  http.post(`${API}/api/tasks/complete`, () => {
+    return HttpResponse.json({ success: true });
+  }),
+  http.get(`${API}/api/tasks/auto-label/progress/:taskId`, () => {
+    return HttpResponse.json({
+      completed: 3,
+      total: 3,
+      done: true,
+      rows: [
+        { text: "Sample post one", generated_label: "positive" },
+        { text: "Sample post two", generated_label: "negative" },
+        { text: "Sample post three", generated_label: "not relevant" },
+      ],
+    });
   }),
 ];
 

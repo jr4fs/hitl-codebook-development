@@ -1,12 +1,15 @@
 import {
+  Anchor,
   Badge,
   Box,
   Button,
   Container,
   Group,
   Paper,
+  SimpleGrid,
   Stack,
   Text,
+  Textarea,
   Title,
 } from "@mantine/core";
 import {
@@ -16,13 +19,25 @@ import {
   IconChecklist,
   IconFileText,
   IconRobot,
+  IconSend,
   IconUpload,
 } from "@tabler/icons-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./CodebookLandingPage.module.css";
 
+const CONTACT_EMAIL = "jranjit@usc.edu";
+
 export default function CodebookLandingPage() {
   const navigate = useNavigate();
+  const [inquiry, setInquiry] = useState("");
+  const [feedback, setFeedback] = useState("");
+
+  const sendMail = (subject: string, body: string) => {
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
+      subject,
+    )}&body=${encodeURIComponent(body)}`;
+  };
 
   return (
     <Box className={styles.page}>
@@ -34,10 +49,10 @@ export default function CodebookLandingPage() {
         </Badge>
         <div className={styles.heroGrid}>
           <Paper className={styles.heroCard}>
-            <Title className={styles.title}>Annotation Assistant</Title>
+            <Title className={styles.title}>Human in the loop codebook development</Title>
             <Text className={styles.subtitle} mt="sm">
-              Build, test, and refine a production-ready codebook from labeled and
-              unlabeled datasets in one streamlined workflow.
+              To get started, create a task, define your labels, and work with
+              language models to develop a codebook.
             </Text>
             <Group mt="lg" gap="sm">
               <Button
@@ -152,6 +167,70 @@ export default function CodebookLandingPage() {
             </Paper>
           </div>
         </Paper>
+      </Container>
+
+      <Container fluid className={styles.flowSection}>
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" mt="md">
+          <Paper className={styles.walkthroughSection}>
+            <Title order={4} className={styles.sectionTitle}>
+              Work with us
+            </Title>
+            <Text className={styles.sectionHint} mt={4}>
+              Are you a community organization interested in working with us? Send
+              us a message.
+            </Text>
+            <Textarea
+              mt="sm"
+              autosize
+              minRows={3}
+              placeholder="Tell us about your organization and how we might collaborate…"
+              value={inquiry}
+              onChange={(e) => setInquiry(e.currentTarget.value)}
+            />
+            <Button
+              mt="sm"
+              radius="xl"
+              leftSection={<IconSend size={16} />}
+              disabled={!inquiry.trim()}
+              onClick={() =>
+                sendMail("Collaboration inquiry — Annotation Assistant", inquiry)
+              }
+            >
+              Send message
+            </Button>
+          </Paper>
+
+          <Paper className={styles.walkthroughSection}>
+            <Title order={4} className={styles.sectionTitle}>
+              Share your feedback
+            </Title>
+            <Text className={styles.sectionHint} mt={4}>
+              Did you try out our tool? We'd love to hear from you — tell us how we
+              can improve and what you'd like to see next.
+            </Text>
+            <Textarea
+              mt="sm"
+              autosize
+              minRows={3}
+              placeholder="What worked well, what didn't, and what you'd like to see next…"
+              value={feedback}
+              onChange={(e) => setFeedback(e.currentTarget.value)}
+            />
+            <Button
+              mt="sm"
+              radius="xl"
+              leftSection={<IconSend size={16} />}
+              disabled={!feedback.trim()}
+              onClick={() => sendMail("Feedback — Annotation Assistant", feedback)}
+            >
+              Send feedback
+            </Button>
+          </Paper>
+        </SimpleGrid>
+        <Text ta="center" size="sm" c="dimmed" mt="md" mb="lg">
+          Or email us directly at{" "}
+          <Anchor href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Anchor>.
+        </Text>
       </Container>
     </Box>
   );

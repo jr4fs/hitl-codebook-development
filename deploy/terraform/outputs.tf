@@ -23,8 +23,7 @@ output "next_steps" {
     1. Add the deploy key to GitHub:  ssh ubuntu@${aws_eip.this.public_ip} 'cat ~/.ssh/id_ed25519.pub'
        -> GitHub repo Settings > Deploy keys > Add (read-only).
     2. Allow-list this IP in MongoDB Atlas Network Access:  ${aws_eip.this.public_ip}/32
-    3. On the box: git clone, checkout deploy-single-vm, cp deploy/.env.example .env
-       Set DOMAIN=annotate.${aws_eip.this.public_ip}.sslip.io  (see deploy/DEPLOY_AWS.md).
-    4. docker compose up -d --build
+    3. Re-run ./deploy/deploy.sh — it clones the repo, renders the server .env from
+       deploy/config.env, builds, and starts the stack.  (see docs/deploy-aws.md)
   EOT
 }

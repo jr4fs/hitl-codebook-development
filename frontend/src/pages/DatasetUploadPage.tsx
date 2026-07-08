@@ -18,7 +18,7 @@ import {
   Title,
   useMantineColorScheme,
 } from "@mantine/core";
-import {IconAlertCircle, IconArrowRight, IconBraces, IconFileTypeCsv, IconUpload,} from "@tabler/icons-react";
+import {IconAlertCircle, IconArrowRight, IconBraces, IconDownload, IconFileTypeCsv, IconUpload,} from "@tabler/icons-react";
 import {type ReactNode, useCallback, useState, useEffect} from "react";
 import {useNavigate} from "react-router-dom";
 import StepTrackerBanner from "../components/StepTrackerBanner";
@@ -39,11 +39,15 @@ interface UploadConfig {
   useRepresentativeSampling: boolean;
 }
 
+// Default total number of samples; overridable at build time via env.
+const DEFAULT_COVERAGE_SAMPLES =
+  Number(import.meta.env.VITE_DEFAULT_COVERAGE_SAMPLES) || 15;
+
 const defaultUploadConfig: UploadConfig = {
   selectedModel: "mistral:7b",
   textColumn: "translated_text",
   labelColumn: "Final Label",
-  coverageSampleSize: 150,
+  coverageSampleSize: DEFAULT_COVERAGE_SAMPLES,
   useRepresentativeSampling: false,
 };
 
@@ -274,7 +278,7 @@ export default function DatasetUploadPage() {
         coverageN:
           typeof config.coverageSampleSize === "number"
             ? config.coverageSampleSize
-            : 150,
+            : DEFAULT_COVERAGE_SAMPLES,
         useRepresentativeSampling: config.useRepresentativeSampling,
       });
 
@@ -331,6 +335,35 @@ export default function DatasetUploadPage() {
           Upload your labeled examples, the remaining unlabeled data, and the task definition files to get
           started.
         </Text>
+        <Group gap="sm" align="center" mt="sm" wrap="nowrap">
+          <Text size="sm" c="dimmed">
+            New here? Try the tool with a ready-made sample dataset:
+          </Text>
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconDownload size={16} />}
+            onClick={async () => {
+              try {
+                const res = await fetch("/pangolin_sample_bundle.zip");
+                if (!res.ok) throw new Error(String(res.status));
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "pangolin_sample_bundle.zip";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+              } catch {
+                toast.error("Failed to download the sample dataset.");
+              }
+            }}
+          >
+            Download sample dataset
+          </Button>
+        </Group>
       </Container>
 
       <Container fluid className={styles.tableSection} style={{height: "auto", overflow: "visible"}}>
@@ -364,8 +397,8 @@ export default function DatasetUploadPage() {
                     </Text>
                     <Divider my={4} color={dividerColor}/>
                     <NumberInput
-                      label="Coverage sample size"
-                      description="How many samples to include in the guide set. 150 by default."
+                      label="Budget"
+                      description="The maximum number of samples used for codebook development."
                       value={config.coverageSampleSize}
                       min={1}
                       onChange={(value) =>

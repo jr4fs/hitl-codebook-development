@@ -6,7 +6,7 @@ security group, EC2 `t3.medium` + gp3 disk, Elastic IP, IAM instance role
 
 It stops at infra + Docker. The app deploy (clone the private repo, fill `.env`,
 `docker compose up`) stays manual because of the private repo + secrets — see
-`../DEPLOY_AWS.md`. Full hands-off (secrets in SSM + images in ECR) is a later phase.
+`../../docs/deploy-aws.md`. Full hands-off (secrets in SSM + images in ECR) is a later phase.
 
 ## Prerequisites
 - Terraform >= 1.5, AWS CLI.

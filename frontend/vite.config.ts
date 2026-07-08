@@ -11,6 +11,10 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
+  // Read env from the single repo-root .env (only VITE_* vars are exposed to the
+  // client). In Docker the build passes VITE_* as build args, so no root .env is
+  // needed there.
+  envDir: path.resolve(dirname, '..'),
   resolve: {
     alias: {
       '@common': path.resolve(dirname, '../common/src'),

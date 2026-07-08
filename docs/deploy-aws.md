@@ -3,6 +3,9 @@
 From zero to a live, credentialed HTTPS app on one AWS EC2 VM. LLM inference via
 **OpenRouter**, embeddings via the **OpenAI API** (switchable to Bedrock or local).
 
+> For local development see [local-dev.md](./local-dev.md); to run the same stack
+> in Docker on your machine see [deploy-docker.md](./deploy-docker.md).
+
 You edit **one file** (`deploy/config.env`) and run **one script**
 (`./deploy/deploy.sh`). The script provisions the infra (Terraform), syncs the
 code, renders the server `.env`, and rebuilds/restarts. Re-running it is a redeploy.

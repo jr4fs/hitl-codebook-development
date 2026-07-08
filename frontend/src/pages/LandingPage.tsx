@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Button, Group, Paper, Stack, Text, Title, Badge, Collapse, Center } from "@mantine/core";
+import { Anchor, Box, Button, Group, Paper, Stack, Text, Textarea, Title, Badge, Collapse, Center } from "@mantine/core";
 import {
   IconArrowRight,
   IconUpload,
@@ -8,6 +8,7 @@ import {
   IconChecklist,
   IconBook2,
   IconChevronDown,
+  IconSend,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { useDemo } from "../demo/DemoContext";
@@ -15,6 +16,7 @@ import { PilotBanner } from "../components/PilotBanner";
 import styles from "./LandingPage.module.css";
 
 const isPilot = import.meta.env.VITE_APP_MODE === "pilot";
+const CONTACT_EMAIL = "jranjit@usc.edu";
 
 type TabType = "description" | "example" | "demo";
 type StepNumber = 1 | 2 | 3 | 4 | 5 | 6;
@@ -25,6 +27,14 @@ export default function LandingPage() {
   const [activeTab, setActiveTab] = useState<TabType>("description");
   const [activeStep, setActiveStep] = useState<StepNumber>(1);
   const [expandedFile, setExpandedFile] = useState<string | null>(null);
+  const [inquiry, setInquiry] = useState("");
+  const [feedback, setFeedback] = useState("");
+
+  const sendMail = (subject: string, body: string) => {
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
+      subject,
+    )}&body=${encodeURIComponent(body)}`;
+  };
 
   const steps: Array<{ number: StepNumber; title: string }> = [
     { number: 1, title: "The task" },
@@ -44,21 +54,21 @@ export default function LandingPage() {
               <Text className={styles.panelLabel}>Labels</Text>
               <Stack gap={8} mt={8}>
                 <Box className={styles.labelCard}>
-                  <Text className={styles.labelName}>crisis_intervention</Text>
+                  <Text className={styles.labelName}>positive</Text>
                   <Text className={styles.labelDef}>
-                    Acute crisis requiring immediate response — psychiatric symptoms, safety concerns, paranoia
+                    Supports protecting pangolins — rescue, anti-trafficking, conservation awareness or fundraising
                   </Text>
                 </Box>
                 <Box className={styles.labelCard}>
-                  <Text className={styles.labelName}>service_coordination</Text>
+                  <Text className={styles.labelName}>negative</Text>
                   <Text className={styles.labelDef}>
-                    Coordinating with external agencies — legal, medical, housing, or community resources
+                    Promotes selling, eating, or using pangolins — bushmeat, scales, trade, or blaming them for disease
                   </Text>
                 </Box>
                 <Box className={styles.labelCard}>
-                  <Text className={styles.labelName}>routine_support</Text>
+                  <Text className={styles.labelName}>neutral</Text>
                   <Text className={styles.labelDef}>
-                    Regular check-in or ongoing case management — emotional support, basic needs, follow-up
+                    Mentions pangolins with no clear stance — memes, games, logos, or descriptive references
                   </Text>
                 </Box>
               </Stack>
@@ -74,22 +84,22 @@ export default function LandingPage() {
                     name: "Labeled",
                     file: "labeled.csv",
                     desc: "Pre-labeled dataset for validation. Should contain your raw text data and ground-truth labels. Used to evaluate LLM performance and calibrate feedback.",
-                    sample: "id,text_data,label\n1,\"YP presented with psychosis...\",crisis_intervention\n2,\"HCM reached out to Public Defender...\",service_coordination\n3,\"YP called feeling overwhelmed...\",routine_support"
+                    sample: "id,translated_text,label\n1,\"Donated to a pangolin rescue today!\",positive\n2,\"Fresh pangolin scales for sale, DM me...\",negative\n3,\"Cute cartoon pangolin in the new game\",neutral"
                   },
                   {
                     name: "Unlabeled",
                     file: "unlabeled.csv",
                     desc: "Large pool of unlabeled data. The system will select 150 representative samples from this for annotation. Should be diverse and representative of your full dataset.",
-                    sample: "id,text_data\n1,\"YP arrived presenting in low mood...\"\n2,\"HCM coordinated with housing provider...\"\n3,\"YP called requesting emotional support...\"\n4,\"TCM engaged YP in risk assessment...\""
+                    sample: "id,translated_text\n1,\"Please share to help stop pangolin poaching...\"\n2,\"Pangolin meat is a must-try delicacy...\"\n3,\"My pangolin plushie arrived today 🥰\"\n4,\"Pangolins are the most trafficked mammal...\""
                   },
                   {
                     name: "Task_Details",
                     file: "task.json",
                     desc: "JSON file describing the annotation task. Includes task name, description, and special instructions.",
                     sample: `{
-  "name": "Youth_Case_Note_Classification",
-  "description": "Classify the primary type of support interaction in youth homelessness case notes",
-  "text_column": "text_data",
+  "name": "Pangolin_Conservation_Sentiment",
+  "description": "Classify the sentiment of pangolin social media posts toward conservation",
+  "text_column": "translated_text",
   "label_column": "label"
 }`
                   },
@@ -99,14 +109,14 @@ export default function LandingPage() {
                     desc: "JSON file defining all available labels with descriptions and keywords for LLM understanding.",
                     sample: `[
   {
-    "name": "crisis_intervention",
-    "description": "Acute crisis requiring immediate response",
-    "keywords": ["crisis", "paranoia", "psychosis", "safety"]
+    "name": "positive",
+    "description": "Supports protecting pangolins",
+    "keywords": ["save", "protect", "conservation", "awareness"]
   },
   {
-    "name": "service_coordination",
-    "description": "Coordinating with external agencies or resources",
-    "keywords": ["referral", "court", "appointment", "outreach"]
+    "name": "negative",
+    "description": "Promotes selling, eating, or harming pangolins",
+    "keywords": ["for sale", "meat", "scales", "poaching"]
   }
 ]`
                   },
@@ -152,9 +162,9 @@ export default function LandingPage() {
         return (
           <Stack gap="md">
             <Box className={styles.sampleBox}>
-              <Text className={styles.panelLabel}>Sample case note</Text>
+              <Text className={styles.panelLabel}>Sample post</Text>
               <Text className={styles.sampleText}>
-                "HCM [PERSON] was alerted by staff that YP was presenting with high energy and making comments about machetes. YP was speaking in a flight of ideas about being hurt by others and HCM engaged in a risk assessment."
+                "Please share to help stop pangolin poaching — they're the most trafficked mammal on Earth and desperately need our protection. 💚"
               </Text>
             </Box>
 
@@ -165,16 +175,16 @@ export default function LandingPage() {
               <Stack gap={8} mt={8}>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Label</span>
-                  <span className={styles.predictionValue}>crisis_intervention</span>
+                  <span className={styles.predictionValue}>positive</span>
                 </Box>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Span text</span>
-                  <span className={styles.predictionValue}>flight of ideas about being hurt by others... risk assessment</span>
+                  <span className={styles.predictionValue}>stop pangolin poaching... need our protection</span>
                 </Box>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Reasoning</span>
                   <span className={styles.predictionValue}>
-                    YP presents with acute psychiatric symptoms — paranoid ideation and flight of ideas requiring immediate response.
+                    The post advocates protecting pangolins and raising anti-trafficking awareness — a clearly pro-conservation stance.
                   </span>
                 </Box>
               </Stack>
@@ -191,9 +201,9 @@ export default function LandingPage() {
             </Box>
 
             <Box className={styles.sampleBox}>
-              <Text className={styles.panelLabel}>Sample case note</Text>
+              <Text className={styles.panelLabel}>Sample post</Text>
               <Text className={styles.sampleText}>
-                "YP called and identified feeling overwhelmed. YP reported food insecurity and that a recent bike injury had prevented him from working. DOP agreed to drop off additional grocery store cards to support."
+                "My little cousin won't stop showing off her new cartoon pangolin plushie 🥰 it's genuinely the cutest thing."
               </Text>
             </Box>
 
@@ -205,18 +215,18 @@ export default function LandingPage() {
                 <Box className={styles.validationRowIncorrect}>
                   <Box>
                     <Text className={styles.validationLabel}>Label</Text>
-                    <Text className={styles.validationText}>service_coordination</Text>
+                    <Text className={styles.validationText}>positive</Text>
                   </Box>
                   <span className={styles.xmark}>✗</span>
                 </Box>
                 <Box>
                   <Text className={styles.feedbackLabel}>You marked as incorrect</Text>
-                  <textarea className={styles.feedbackInput} placeholder="Explain why this prediction was wrong..." defaultValue="YP is reaching out for emotional support and basic needs — no external agency involved. Should be 'routine_support'." />
+                  <textarea className={styles.feedbackInput} placeholder="Explain why this prediction was wrong..." defaultValue="This is just a cute personal post about a toy — it takes no stance on conservation. Should be 'neutral'." />
                 </Box>
                 <Box className={styles.validationRowCorrect}>
                   <Box>
                     <Text className={styles.validationLabel}>Correct label</Text>
-                    <Text className={styles.validationText}>routine_support</Text>
+                    <Text className={styles.validationText}>neutral</Text>
                   </Box>
                   <span className={styles.checkmark}>✓</span>
                 </Box>
@@ -240,7 +250,7 @@ export default function LandingPage() {
                 <Box className={styles.ruleCard}>
                   <Group justify="space-between" align="flex-start" gap="sm">
                     <Text className={styles.ruleText}>
-                      Notes describing flight of ideas, paranoid ideation, or unresponsiveness → crisis_intervention
+                      Posts promoting rescue, anti-trafficking, or conservation awareness → positive
                     </Text>
                     <Badge size="sm" variant="light" color="green">
                       new
@@ -250,7 +260,7 @@ export default function LandingPage() {
                 <Box className={styles.ruleCard}>
                   <Group justify="space-between" align="flex-start" gap="sm">
                     <Text className={styles.ruleText}>
-                      Notes involving inter-agency emails, court coordination, or external referrals → service_coordination
+                      Posts with no stance — memes, plushies, games, or logos → neutral
                     </Text>
                     <Badge size="sm" variant="light" color="green">
                       new
@@ -277,9 +287,9 @@ export default function LandingPage() {
             </Box>
 
             <Box className={styles.sampleBox}>
-              <Text className={styles.panelLabel}>Sample case note</Text>
+              <Text className={styles.panelLabel}>Sample post</Text>
               <Text className={styles.sampleText}>
-                "HCM [PERSON] reached out to Public Defender [PERSON] Choi (PDSC) for a check-in phone call regarding the status of YP options before appearing in ODR Court. HCM coordinated housing and mental health support options."
+                "Get your fresh pangolin scales here — traditional medicine, best prices in town. DM to order, we ship anywhere. 🐾"
               </Text>
             </Box>
 
@@ -290,11 +300,11 @@ export default function LandingPage() {
               <Stack gap={8} mt={8}>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Label</span>
-                  <span className={styles.predictionValue}>service_coordination</span>
+                  <span className={styles.predictionValue}>negative</span>
                 </Box>
                 <Box className={styles.predictionRow}>
                   <span className={styles.predictionLabel}>Span text</span>
-                  <span className={styles.predictionValue}>reached out to Public Defender... ODR Court</span>
+                  <span className={styles.predictionValue}>fresh pangolin scales... traditional medicine, best prices</span>
                 </Box>
               </Stack>
             </Box>
@@ -343,7 +353,7 @@ export default function LandingPage() {
               <Group gap={6} mt={8}>
                 <span className={styles.summaryChip}>12 rules</span>
                 <span className={styles.summaryChip}>3 labels</span>
-                <span className={styles.summaryChip}>case notes</span>
+                <span className={styles.summaryChip}>pangolin posts</span>
               </Group>
             </Box>
 
@@ -354,7 +364,7 @@ export default function LandingPage() {
               className={styles.exportButton}
               leftSection={<IconChecklist size={16} />}
             >
-              Export case_notes_codebook.json
+              Export pangolin_sentiment_codebook.json
             </Button>
 
             <Box className={styles.divider} />
@@ -363,16 +373,16 @@ export default function LandingPage() {
               <Text className={styles.panelLabel}>Your exported codebook</Text>
               <Box className={styles.sampleDataBox}>
                 <pre className={styles.sampleDataPre}>{`{
-  "name": "Youth_Case_Note_Classification_v1",
-  "description": "Classify primary support interaction in youth homelessness case notes",
-  "labels": ["crisis_intervention", "service_coordination", "routine_support"],
+  "name": "Pangolin_Conservation_Sentiment_v1",
+  "description": "Classify the sentiment of pangolin social media posts toward conservation",
+  "labels": ["positive", "negative", "neutral"],
   "rules": [
-    "Notes with flight of ideas, paranoid ideation, or unresponsiveness → crisis_intervention",
-    "Notes documenting a risk assessment or acute safety concern → crisis_intervention",
-    "Notes involving inter-agency emails, court coordination, or referrals → service_coordination",
-    "Notes about medical appointments or housing provider outreach → service_coordination",
-    "Notes describing a routine check-in or basic needs support → routine_support",
-    "Notes where YP calls or arrives without crisis indicators → routine_support"
+    "Posts promoting rescue, anti-trafficking, or conservation awareness → positive",
+    "Posts describing pangolins as endangered or needing protection → positive",
+    "Posts selling pangolin scales, meat, or products → negative",
+    "Posts blaming pangolins for disease or wishing them harm → negative",
+    "Posts with a pangolin meme, plushie, game, or logo and no stance → neutral",
+    "Posts that mention pangolins descriptively without an opinion → neutral"
   ],
   "metadata": {
     "samples_reviewed": 150,
@@ -456,10 +466,10 @@ export default function LandingPage() {
               <img src="/annotate-icon.svg" alt="Annotation Assistant" className={styles.logoIcon} />
             </Center>
             <Box className={styles.hero}>
-              <Title className={styles.heroTitle}>Train your LLM like a human annotator.</Title>
+              <Title className={styles.heroTitle}>Human in the loop codebook development</Title>
               <Text className={styles.heroSubtitle}>
-                Most annotation tools scale the work — Annotation Assistant scales the judgment. Build a living
-                playbook that teaches your LLM exactly how to label, batch by batch.
+                To get started, create a task, define your labels, and work with
+                language models to develop a codebook.
               </Text>
             </Box>
 
@@ -506,6 +516,64 @@ export default function LandingPage() {
                 See a step-by-step example
               </Button>
             </Box>
+
+            <Box className={styles.contactCardsContainer}>
+              <Paper className={styles.conceptCard}>
+                <Text className={styles.conceptTitle}>Work with us</Text>
+                <Text className={styles.conceptText} mb="sm">
+                  Are you a community organization interested in working with us?
+                  Send us a message.
+                </Text>
+                <Textarea
+                  autosize
+                  minRows={3}
+                  placeholder="Tell us about your organization and how we might collaborate…"
+                  value={inquiry}
+                  onChange={(e) => setInquiry(e.currentTarget.value)}
+                />
+                <Button
+                  mt="sm"
+                  radius="xl"
+                  leftSection={<IconSend size={16} />}
+                  disabled={!inquiry.trim()}
+                  onClick={() =>
+                    sendMail("Collaboration inquiry — Annotation Assistant", inquiry)
+                  }
+                >
+                  Send message
+                </Button>
+              </Paper>
+
+              <Paper className={styles.conceptCard}>
+                <Text className={styles.conceptTitle}>Share your feedback</Text>
+                <Text className={styles.conceptText} mb="sm">
+                  Did you try out our tool? We'd love to hear from you — tell us how
+                  we can improve and what you'd like to see next.
+                </Text>
+                <Textarea
+                  autosize
+                  minRows={3}
+                  placeholder="What worked well, what didn't, and what you'd like to see next…"
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.currentTarget.value)}
+                />
+                <Button
+                  mt="sm"
+                  radius="xl"
+                  leftSection={<IconSend size={16} />}
+                  disabled={!feedback.trim()}
+                  onClick={() => sendMail("Feedback — Annotation Assistant", feedback)}
+                >
+                  Send feedback
+                </Button>
+              </Paper>
+            </Box>
+            <Center mt="md">
+              <Text size="sm" c="dimmed">
+                Or email us directly at{" "}
+                <Anchor href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Anchor>.
+              </Text>
+            </Center>
           </Box>
         )}
 

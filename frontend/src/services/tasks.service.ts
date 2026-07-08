@@ -134,7 +134,13 @@ export async function uploadTaskBundle(params: {
   formData.append("text_column", String(params.textColumn));
   formData.append("label_column", String(params.labelColumn));
   formData.append("model_name", String(params.modelName));
-  formData.append("coverage_n", String(params.coverageN ?? 150));
+  formData.append(
+    "coverage_n",
+    String(
+      params.coverageN ??
+        (Number(import.meta.env.VITE_DEFAULT_COVERAGE_SAMPLES) || 15),
+    ),
+  );
   formData.append(
     "use_representative_sampling",
     String(Boolean(params.useRepresentativeSampling)),
@@ -220,6 +226,46 @@ export async function getAutoLabelProgress(
   const { data } = await apiClient.get<AutoLabelProgressResponse>(
     `/api/tasks/auto-label/progress/${taskId}`,
     { timeout: 5_000 },
+  );
+  return data;
+}
+
+// Run inference over the task's full unlabeled dataset (d_all) with the latest
+// codebook. Poll getAutoLabelProgress(taskId) for completion + labeled rows.
+export async function startFinalInference(
+  taskId: string,
+  codebook: string[],
+): Promise<{ success: boolean; taskId?: string; message?: string }> {
+  const { data } = await apiClient.post<{
+    success: boolean;
+    taskId?: string;
+    message?: string;
+  }>("/api/tasks/final-inference", { taskId, codebook }, { timeout: 60_000 });
+  return data;
+}
+
+// Persist the final-inference output file path so it survives a reload.
+export async function saveFinalInferenceResult(
+  taskId: string,
+  outputFile: string,
+): Promise<{ success: boolean; message?: string }> {
+  const { data } = await apiClient.post<{ success: boolean; message?: string }>(
+    "/api/tasks/final-inference/save",
+    { taskId, outputFile },
+  );
+  return data;
+}
+
+// Mark a codebook-development task complete (locks it read-only). Optionally
+// persists the generated metrics filenames so the completion popup's download
+// buttons still work after a reload.
+export async function markCodebookComplete(
+  taskId: string,
+  metricsFiles?: { sample?: string; batch?: string; metadata?: string },
+): Promise<{ success: boolean; message?: string }> {
+  const { data } = await apiClient.post<{ success: boolean; message?: string }>(
+    "/api/tasks/complete",
+    { taskId, metricsFiles },
   );
   return data;
 }
