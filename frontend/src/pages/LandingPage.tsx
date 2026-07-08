@@ -517,7 +517,7 @@ export default function LandingPage() {
               </Button>
             </Box>
 
-            <Box className={styles.conceptCardsContainer} mt="xl">
+            <Box className={styles.contactCardsContainer}>
               <Paper className={styles.conceptCard}>
                 <Text className={styles.conceptTitle}>Work with us</Text>
                 <Text className={styles.conceptText} mb="sm">
