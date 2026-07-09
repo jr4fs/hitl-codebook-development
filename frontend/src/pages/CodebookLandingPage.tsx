@@ -49,7 +49,7 @@ export default function CodebookLandingPage() {
         </Badge>
         <div className={styles.heroGrid}>
           <Paper className={styles.heroCard}>
-            <Title className={styles.title}>HiTL codebook development</Title>
+            <Title className={styles.title}>Human-in-the-loop Codebook Development</Title>
             <Text className={styles.subtitle} mt="sm">
               To get started, create a task, define your labels, and work with
               language models to develop a codebook.

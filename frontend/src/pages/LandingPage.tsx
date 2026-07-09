@@ -466,7 +466,7 @@ export default function LandingPage() {
               <img src="/annotate-icon.svg" alt="Annotation Assistant" className={styles.logoIcon} />
             </Center>
             <Box className={styles.hero}>
-              <Title className={styles.heroTitle}>HiTL codebook development</Title>
+              <Title className={styles.heroTitle}>Human-in-the-loop Codebook Development</Title>
               <Text className={styles.heroSubtitle}>
                 To get started, create a task, define your labels, and work with
                 language models to develop a codebook.
