@@ -49,7 +49,7 @@ export default function CodebookLandingPage() {
         </Badge>
         <div className={styles.heroGrid}>
           <Paper className={styles.heroCard}>
-            <Title className={styles.title}>Human in the loop codebook development</Title>
+            <Title className={styles.title}>HiTL codebook development</Title>
             <Text className={styles.subtitle} mt="sm">
               To get started, create a task, define your labels, and work with
               language models to develop a codebook.
@@ -112,7 +112,7 @@ export default function CodebookLandingPage() {
               <Stack gap={8}>
                 <Group gap={8}>
                   <IconRobot size={18} className={styles.walkthroughIcon} />
-                  <Text className={styles.walkthroughTitle}>2. Human in the loop codebook development</Text>
+                  <Text className={styles.walkthroughTitle}>2. HiTL codebook development</Text>
                 </Group>
                 <Text className={styles.walkthroughText}>
                   Check AI predictions, mark correctness, and update rules in the codebook panel.
