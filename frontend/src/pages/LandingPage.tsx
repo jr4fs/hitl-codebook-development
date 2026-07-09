@@ -466,7 +466,7 @@ export default function LandingPage() {
               <img src="/annotate-icon.svg" alt="Annotation Assistant" className={styles.logoIcon} />
             </Center>
             <Box className={styles.hero}>
-              <Title className={styles.heroTitle}>Human in the loop codebook development</Title>
+              <Title className={styles.heroTitle}>HiTL codebook development</Title>
               <Text className={styles.heroSubtitle}>
                 To get started, create a task, define your labels, and work with
                 language models to develop a codebook.
@@ -487,7 +487,7 @@ export default function LandingPage() {
               <Paper className={styles.conceptCard}>
                 <Group gap={10} mb="sm">
                   <IconRobot size={20} className={styles.conceptIcon} />
-                  <Text className={styles.conceptTitle}>2. Human in the loop codebook development</Text>
+                  <Text className={styles.conceptTitle}>2. HiTL codebook development</Text>
                 </Group>
                 <Text className={styles.conceptText}>
                   Review AI predictions, give feedback, rules synthesize automatically after every 5 samples.
