@@ -477,7 +477,7 @@ export default function LandingPage() {
               <Paper className={styles.conceptCard}>
                 <Group gap={10} mb="sm">
                   <IconUpload size={20} className={styles.conceptIcon} />
-                  <Text className={styles.conceptTitle}>Upload your data</Text>
+                  <Text className={styles.conceptTitle}>1. Define annotation task</Text>
                 </Group>
                 <Text className={styles.conceptText}>
                   Labeled validation set + unlabeled pool, task config, label definitions. Start with any dataset.
@@ -487,7 +487,7 @@ export default function LandingPage() {
               <Paper className={styles.conceptCard}>
                 <Group gap={10} mb="sm">
                   <IconRobot size={20} className={styles.conceptIcon} />
-                  <Text className={styles.conceptTitle}>Co-annotate with LLM</Text>
+                  <Text className={styles.conceptTitle}>2. Human in the loop codebook development</Text>
                 </Group>
                 <Text className={styles.conceptText}>
                   Review AI predictions, give feedback, rules synthesize automatically after every 5 samples.
@@ -497,7 +497,7 @@ export default function LandingPage() {
               <Paper className={styles.conceptCard}>
                 <Group gap={10} mb="sm">
                   <IconBook2 size={20} className={styles.conceptIcon} />
-                  <Text className={styles.conceptTitle}>Export a production codebook</Text>
+                  <Text className={styles.conceptTitle}>3. Scale annotations</Text>
                 </Group>
                 <Text className={styles.conceptText}>
                   A validated, rule-backed codebook ready to power large-scale annotation pipelines.

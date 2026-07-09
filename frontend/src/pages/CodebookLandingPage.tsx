@@ -84,7 +84,7 @@ export default function CodebookLandingPage() {
               <Stack gap={8}>
                 <Group gap={8}>
                   <IconUpload size={18} className={styles.walkthroughIcon} />
-                  <Text className={styles.walkthroughTitle}>1. Upload task bundle</Text>
+                  <Text className={styles.walkthroughTitle}>1. Define annotation task</Text>
                 </Group>
                 <Text className={styles.walkthroughText}>
                   Upload `labeled_examples.csv`, `remaining_notes.csv`, `task.json`, and `labels.json`.
@@ -112,7 +112,7 @@ export default function CodebookLandingPage() {
               <Stack gap={8}>
                 <Group gap={8}>
                   <IconRobot size={18} className={styles.walkthroughIcon} />
-                  <Text className={styles.walkthroughTitle}>2. Review and refine</Text>
+                  <Text className={styles.walkthroughTitle}>2. Human in the loop codebook development</Text>
                 </Group>
                 <Text className={styles.walkthroughText}>
                   Check AI predictions, mark correctness, and update rules in the codebook panel.
@@ -146,7 +146,7 @@ export default function CodebookLandingPage() {
               <Stack gap={8}>
                 <Group gap={8}>
                   <IconBook2 size={18} className={styles.walkthroughIcon} />
-                  <Text className={styles.walkthroughTitle}>3. Export final codebook</Text>
+                  <Text className={styles.walkthroughTitle}>3. Scale annotations</Text>
                 </Group>
                 <Text className={styles.walkthroughText}>
                   Export the updated rules and labels for downstream dataset annotation tasks.
