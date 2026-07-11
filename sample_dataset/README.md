@@ -1,3 +1,4 @@
+
 # Sample task bundle: Pangolin conservation sentiment
 
 A ready-to-upload demo bundle for users to try the codebook-development flow.
@@ -17,8 +18,9 @@ labels (`positive`, `negative`, `neutral`).
 ## How to use
 
 1. Navigate to: https://annotate.44.218.57.167.sslip.io/
-2. Log in with the provided email/password in the paper
-3. On the "Create Codebook" upload page, keep the defaults:
+2. Log in with: Email- tutorial@gmail.com, Password- Demotask@123
+3. Download the toy dataset in this folder
+4. On the "Create Task" page, keep the defaults:
 - **Text column** = `translated_text`
 - **Label column** = `Final Label`
 - **Budget** = whatever you want to review, we recommend 15 for a lightweight example (default comes from the deployment)
