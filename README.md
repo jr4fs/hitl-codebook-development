@@ -8,7 +8,7 @@ correction is distilled into an explicit, versioned **codebook** of rules that
 guides the model on the rest of the corpus. The result is a validated, exportable
 labeling policy — not just a labeled file — that can drive annotation at scale.
 
-## Key features
+## Features
 
 - **Guided sampling.** Representative + coverage sampling over sentence embeddings
   selects a diverse "guide set" from a large unlabeled pool, so a small review
@@ -22,7 +22,7 @@ labeling policy — not just a labeled file — that can drive annotation at sca
   inference over the entire dataset.
 - **Provider-agnostic.** LLM via OpenRouter or local Ollama; embeddings via
   OpenAI, Amazon Bedrock, or in-process (mpnet) — switchable with env vars.
-- **Interactive demo** at the `/demo` route (fully mocked, no backend or keys).
+- **sample_dataset/** at the `/demo` route (fully mocked, no backend or keys).
 
 ## How it works
 
